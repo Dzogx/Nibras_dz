@@ -31,6 +31,7 @@
 - [x] Homework generation
 - [x] Classroom questions generation
 - [x] Differentiation strategies generation
+- [x] Enhanced differentiation options in Lesson Generator (student-level controls)
 - [x] RAG-based curriculum alignment for all generations
 
 ## Assessment Studio
@@ -64,3 +65,4 @@
 ## Testing & Quality
 - [x] Vitest tests for backend procedures
 - [x] End-to-end verification of all features
+- [x] Enhanced Lesson Generator differentiation UI with ability levels

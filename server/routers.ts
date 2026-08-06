@@ -520,7 +520,86 @@ ${curriculumContext}`
       duration: z.string().optional(),
       contentType: z.enum(["lessonPlan", "activity", "homework", "classQuestions", "differentiation"]),
       curriculumDocs: z.any().optional(),
+      // Differentiation options
+      enableDifferentiation: z.boolean().optional(),
+      studentLevel: z.enum(["advanced", "average", "needs_support", "mixed"]).optional(),
+      learningStyle: z.enum(["visual", "auditory", "kinesthetic", "mixed"]).optional(),
+      bloomLevel: z.enum(["remember", "understand", "apply", "analyze", "evaluate", "create"]).optional(),
+      activityType: z.enum(["group_work", "individual", "pair_work", "whole_class", "mixed"]).optional(),
+      difficultyLevel: z.enum(["easy", "medium", "hard", "progressive"]).optional(),
+      supportStrategy: z.enum(["scaffolding", "extension", "simplification", "enrichment", "none"]).optional(),
     })).mutation(async ({ ctx, input }) => {
+      // Build differentiation context
+      const diffContext: string[] = [];
+      if (input.enableDifferentiation) {
+        if (input.studentLevel) {
+          const levelLabels: Record<string, string> = {
+            advanced: "متقدمين (أقوياء)",
+            average: "متوسطين (عاديون)",
+            needs_support: "يحتاجون دعماً إضافياً (ضعفاء)",
+            mixed: "مختلطة المستويات",
+          };
+          diffContext.push(`- مستوى التلاميذ: ${levelLabels[input.studentLevel]}`);
+        }
+        if (input.learningStyle) {
+          const styleLabels: Record<string, string> = {
+            visual: "بصري",
+            auditory: "سمعي",
+            kinesthetic: "حركي",
+            mixed: "متنوع",
+          };
+          diffContext.push(`- نمط التعلم المفضل: ${styleLabels[input.learningStyle]}`);
+        }
+        if (input.bloomLevel) {
+          const bloomLabels: Record<string, string> = {
+            remember: "تذكر (تصنيف بلوم)",
+            understand: "فهم (تصنيف بلوم)",
+            apply: "تطبيق (تصنيف بلوم)",
+            analyze: "تحليل (تصنيف بلوم)",
+            evaluate: "تقييم (تصنيف بلوم)",
+            create: "إبداع (تصنيف بلوم)",
+          };
+          diffContext.push(`- مستوى تصنيف بلوم المستهدف: ${bloomLabels[input.bloomLevel]}`);
+        }
+        if (input.activityType) {
+          const actLabels: Record<string, string> = {
+            group_work: "عمل جماعي",
+            individual: "عمل فردي",
+            pair_work: "عمل ثنائي",
+            whole_class: "عمل فوج كامل",
+            mixed: "متنوع",
+          };
+          diffContext.push(`- نوع النشاط: ${actLabels[input.activityType]}`);
+        }
+        if (input.difficultyLevel) {
+          const diffLabels: Record<string, string> = {
+            easy: "سهل",
+            medium: "متوسط",
+            hard: "صعب",
+            progressive: "تصاعدي (من السهل إلى الصعب)",
+          };
+          diffContext.push(`- مستوى الصعوبة: ${diffLabels[input.difficultyLevel]}`);
+        }
+        if (input.supportStrategy && input.supportStrategy !== "none") {
+          const supLabels: Record<string, string> = {
+            scaffolding: "سقالة تعليمية (دعم تدريجي)",
+            extension: "توسيع وتعميق",
+            simplification: "تبسيط وتبديل",
+            enrichment: "إثراء",
+          };
+          diffContext.push(`- استراتيجية الدعم: ${supLabels[input.supportStrategy]}`);
+        }
+      }
+
+      const diffBlock = diffContext.length > 0
+        ? `
+
+خيارات التفريد (تفريد التعليم):
+${diffContext.join("\n")}
+
+التزم بالخيارات أعلاه عند التوليد. إذا كان المستوى "مختلط" أو "متنوع"، قدّم تدرجاً في الصعوبة يناسب جميع المستويات.`
+        : "";
+
       const prompts: Record<string, string> = {
         lessonPlan: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ خطة درس مفصلة ومبنية على المنهج الرسمي الجزائري.
 المتطلبات:
@@ -531,6 +610,7 @@ ${input.unitTitle ? `- الوحدة: ${input.unitTitle}` : ""}
 ${input.unitNumber ? `- رقم الوحدة: ${input.unitNumber}` : ""}
 ${input.lessonNumber ? `- رقم الدرس: ${input.lessonNumber}` : ""}
 ${input.duration ? `- المدة: ${input.duration}` : ""}
+${diffBlock}
 
 قدم خطة درس تتضمن: الأهداف، المحتوى، الأنشطة، الأدوات، التقويم. استند دائماً إلى المنهج الرسمي الجزائري.`,
 
@@ -539,6 +619,7 @@ ${input.duration ? `- المدة: ${input.duration}` : ""}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 - المدة: ${input.duration || "حصة واحدة"}
+${diffBlock}
 
 صمم نشاطاً تفاعلياً يشجع المشاركة الفعالة للطلاب.`,
 
@@ -546,6 +627,7 @@ ${input.duration ? `- المدة: ${input.duration}` : ""}
 - الموضوع: ${input.title}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
+${diffBlock}
 
 أعِدّ تمارين متنوعة تشمل: أسئلة مباشرة، تحليل، وتطبيق عملي.`,
 
@@ -553,6 +635,7 @@ ${input.duration ? `- المدة: ${input.duration}` : ""}
 - الموضوع: ${input.title}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
+${diffBlock}
 
 قدم أسئلة متنوعة تشمل مستويات تصنيف بلوم المختلفة: تذكر، فهم، تطبيق، تحليل، تقييم، إبداع.`,
 
@@ -560,6 +643,7 @@ ${input.duration ? `- المدة: ${input.duration}` : ""}
 - الموضوع: ${input.title}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
+${diffBlock}
 
 قدم استراتيجيات تمايز لتناسب: الطلاب المتقدمين، الطلاب العاديين، الطلاب الذين يحتاجون دعماً إضافياً.`,
       };
