@@ -1,17 +1,10 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, bigint, boolean } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
  */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -25,4 +18,235 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Teacher profiles with academic settings
+ */
+export const teacherProfiles = mysqlTable("teacherProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  displayName: varchar("displayName", { length: 128 }),
+  subject: mysqlEnum("subject", [
+    "التاريخ والجغرافيا",
+    "التربية المدنية",
+    "التاريخ والجغرافيا والتربية المدنية",
+  ]).default("التاريخ والجغرافيا").notNull(),
+  academicYear: varchar("academicYear", { length: 16 }),
+  school: varchar("school", { length: 256 }),
+  province: varchar("province", { length: 128 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TeacherProfile = typeof teacherProfiles.$inferSelect;
+export type InsertTeacherProfile = typeof teacherProfiles.$inferInsert;
+
+/**
+ * Academic years
+ */
+export const academicYears = mysqlTable("academicYears", {
+  id: int("id").autoincrement().primaryKey(),
+  year: varchar("year", { length: 16 }).notNull().unique(),
+  isActive: boolean("isActive").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AcademicYear = typeof academicYears.$inferSelect;
+export type InsertAcademicYear = typeof academicYears.$inferInsert;
+
+/**
+ * Curriculum documents (official documents)
+ */
+export const curriculumDocuments = mysqlTable("curriculumDocuments", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 256 }).notNull(),
+  type: mysqlEnum("type", [
+    "document",
+    "annualPlan",
+    "competency",
+    "unit",
+    "lesson",
+  ]).notNull(),
+  subject: mysqlEnum("subject", [
+    "التاريخ والجغرافيا",
+    "التربية المدنية",
+    "التاريخ والجغرافيا والتربية المدنية",
+  ]).notNull(),
+  gradeLevel: mysqlEnum("gradeLevel", [
+    "السنة الأولى متوسط",
+    "السنة الثانية متوسط",
+    "السنة الثالثة متوسط",
+    "السنة الرابعة متوسط",
+  ]).notNull(),
+  content: text("content").notNull(),
+  academicYear: varchar("academicYear", { length: 16 }),
+  unitNumber: int("unitNumber"),
+  lessonNumber: int("lessonNumber"),
+  tags: json("tags"),
+  sourceReference: varchar("sourceReference", { length: 512 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CurriculumDocument = typeof curriculumDocuments.$inferSelect;
+export type InsertCurriculumDocument = typeof curriculumDocuments.$inferInsert;
+
+/**
+ * Classes (فصول)
+ */
+export const classes = mysqlTable("classes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 128 }).notNull(),
+  gradeLevel: mysqlEnum("gradeLevel", [
+    "السنة الأولى متوسط",
+    "السنة الثانية متوسط",
+    "السنة الثالثة متوسط",
+    "السنة الرابعة متوسط",
+  ]).notNull(),
+  section: varchar("section", { length: 64 }),
+  subject: varchar("subject", { length: 128 }),
+  academicYear: varchar("academicYear", { length: 16 }),
+  studentCount: int("studentCount").default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Class = typeof classes.$inferSelect;
+export type InsertClass = typeof classes.$inferInsert;
+
+/**
+ * Annual plans (الخطط السنوية)
+ */
+export const annualPlans = mysqlTable("annualPlans", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId"),
+  subject: varchar("subject", { length: 128 }).notNull(),
+  gradeLevel: varchar("gradeLevel", { length: 128 }).notNull(),
+  academicYear: varchar("academicYear", { length: 16 }).notNull(),
+  title: varchar("title", { length: 256 }),
+  content: text("content"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AnnualPlan = typeof annualPlans.$inferSelect;
+export type InsertAnnualPlan = typeof annualPlans.$inferInsert;
+
+/**
+ * Lessons (الدروس)
+ */
+export const lessons = mysqlTable("lessons", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId"),
+  title: varchar("title", { length: 256 }).notNull(),
+  subject: varchar("subject", { length: 128 }),
+  gradeLevel: varchar("gradeLevel", { length: 128 }),
+  unitTitle: varchar("unitTitle", { length: 256 }),
+  unitNumber: int("unitNumber"),
+  lessonNumber: int("lessonNumber"),
+  content: text("content"),
+  plan: text("plan"),
+  objectives: text("objectives"),
+  duration: varchar("duration", { length: 64 }),
+  date: timestamp("date"),
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  tags: json("tags"),
+  curriculumReferences: json("curriculumReferences"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Lesson = typeof lessons.$inferSelect;
+export type InsertLesson = typeof lessons.$inferInsert;
+
+/**
+ * Teaching notes (ملاحظات التدريس)
+ */
+export const teachingNotes = mysqlTable("teachingNotes", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  lessonId: int("lessonId"),
+  title: varchar("title", { length: 256 }),
+  content: text("content").notNull(),
+  noteType: mysqlEnum("noteType", [
+    "ملاحظة عامة",
+    "ملاحظة صفية",
+    "ملاحظة تقويمية",
+    "ملاحظة تربوية",
+  ]).default("ملاحظة عامة").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type TeachingNote = typeof teachingNotes.$inferSelect;
+export type InsertTeachingNote = typeof teachingNotes.$inferInsert;
+
+/**
+ * AI-generated resources (مكتبة المحتوى)
+ */
+export const aiResources = mysqlTable("aiResources", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  lessonId: int("lessonId"),
+  classId: int("classId"),
+  type: mysqlEnum("type", [
+    "lessonPlan",
+    "activity",
+    "homework",
+    "classQuestions",
+    "differentiation",
+    "quiz",
+    "exam",
+    "rubric",
+    "answerKey",
+    "inspectorReview",
+  ]).notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  content: text("content").notNull(),
+  metadata: json("metadata"),
+  tags: json("tags"),
+  sourceDocumentIds: json("sourceDocumentIds"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AIResource = typeof aiResources.$inferSelect;
+export type InsertAIResource = typeof aiResources.$inferInsert;
+
+/**
+ * Inspector reviews (وضع المفتش)
+ */
+export const inspectorReviews = mysqlTable("inspectorReviews", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  resourceId: int("resourceId").notNull(),
+  resourceType: mysqlEnum("resourceType", [
+    "lesson",
+    "assessment",
+  ]).notNull(),
+  evaluation: text("evaluation").notNull(),
+  criteria: json("criteria"),
+  overallScore: int("overallScore"),
+  recommendations: text("recommendations"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type InspectorReview = typeof inspectorReviews.$inferSelect;
+export type InsertInspectorReview = typeof inspectorReviews.$inferInsert;
+
+/**
+ * Curriculum search index (for fast search)
+ */
+export const curriculumSearchIndex = mysqlTable("curriculumSearchIndex", {
+  id: int("id").autoincrement().primaryKey(),
+  documentId: int("documentId").notNull(),
+  searchText: text("searchText").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type CurriculumSearchIndex = typeof curriculumSearchIndex.$inferSelect;
+export type InsertCurriculumSearchIndex = typeof curriculumSearchIndex.$inferInsert;

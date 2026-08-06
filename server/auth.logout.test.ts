@@ -60,3 +60,16 @@ describe("auth.logout", () => {
     });
   });
 });
+
+describe("auth.me", () => {
+  it("returns the current user", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.auth.me();
+
+    expect(result).toBeDefined();
+    expect(result?.id).toBe(1);
+    expect(result?.name).toBe("Sample User");
+  });
+});

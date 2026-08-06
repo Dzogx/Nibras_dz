@@ -4,34 +4,78 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
+import DashboardLayout from "./components/DashboardLayout";
+import Dashboard from "./pages/Dashboard";
+import Curriculum from "./pages/Curriculum";
+import Classes from "./pages/Classes";
+import AnnualPlans from "./pages/AnnualPlans";
+import Lessons from "./pages/Lessons";
+import LessonGenerator from "./pages/LessonGenerator";
+import Assessment from "./pages/Assessment";
+import ContentLibrary from "./pages/ContentLibrary";
+import Inspector from "./pages/Inspector";
+import Profile from "./pages/Profile";
+import LessonDetail from "./pages/LessonDetail";
+import AnnualPlanDetail from "./pages/AnnualPlanDetail";
+import ResourceDetail from "./pages/ResourceDetail";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path="/dashboard">
+        {() => <DashboardLayout><Dashboard /></DashboardLayout>}
+      </Route>
+      <Route path="/curriculum">
+        {() => <DashboardLayout><Curriculum /></DashboardLayout>}
+      </Route>
+      <Route path="/classes">
+        {() => <DashboardLayout><Classes /></DashboardLayout>}
+      </Route>
+      <Route path="/annual-plans">
+        {() => <DashboardLayout><AnnualPlans /></DashboardLayout>}
+      </Route>
+      <Route path="/annual-plans/:id">
+        {(params) => <DashboardLayout><AnnualPlanDetail id={params.id} /></DashboardLayout>}
+      </Route>
+      <Route path="/lessons">
+        {() => <DashboardLayout><Lessons /></DashboardLayout>}
+      </Route>
+      <Route path="/lessons/:id">
+        {(params) => <DashboardLayout><LessonDetail id={params.id} /></DashboardLayout>}
+      </Route>
+      <Route path="/lesson-generator">
+        {() => <DashboardLayout><LessonGenerator /></DashboardLayout>}
+      </Route>
+      <Route path="/assessment">
+        {() => <DashboardLayout><Assessment /></DashboardLayout>}
+      </Route>
+      <Route path="/content-library">
+        {() => <DashboardLayout><ContentLibrary /></DashboardLayout>}
+      </Route>
+      <Route path="/content-library/:id">
+        {(params) => <DashboardLayout><ResourceDetail id={params.id} /></DashboardLayout>}
+      </Route>
+      <Route path="/inspector">
+        {() => <DashboardLayout><Inspector /></DashboardLayout>}
+      </Route>
+      <Route path="/profile">
+        {() => <DashboardLayout><Profile /></DashboardLayout>}
+      </Route>
+      <Route path={"/"}>
+        {() => { window.location.href = "/dashboard"; return null; }}
+      </Route>
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
-          <Toaster />
+          <Toaster position="top-center" />
           <Router />
         </TooltipProvider>
       </ThemeProvider>
