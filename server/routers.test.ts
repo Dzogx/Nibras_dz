@@ -34,6 +34,15 @@ vi.mock("./db", () => ({
 }));
 
 import * as db from "./db";
+import {
+  getAssessmentRule,
+  getExamStructure,
+  getBloomDistribution,
+  buildAssessmentContext,
+  getExamHeader,
+  getAllRules,
+  COMPETENCY_CATEGORIES,
+} from "./rules/nationalRules";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
@@ -236,5 +245,139 @@ describe("ai searchCurriculum", () => {
       expect.objectContaining({ search: "بحث" })
     );
     expect(result).toHaveLength(1);
+  });
+});
+// ─── National Rules Engine Tests ───────────────────────────────
+describe("nationalRules", () => {
+  it("getAssessmentRule returns correct rule for year 1 history+geography", () => {
+    const rule = getAssessmentRule("السنة الأولى متوسط", "التاريخ والجغرافيا");
+    expect(rule).toBeDefined();
+    expect(rule!.totalPoints).toBe(20);
+    expect(rule!.weights).toHaveLength(2);
+    expect(rule!.weights[0].points).toBe(10);
+    expect(rule!.weights[1].points).toBe(10);
+    expect(rule!.duration).toBe("ساعة ونصف");
+    expect(rule!.examType).toBe("combined");
+  });
+
+  it("getAssessmentRule returns correct rule for year 4 (BEM)", () => {
+    const rule = getAssessmentRule("السنة الرابعة متوسط", "التاريخ والجغرافيا");
+    expect(rule).toBeDefined();
+    expect(rule!.weights[0].points).toBe(13);
+    expect(rule!.weights[1].points).toBe(7);
+  });
+
+  it("getAssessmentRule returns civic education rule (any level)", () => {
+    const rule = getAssessmentRule("السنة الثالثة متوسط", "التربية المدنية");
+    expect(rule).toBeDefined();
+    expect(rule!.weights[0].points).toBe(20);
+    expect(rule!.duration).toBe("ساعة واحدة");
+    expect(rule!.examType).toBe("independent");
+  });
+
+  it("getExamStructure returns correct structure", () => {
+    const structure = getExamStructure("السنة الأولى متوسط", "التاريخ والجغرافيا");
+    expect(structure).toBeDefined();
+    expect(structure!.part1.subject).toBe("التاريخ");
+    expect(structure!.part1.points).toBe(10);
+    expect(structure!.part2.subject).toBe("الجغرافيا");
+    expect(structure!.part2.points).toBe(10);
+    expect(structure!.totalPoints).toBe(20);
+    expect(structure!.duration).toBe("ساعة ونصف");
+  });
+
+  it("getBloomDistribution distributes questions across bloom levels", () => {
+    const dist = getBloomDistribution(8);
+    expect(dist.length).toBeGreaterThan(0);
+    const total = dist.reduce((sum: number, d: { count: number }) => sum + d.count, 0);
+    expect(total).toBe(8);
+  });
+
+  it("buildAssessmentContext generates proper context string", () => {
+    const context = buildAssessmentContext({
+      gradeLevel: "السنة الأولى متوسط",
+      subject: "التاريخ والجغرافيا",
+      completedLessons: [
+        { title: "الثورة الجزائرية", unitTitle: "الوحدة الأولى", lessonNumber: 1, objectives: "فهم أسباب الثورة" },
+      ],
+      autoImport: true,
+    });
+    expect(context).toContain("قواعد التقويم الوطنية");
+    expect(context).toContain("التاريخ: 10 نقطة");
+    expect(context).toContain("الجغرافيا: 10 نقطة");
+    expect(context).toContain("الثورة الجزائرية");
+    expect(context).toContain("عدد الدروس المنجزة: 1");
+  });
+
+  it("getExamHeader generates proper header", () => {
+    const header = getExamHeader("السنة الرابعة متوسط", "التاريخ والجغرافيا");
+    expect(header).toContain("الجمهورية الجزائرية الديمقراطية الشعبية");
+    expect(header).toContain("السنة الرابعة متوسط");
+    expect(header).toContain("13 نقطة");
+    expect(header).toContain("7 نقطة");
+  });
+});
+
+// ─── Teacher OS Integration Tests ──────────────────────────────
+describe("ai.getTeacherOSContext", () => {
+  beforeEach(resetMocks);
+
+  it("returns completed lessons from Teacher OS", async () => {
+    // Mock returns only completed lessons (the db helper already filters by isCompleted)
+    const mockLessons = [
+      { id: 1, title: "درس أول", isCompleted: true, unitTitle: "وحدة 1", lessonNumber: 1, objectives: "هدف 1", date: new Date() },
+      { id: 2, title: "درس ثاني", isCompleted: true, unitTitle: "وحدة 1", lessonNumber: 2, objectives: "هدف 2", date: new Date() },
+    ];
+    (db.getLessons as any).mockResolvedValue(mockLessons);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getTeacherOSContext({
+      classId: 1,
+      gradeLevel: "السنة الأولى متوسط",
+      subject: "التاريخ والجغرافيا",
+    });
+
+    expect(result.completedLessons).toHaveLength(2);
+    expect(result.totalCompleted).toBe(2);
+    expect(db.getLessons).toHaveBeenCalledWith(1, { classId: 1, isCompleted: true });
+  });
+
+  it("returns empty when no completed lessons", async () => {
+    (db.getLessons as any).mockResolvedValue([]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getTeacherOSContext({});
+
+    expect(result.completedLessons).toHaveLength(0);
+    expect(result.totalCompleted).toBe(0);
+  });
+});
+
+// ─── getCompetencyCategories Tests ─────────────────────────────
+describe("ai.getCompetencyCategories", () => {
+  it("returns competency categories", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getCompetencyCategories();
+    expect(result).toHaveLength(COMPETENCY_CATEGORIES.length);
+    expect(result[0].name).toBe("اكتساب المعارف");
+  });
+});
+
+// ─── getAssessmentRules Tests ──────────────────────────────────
+describe("ai.getAssessmentRules", () => {
+  it("returns specific rule when gradeLevel and subject provided", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getAssessmentRules({
+      gradeLevel: "السنة الأولى متوسط",
+      subject: "التاريخ والجغرافيا",
+    });
+    expect(result).toHaveLength(1);
+    expect((result[0] as any).totalPoints).toBe(20);
+  });
+
+  it("returns all rules when no filters", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getAssessmentRules({});
+    expect(result.length).toBeGreaterThan(0);
   });
 });

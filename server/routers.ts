@@ -16,6 +16,15 @@ import {
   getAIResources, getAIResourceById, createAIResource, updateAIResource, deleteAIResource, duplicateAIResource,
   getInspectorReviews, createInspectorReview, getInspectorReviewById,
 } from "./db";
+import {
+  getAssessmentRule,
+  getAllRules,
+  getExamStructure,
+  getBloomDistribution,
+  buildAssessmentContext,
+  getExamHeader,
+  COMPETENCY_CATEGORIES,
+} from "./rules/nationalRules";
 
 export const appRouter = router({
   system: systemRouter,
@@ -687,27 +696,84 @@ ${diffBlock}
       topic: z.string(),
       duration: z.string().optional(),
       numQuestions: z.number().optional(),
+      // Teacher OS integration fields
+      lessonIds: z.array(z.number()).optional(),
+      competencyIds: z.array(z.string()).optional(),
+      autoImport: z.boolean().optional(),
+      useNationalRules: z.boolean().optional().default(true),
     })).mutation(async ({ ctx, input }) => {
+      // ─── Get Teacher OS data (completed lessons) ─────────────
+      let completedLessons: { title: string; unitTitle?: string; unitNumber?: number; lessonNumber?: number; objectives?: string }[] = [];
+      if (input.lessonIds && input.lessonIds.length > 0) {
+        const allLessons = await getLessons(ctx.user.id);
+        completedLessons = allLessons
+          .filter(l => input.lessonIds!.includes(l.id) && l.isCompleted)
+          .map(l => ({
+            title: l.title,
+            unitTitle: l.unitTitle || undefined,
+            unitNumber: l.unitNumber || undefined,
+            lessonNumber: l.lessonNumber || undefined,
+            objectives: l.objectives || undefined,
+          }));
+      }
+
+      // ─── Build rules context ─────────────────────────────────
+      const rule = input.useNationalRules ? getAssessmentRule(input.gradeLevel, input.subject) : undefined;
+      const examHeader = rule ? getExamHeader(input.gradeLevel, input.subject) : "";
+      const rulesContext = rule ? buildAssessmentContext({
+        gradeLevel: input.gradeLevel,
+        subject: input.subject,
+        completedLessons,
+        selectedCompetencies: input.competencyIds,
+        autoImport: input.autoImport,
+      }) : "";
+
+      // ─── Generate prompts with rules integration ─────────────
       const prompts: Record<string, string> = {
         quiz: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ اختباراً قصيراً.
+
+${rulesContext}
+
 - الموضوع: ${input.topic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${input.numQuestions ? `- عدد الأسئلة: ${input.numQuestions}` : "- 10 أسئلة متنوعة"}
-${input.duration ? `- المدة: ${input.duration}` : ""}
+${input.duration ? `- المدة: ${input.duration}` : (rule ? `- المدة: ${rule.duration}` : "")}
+
+${rule ? `توزيع النقاط: ${rule.weights.map(w => `${w.label}: ${w.points} نقطة`).join("، ")}` : ""}
+
+قدم أسئلة متنوعة مع ربط كل سؤال بالكفاءة التي يقيسها. ابدأ بالجزء الأول: ${examHeader}
 
 قدم أسئلة متنوعة مع مفتاح إجابات.`,
 
-        exam: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ امتحاناً فصلياً.
+        exam: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ امتحاناً فصلياً رسمياً.
+
+${rulesContext}
+
 - الموضوع: ${input.topic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${input.numQuestions ? `- عدد الأسئلة: ${input.numQuestions}` : "- 5 أسئلة مقالية متنوعة"}
-${input.duration ? `- المدة: ${input.duration}` : "- ساعة واحدة"}
+${input.duration ? `- المدة: ${input.duration}` : (rule ? `- المدة: ${rule.duration}` : "")}
+
+${rule ? `توزيع النقاط الرسمي:
+${rule.weights.map(w => `- ${w.label}: ${w.points} نقطة (${((w.points / rule.totalPoints) * 100).toFixed(0)}%)`).join("\n")}` : ""}
+
+اكتب الاختبار كاملاً مع:
+1. ترويسة رسمية بالمستوى والمادة والمدة
+2. أسئلة مرتبة حسب توزيع النقاط
+3. ربط كل سؤال بالكفاءة التي يقيسها
+4. سلم التنقيط التفصيلي
+5. نموذج الإجابة
+
+ابدأ بـ: ${examHeader}
 
 قدم الامتحان مع مفتاح الإجابات ونظام التنقيط.`,
 
         rubric: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ معايير تقييم.
+
+${rulesContext}
+
 - الموضوع: ${input.topic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
@@ -715,6 +781,9 @@ ${input.duration ? `- المدة: ${input.duration}` : "- ساعة واحدة"}
 قدم شبكة تقييم (Rubric) مفصلة مع معايير ومؤشرات ومستويات أداء.`,
 
         answerKey: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ مفتاح إجابات مفصل.
+
+${rulesContext}
+
 - الموضوع: ${input.topic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
@@ -737,17 +806,106 @@ ${input.duration ? `- المدة: ${input.duration}` : "- ساعة واحدة"}
         answerKey: "مفتاح إجابات",
       };
 
+      // Build metadata with rules engine info
+      const metadata: Record<string, unknown> = {
+        subject: input.subject,
+        gradeLevel: input.gradeLevel,
+        topic: input.topic,
+        useNationalRules: input.useNationalRules,
+        completedLessonIds: input.lessonIds || [],
+        competencyIds: input.competencyIds || [],
+      };
+
+      if (rule) {
+        metadata.totalPoints = rule.totalPoints;
+        metadata.duration = rule.duration;
+        metadata.examType = rule.examType;
+        metadata.pointDistribution = rule.weights;
+        metadata.numQuestions = input.numQuestions || rule.maxQuestions;
+        const structure = getExamStructure(input.gradeLevel, input.subject);
+        if (structure) metadata.examStructure = structure;
+      }
+
       const result = await createAIResource({
         userId: ctx.user.id,
         classId: input.classId,
         type: input.assessmentType,
         title: input.title,
         content,
-        metadata: { subject: input.subject, gradeLevel: input.gradeLevel, topic: input.topic },
-        tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel],
+        metadata,
+        tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel, ...(input.useNationalRules ? ["تقويم وطني"] : [])],
       });
 
-      return { resourceId: result?.id, content };
+      return { resourceId: result?.id, content, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد" };
+    }),
+
+    // ─── National Rules API ────────────────────────────────────
+    getAssessmentRules: protectedProcedure.input(z.object({
+      gradeLevel: z.string().optional(),
+      subject: z.string().optional(),
+    })).query(({ input }) => {
+      if (input.gradeLevel && input.subject) {
+        const rule = getAssessmentRule(input.gradeLevel, input.subject);
+        return rule ? [rule] : [];
+      }
+      return getAllRules();
+    }),
+
+    getCompetencyCategories: protectedProcedure.query(() => {
+      return COMPETENCY_CATEGORIES;
+    }),
+
+    getTeacherOSContext: protectedProcedure.input(z.object({
+      classId: z.number().optional(),
+      gradeLevel: z.string().optional(),
+      subject: z.string().optional(),
+    })).query(async ({ ctx, input }) => {
+      // Auto-import: get completed lessons from Teacher OS
+      const lessons = await getLessons(ctx.user.id, {
+        classId: input.classId,
+        isCompleted: true,
+      });
+
+      // Auto-derive competencies from completed lessons' objectives
+      const coveredCompetencies: string[] = [];
+      const lessonSummaries = lessons.map(l => ({
+        id: l.id,
+        title: l.title,
+        unitTitle: l.unitTitle || undefined,
+        unitNumber: l.unitNumber || undefined,
+        lessonNumber: l.lessonNumber || undefined,
+        objectives: l.objectives || undefined,
+        date: l.date?.toISOString() || undefined,
+      }));
+
+      // Derive competencies from completed lesson objectives
+      if (input.gradeLevel && input.subject) {
+        const applicableCompetencies = COMPETENCY_CATEGORIES.filter(c =>
+          c.applicableSubjects.some(s => input.subject!.includes(s) || s.includes(input.subject!))
+        );
+
+        // Auto-derive: if lessons have objectives, match them to competencies
+        const allObjectives = lessons.map(l => l.objectives || "").join(" ");
+        applicableCompetencies.forEach(c => {
+          // Match competency to lesson objectives via keyword matching
+          const matched = c.bloomLevels.some(bloom => allObjectives.includes(bloom)) ||
+                          c.bloomLevels.length > 0; // Include all applicable competencies if lessons exist
+          if (matched || lessons.length > 0) {
+            coveredCompetencies.push(c.name);
+          }
+        });
+
+        // If no competencies matched but lessons exist, include all applicable
+        if (coveredCompetencies.length === 0 && lessons.length > 0) {
+          applicableCompetencies.forEach(c => coveredCompetencies.push(c.name));
+        }
+      }
+
+      return {
+        completedLessons: lessonSummaries,
+        totalCompleted: lessonSummaries.length,
+        competencies: coveredCompetencies,
+      };
     }),
 
     searchCurriculum: protectedProcedure.input(z.object({

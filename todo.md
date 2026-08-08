@@ -62,6 +62,26 @@
 - [x] Loading states and error handling
 - [x] Empty states for all pages
 
+## National Assessment Rules Engine
+- [x] Design and create National Rules Engine module (server/rules/nationalRules.ts)
+- [x] Store official assessment rules in centralized engine (point distribution, duration, structure)
+- [x] Year 1: History 10pts + Geography 10pts
+- [x] Year 2: History 10pts + Geography 10pts
+- [x] Year 3: History 10pts + Geography 10pts
+- [x] Year 4: History 13pts + Geography 7pts
+- [x] Civic Education: independent exam, 20pts, 1 hour
+- [x] History & Geography: combined exam, 1.5 hours
+- [x] Rules updateable from single location without code changes
+- [x] Integrate Teacher OS data flow: annual plan → sections → completed lessons → competencies → assessment
+- [x] Auto-import completed lessons/competencies when creating assessment
+- [x] Auto-determine covered competencies from completed lessons
+- [x] Auto-apply point distribution based on national rules
+- [x] Auto-suggest exam structure based on level and subject
+- [x] Link each question to its competency being assessed
+- [x] Updated Assessment Studio UI with Teacher OS integration
+- [x] Assessment creation flow: choose level → select completed sections → auto-generate
+- [x] Update vitest tests for new assessment engine
+
 ## Testing & Quality
 - [x] Vitest tests for backend procedures
 - [x] End-to-end verification of all features
