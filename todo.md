@@ -121,3 +121,24 @@
 - [x] Frontend: "أنشئ مذكرة" button inside each situation in AnnualPlanDetail
 - [x] Tests: add tests for new assessment-situation link and lesson-from-situation
 - [x] Full scenario E2E test: class → plan → section → situation → lesson → assessment → results → analysis
+
+## 2022 Official Curriculum Data Integration
+- [x] Extract text from all 12 official 2022 annual plan PDFs (4 levels x 3 subjects)
+- [x] Parse structured data: sections, situations, competencies, objectives
+- [x] Seed curriculumDocuments with official 2022 annual plans (annualPlan type)
+- [x] Create official annual plans in annualPlans table for each level/subject combination (12 plans)
+- [x] Create annualPlanSections with official competencies and objectives
+- [x] Create learningSituations with official learning situations from the plans
+- [ ] Add competency tracking to learningSituations (new field or use content)
+- [ ] Verify data appears correctly in Teacher OS
+- [ ] Verify data appears correctly in Assessment Studio
+- [x] Run all tests after seeding
+
+## Curriculum Parser Quality Improvements
+- [ ] Fix parser to extract all sections for all 12 PDFs (fix Geography 2AM missing Ch3, Geo 1AM missing Ch1, History 4AM missing Ch2/Ch3)
+- [ ] Clean up section titles (remove parser artifacts and messy text)
+- [ ] Extract and seed official section objectives into annualPlanSections (not empty)
+- [ ] Improve situation title extraction quality (no contaminated text from surrounding content)
+- [ ] Re-seed learningSituations after parser fixes and verify content quality
+- [ ] Verify data appears correctly in Teacher OS UI
+- [ ] Verify data appears correctly in Assessment Studio UI
