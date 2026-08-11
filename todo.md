@@ -82,6 +82,15 @@
 - [x] Assessment creation flow: choose level → select completed sections → auto-generate
 - [x] Update vitest tests for new assessment engine
 
+## Curriculum Knowledge Base in Assessment (RAG)
+- [x] Enable curriculum search in generateAssessment (retrieve relevant docs by topic/grade/subject)
+- [x] Inject curriculum document excerpts into assessment generation prompt
+- [x] Require AI to cite document source for each question (doc title, unit, section)
+- [x] Return citations in API response alongside generated content
+- [x] Display curriculum citations per question in Assessment UI
+- [x] Show citation badges/links in printable A4 output
+- [x] Add tests for curriculum retrieval in assessment generation
+
 ## Testing & Quality
 - [x] Vitest tests for backend procedures
 - [x] End-to-end verification of all features

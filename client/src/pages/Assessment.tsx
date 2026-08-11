@@ -37,6 +37,7 @@ export default function Assessment() {
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [rulesInfo, setRulesInfo] = useState<{ rulesApplied: boolean; pointDistribution: { subject: string; points: number; label: string }[]; totalPoints: number; duration: string } | null>(null);
+  const [curriculumCitations, setCurriculumCitations] = useState<{ referenceNumber: number; docId: number; title: string; sourceReference: string; type: string; unitNumber?: number | null; lessonNumber?: number | null }[]>([]);
   type WeightInfo = { subject?: string; points?: number; label?: string };
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [importedLessons, setImportedLessons] = useState<LessonSummary[]>([]);
@@ -113,7 +114,12 @@ export default function Assessment() {
         totalPoints: data.totalPoints,
         duration: data.duration,
       });
-      toast.success("تم توليد التقييم بنجاح مع تطبيق القواعد الوطنية");
+      setCurriculumCitations(data.curriculumCitations || []);
+      if (data.curriculumCitations && data.curriculumCitations.length > 0) {
+        toast.success(`تم التوليد مع الاستشهاد بـ ${data.curriculumCitations.length} وثيقة من قاعدة المنهاج`);
+      } else {
+        toast.warning("تم التوليد — لم يتم العثور على وثائق منهاج مطابقة للاستشهاد");
+      }
     },
     onError: () => toast.error("خطأ في التوليد"),
   });
@@ -158,6 +164,10 @@ export default function Assessment() {
           pre { white-space: pre-wrap; font-family: 'Cairo', sans-serif; }
           .info { text-align: center; color: #666; margin-bottom: 15px; font-size: 13px; }
           .rules-badge { display:inline-block; background:#2563eb; color:white; padding:2px 8px; border-radius:4px; font-size:12px; margin:5px; }
+          .citations { margin-top:15px; padding:10px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:12px; }
+          .citations h3 { margin:0 0 8px 0; color:#1e40af; font-size:13px; }
+          .citations .cit-item { margin-bottom:4px; color:#1e3a5f; }
+          .citations .cit-ref { display:inline-block; background:#1e40af; color:white; padding:1px 6px; border-radius:3px; font-size:11px; margin-left:5px; }
         </style>
       </head>
       <body>
@@ -167,6 +177,10 @@ export default function Assessment() {
           ${pointDistHtml}
         </div>
         <pre>${generated}</pre>
+        ${curriculumCitations.length > 0 ? `<div class="citations">
+          <h3>الاستشهادات من وثائق المنهاج الرسمية (${curriculumCitations.length} وثيقة)</h3>
+          ${curriculumCitations.map(c => `<div class="cit-item"><span class="cit-ref">[${c.referenceNumber}]</span> ${c.title} — ${c.sourceReference}${c.unitNumber ? ` (الوحدة ${c.unitNumber})` : ''}${c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ''}</div>`).join('')}
+        </div>` : ''}
       </body>
       </html>
     `);
@@ -421,6 +435,29 @@ export default function Assessment() {
                     <div className="text-green-700">
                       المدة: {rulesInfo.duration} | المجموع: {rulesInfo.totalPoints} نقطة
                     </div>
+                  </div>
+                )}
+
+                {/* Curriculum Citations */}
+                {curriculumCitations.length > 0 && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <span className="font-semibold text-blue-800">الاستشهادات من وثائق المنهاج الرسمية ({curriculumCitations.length} وثيقة)</span>
+                    </div>
+                    <div className="space-y-1">
+                      {curriculumCitations.map(c => (
+                        <div key={c.referenceNumber} className="flex items-start gap-2 text-blue-700">
+                          <Badge variant="outline" className="text-xs shrink-0">[مرجع: {c.referenceNumber}]</Badge>
+                          <span>
+                            {c.title} — {c.sourceReference}
+                            {c.unitNumber ? ` (الوحدة ${c.unitNumber})` : ""}
+                            {c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-blue-500 italic">كل سؤال في التقييم مرتبط بوثيقة المنهاج المرجعية المناسبة من القائمة أعلاه.</p>
                   </div>
                 )}
                 <div className="prose prose-sm max-w-none text-right" dir="rtl">

@@ -105,6 +105,35 @@ export async function getCurriculumDocuments(filters: { userId?: number; subject
   return await db.select().from(curriculumDocuments).orderBy(desc(curriculumDocuments.createdAt));
 }
 
+/**
+ * Retrieve curriculum documents relevant to a topic/lesson for RAG citation.
+ * Performs keyword-based matching on title and content.
+ */
+export async function getCurriculumForTopic(topic: string, gradeLevel?: string, subject?: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  const conditions = [];
+  if (gradeLevel) conditions.push(eq(curriculumDocuments.gradeLevel, gradeLevel as any));
+  if (subject) conditions.push(eq(curriculumDocuments.subject, subject as any));
+
+  // Split topic into keywords and match against title/content
+  const keywords = topic.split(/\s+/).filter(k => k.length > 2);
+  if (keywords.length > 0) {
+    const searchConditions = keywords.map(k =>
+      or(like(curriculumDocuments.title, `%${k}%`), like(curriculumDocuments.content, `%${k}%`))
+    );
+    if (searchConditions.length > 0) {
+      conditions.push(or(...searchConditions));
+    }
+  }
+
+  if (conditions.length > 0) {
+    return await db.select().from(curriculumDocuments).where(and(...conditions)).orderBy(desc(curriculumDocuments.createdAt)).limit(10);
+  }
+  return await db.select().from(curriculumDocuments).orderBy(desc(curriculumDocuments.createdAt)).limit(10);
+}
+
 export async function getCurriculumDocumentById(id: number) {
   const db = await getDb();
   if (!db) return undefined;

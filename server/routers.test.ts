@@ -31,9 +31,27 @@ vi.mock("./db", () => ({
   createInspectorReview: vi.fn(),
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
+  getCurriculumForTopic: vi.fn(),
+  getTeachingNotes: vi.fn(),
+  updateCurriculumDocument: vi.fn(),
+  deleteCurriculumDocument: vi.fn(),
+  updateLesson: vi.fn(),
+  deleteLesson: vi.fn(),
+  updateAIResource: vi.fn(),
+  deleteAIResource: vi.fn(),
+  updateTeachingNote: vi.fn(),
+  deleteTeachingNote: vi.fn(),
+  getInspectorReviewById: vi.fn(),
+}));
+
+// Mock LLM
+vi.mock("./_core/llm", () => ({
+  invokeLLM: vi.fn(),
 }));
 
 import * as db from "./db";
+// invokeLLM is mocked at the top of this file
+import { invokeLLM } from "./_core/llm";
 import {
   getAssessmentRule,
   getExamStructure,
@@ -350,6 +368,93 @@ describe("ai.getTeacherOSContext", () => {
 
     expect(result.completedLessons).toHaveLength(0);
     expect(result.totalCompleted).toBe(0);
+  });
+});
+
+// ─── generateAssessment with Curriculum RAG Tests ──────────────
+describe("ai.generateAssessment with curriculum citations", () => {
+  beforeEach(resetMocks);
+
+  const mockCurriculumDocs = [
+    {
+      id: 1,
+      title: "وثيقة المنهاج - الوحدة الأولى",
+      content: "محتوى يتعلق بالثورة الجزائرية وأسبابها",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      type: "document",
+      sourceReference: "البرنامج الرسمي",
+      unitNumber: 1,
+      lessonNumber: 2,
+    },
+  ];
+
+  beforeEach(() => {
+    (db.getCurriculumForTopic as any).mockResolvedValue(mockCurriculumDocs);
+    (db.createAIResource as any).mockResolvedValue({ id: 1 });
+    (db.getLessons as any).mockResolvedValue([]);
+    (invokeLLM as any).mockResolvedValue({
+      choices: [{ message: { content: "سؤال 1 [مرجع: 1 — وثيقة المنهاج - الوحدة الأولى — الوحدة 1 — الدرس 2]" } }],
+    });
+  });
+
+  it("retrieves curriculum documents and passes them to the LLM prompt", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    await caller.ai.generateAssessment({
+      title: "اختبار",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "quiz",
+      topic: "الثورة الجزائرية",
+    });
+
+    // Verify getCurriculumForTopic was called
+    expect(db.getCurriculumForTopic).toHaveBeenCalledWith(
+      "الثورة الجزائرية",
+      "السنة الرابعة متوسط",
+      "التاريخ والجغرافيا",
+    );
+
+    // Verify LLM was called with curriculum context in the prompt
+    expect(invokeLLM).toHaveBeenCalled();
+    const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("وثيقة المنهاج - الوحدة الأولى");
+    expect(prompt).toContain("الاستشهاد");
+  });
+
+  it("returns curriculumCitations in the response", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateAssessment({
+      title: "اختبار",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "quiz",
+      topic: "الثورة الجزائرية",
+    });
+
+    expect(result.curriculumCitations).toHaveLength(1);
+    expect(result.curriculumCitations[0].docId).toBe(1);
+    expect(result.curriculumCitations[0].title).toBe("وثيقة المنهاج - الوحدة الأولى");
+    expect(result.curriculumCitations[0].referenceNumber).toBe(1);
+  });
+
+  it("handles empty curriculum results gracefully", async () => {
+    (db.getCurriculumForTopic as any).mockResolvedValue([]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateAssessment({
+      title: "اختبار",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "quiz",
+      topic: "موضوع غير موجود",
+    });
+
+    expect(result.curriculumCitations).toHaveLength(0);
+    expect(result.curriculumDocsCount).toBe(0);
+
+    const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("لا توجد وثائق منهاج مطابقة");
   });
 });
 

@@ -8,7 +8,7 @@ import {
   upsertUser, getUserByOpenId,
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
   getAcademicYears,
-  getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument,
+  getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan,
   getLessons, getLessonById, createLesson, updateLesson, deleteLesson, toggleLessonCompleted,
@@ -717,6 +717,12 @@ ${diffBlock}
           }));
       }
 
+      // ─── Retrieve curriculum knowledge base documents (RAG) ──
+      const curriculumDocs = await getCurriculumForTopic(input.topic, input.gradeLevel, input.subject);
+      const curriculumContext = curriculumDocs.length > 0
+        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.unitNumber ? ` (الوحدة ${doc.unitNumber})` : ''}${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: يجب ربط كل سؤال بوثيقة المنهاج الرسمية ذات الصلة من القائمة أعلاه. بعد كل سؤال ضع الاستشهاد بالصيغة التالية:\n[مرجع: رقم الوثيقة — عنوان الوثيقة — الوحدة/القسم]\nمثال: [مرجع: 1 — وثيقة المنهاج السنة الرابعة — الوحدة 3 — درس الثورة الجزائرية]\nلا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
+        : "لا توجد وثائق منهاج مطابقة في قاعدة المعرفة. أنشئ الأسئلة بناءً على الموضوع المطلوب فقط.";
+
       // ─── Build rules context ─────────────────────────────────
       const rule = input.useNationalRules ? getAssessmentRule(input.gradeLevel, input.subject) : undefined;
       const examHeader = rule ? getExamHeader(input.gradeLevel, input.subject) : "";
@@ -731,6 +737,8 @@ ${diffBlock}
       // ─── Generate prompts with rules integration ─────────────
       const prompts: Record<string, string> = {
         quiz: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ اختباراً قصيراً.
+
+${curriculumContext}
 
 ${rulesContext}
 
@@ -747,6 +755,8 @@ ${rule ? `توزيع النقاط: ${rule.weights.map(w => `${w.label}: ${w.poin
 قدم أسئلة متنوعة مع مفتاح إجابات.`,
 
         exam: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ امتحاناً فصلياً رسمياً.
+
+${curriculumContext}
 
 ${rulesContext}
 
@@ -772,6 +782,8 @@ ${rule.weights.map(w => `- ${w.label}: ${w.points} نقطة (${((w.points / rule
 
         rubric: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ معايير تقييم.
 
+${curriculumContext}
+
 ${rulesContext}
 
 - الموضوع: ${input.topic}
@@ -781,6 +793,8 @@ ${rulesContext}
 قدم شبكة تقييم (Rubric) مفصلة مع معايير ومؤشرات ومستويات أداء.`,
 
         answerKey: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ مفتاح إجابات مفصل.
+
+${curriculumContext}
 
 ${rulesContext}
 
@@ -807,6 +821,17 @@ ${rulesContext}
       };
 
       // Build metadata with rules engine info
+      // Build curriculum citations from retrieved docs
+      const curriculumCitations = curriculumDocs.map((doc, i) => ({
+        referenceNumber: i + 1,
+        docId: doc.id,
+        title: doc.title,
+        sourceReference: doc.sourceReference || 'وثيقة المنهاج الرسمية',
+        type: doc.type,
+        unitNumber: doc.unitNumber,
+        lessonNumber: doc.lessonNumber,
+      }));
+
       const metadata: Record<string, unknown> = {
         subject: input.subject,
         gradeLevel: input.gradeLevel,
@@ -814,6 +839,8 @@ ${rulesContext}
         useNationalRules: input.useNationalRules,
         completedLessonIds: input.lessonIds || [],
         competencyIds: input.competencyIds || [],
+        curriculumCitations,
+        curriculumDocsCount: curriculumDocs.length,
       };
 
       if (rule) {
@@ -836,7 +863,7 @@ ${rulesContext}
         tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel, ...(input.useNationalRules ? ["تقويم وطني"] : [])],
       });
 
-      return { resourceId: result?.id, content, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد" };
+      return { resourceId: result?.id, content, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد", curriculumCitations, curriculumDocsCount: curriculumDocs.length };
     }),
 
     // ─── National Rules API ────────────────────────────────────
