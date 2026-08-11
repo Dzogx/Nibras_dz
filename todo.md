@@ -114,3 +114,10 @@
 - [x] Frontend: analysis view (mastery rates, weak domains, remediation suggestions)
 - [x] Frontend: A4 print for any resource/memo
 - [x] Tests for full scenario
+- [x] Backend: link assessment generation to completed situations from Teacher OS
+- [x] Backend: respect social studies rules (10+10 / 13+7 / 20 civic)
+- [x] Frontend: Assessment auto-imports completed situations + covered competencies
+- [x] Backend: create lesson from situation button (link to section, situation, competencies)
+- [x] Frontend: "أنشئ مذكرة" button inside each situation in AnnualPlanDetail
+- [x] Tests: add tests for new assessment-situation link and lesson-from-situation
+- [x] Full scenario E2E test: class → plan → section → situation → lesson → assessment → results → analysis

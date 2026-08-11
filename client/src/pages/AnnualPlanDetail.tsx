@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2 } from "lucide-react";
+import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState } from "react";
@@ -80,6 +80,13 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
     onSuccess: () => utils.sections.list.invalidate({ annualPlanId: planId }),
   });
 
+  const createLessonFromSituationMutation = trpc.sections.createLessonFromSituation.useMutation({
+    onSuccess: (data: any) => {
+      toast.success("تم إنشاء المذكرة");
+      if (data?.id) setLocation(`/lessons/${data.id}`);
+    },
+    onError: () => toast.error("خطأ في إنشاء المذكرة"),
+  });
   const deleteSituationMutation = trpc.situations.delete.useMutation({
     onSuccess: () => utils.sections.list.invalidate({ annualPlanId: planId }),
   });
@@ -255,6 +262,15 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                             onClick={() => toggleSituationMutation.mutate({ id: sit.id, isCompleted: !sit.isCompleted })}
                           >
                             {sit.isCompleted ? <Circle className="w-3.5 h-3.5 text-green-600" /> : <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => createLessonFromSituationMutation.mutate({ situationId: sit.id, classId: plan?.classId || undefined })}
+                            disabled={createLessonFromSituationMutation.isPending}
+                            title="إنشاء مذكرة من هذه الوضعية"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-primary" />
                           </Button>
                           <Button
                             variant="ghost"

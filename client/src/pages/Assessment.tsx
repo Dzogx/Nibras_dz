@@ -55,6 +55,7 @@ export default function Assessment() {
     duration: "",
     numQuestions: undefined as number | undefined,
     autoImport: true,
+    situationIds: [] as number[],
     useNationalRules: true,
   });
 
@@ -129,6 +130,7 @@ export default function Assessment() {
     const payload = {
       ...form,
       lessonIds: selectedLessonIds.length > 0 ? selectedLessonIds : undefined,
+      situationIds: form.situationIds.length > 0 ? form.situationIds : undefined,
       competencyIds: selectedCompetencies.length > 0 ? selectedCompetencies : undefined,
     };
     generateMutation.mutate(payload as any);
@@ -189,6 +191,14 @@ export default function Assessment() {
     printWindow.print();
   };
 
+  const toggleSituationSelection = (id: number) => {
+    setForm(f => ({
+      ...f,
+      situationIds: f.situationIds.includes(id)
+        ? f.situationIds.filter(x => x !== id)
+        : [...f.situationIds, id],
+    }));
+  };
   const toggleLessonSelection = (id: number) => {
     setSelectedLessonIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -321,6 +331,32 @@ export default function Assessment() {
                     </Label>
                   </div>
 
+                  {/* Completed Situations Selection */}
+                  <div>
+                    <Label className="mb-2 block text-sm">الوضعيات التعليمية المنجزة ({(teacherOSContext?.completedSituations || []).length})</Label>
+                    <div className="max-h-48 overflow-y-auto space-y-2 border rounded-lg p-3">
+                      {(teacherOSContext?.completedSituations || []).length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          لا توجد وضعيات منجزة مسجلة بعد. أضف وضعيات في الخطط السنوية وعلّمها كمكتملة.
+                        </p>
+                      ) : (
+                        teacherOSContext!.completedSituations.map(sit => (
+                          <div key={sit.id} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`situation-${sit.id}`}
+                              checked={form.situationIds.includes(sit.id)}
+                              onCheckedChange={() => toggleSituationSelection(sit.id)}
+                            />
+                            <Label htmlFor={`situation-${sit.id}`} className="text-sm cursor-pointer flex-1">
+                              {sit.sectionTitle && <span className="text-xs text-muted-foreground">[{sit.sectionTitle}] </span>}
+                              <span className="text-xs text-primary">({sit.situationNumber}) </span>
+                              {sit.title}
+                            </Label>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                   {/* Completed Lessons Selection */}
                   <div>
                     <Label className="mb-2 block text-sm">الدروس المنجزة ({importedLessons.length} درس)</Label>

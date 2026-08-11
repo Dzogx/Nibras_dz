@@ -2,6 +2,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { invokeLLM } from "./_core/llm";
 import {
@@ -754,6 +755,7 @@ ${diffBlock}
       competencyIds: z.array(z.string()).optional(),
       autoImport: z.boolean().optional(),
       useNationalRules: z.boolean().optional().default(true),
+      situationIds: z.array(z.number()).optional(),
     })).mutation(async ({ ctx, input }) => {
       // ─── Get Teacher OS data (completed lessons) ─────────────
       let completedLessons: { title: string; unitTitle?: string; unitNumber?: number; lessonNumber?: number; objectives?: string }[] = [];
@@ -770,6 +772,23 @@ ${diffBlock}
           }));
       }
 
+      // ─── Get completed situations (Teacher OS) ─────────────
+      let completedSituations: { title: string; sectionTitle?: string; objectives?: string; competencies?: string; situationNumber?: number }[] = [];
+      if (input.situationIds && input.situationIds.length > 0) {
+        const allSituations = await getLearningSituationsByUserId(ctx.user.id);
+        for (const s of allSituations) {
+          if (input.situationIds!.includes(s.id)) {
+            const section = await getAnnualPlanSectionById(s.sectionId);
+            completedSituations.push({
+              title: s.title,
+              sectionTitle: section ? section.title : undefined,
+              objectives: s.objectives || undefined,
+              competencies: undefined,
+              situationNumber: s.situationNumber,
+            });
+          }
+        }
+      }
       // ─── Retrieve curriculum knowledge base documents (RAG) ──
       const curriculumDocs = await getCurriculumForTopic(input.topic, input.gradeLevel, input.subject);
       const curriculumContext = curriculumDocs.length > 0
@@ -783,6 +802,7 @@ ${diffBlock}
         gradeLevel: input.gradeLevel,
         subject: input.subject,
         completedLessons,
+        completedSituations,
         selectedCompetencies: input.competencyIds,
         autoImport: input.autoImport,
       }) : "";
@@ -1006,8 +1026,35 @@ ${rulesContext}
         }
       } catch (e) { /* sections not yet configured */ }
 
+      // Collect completed situations with details
+      const completedSituationsList: any[] = [];
+      try {
+        if (input.classId) {
+          const plans = await getAnnualPlans(ctx.user.id);
+          const classPlan = plans.find(p => p.classId === input.classId);
+          if (classPlan) {
+            const sections = await getAnnualPlanSections(classPlan.id);
+            for (const section of sections) {
+              const situations = await getLearningSituations(section.id);
+              for (const s of situations) {
+                if (s.isCompleted) {
+                  completedSituationsList.push({
+                    id: s.id,
+                    sectionTitle: section.title,
+                    sectionNumber: section.sectionNumber,
+                    situationNumber: s.situationNumber,
+                    title: s.title,
+                    objectives: s.objectives || undefined,
+                  });
+                }
+              }
+            }
+          }
+        }
+      } catch (e) { /* no sections configured */ }
       return {
         completedLessons: lessonSummaries,
+        completedSituations: completedSituationsList,
         totalCompleted: lessonSummaries.length,
         competencies: coveredCompetencies,
         currentSection,
@@ -1067,6 +1114,41 @@ ${rulesContext}
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await deleteAnnualPlanSection(input.id);
       return { success: true } as const;
+    }),
+    createLessonFromSituation: protectedProcedure.input(z.object({
+      situationId: z.number(),
+      classId: z.number().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const allSituations = await getLearningSituationsByUserId(ctx.user.id);
+      const situation = allSituations.find(s => s.id === input.situationId);
+      if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+
+      const section = await getAnnualPlanSectionById(situation.sectionId);
+
+      let gradeLevel = "";
+      let subject = "التاريخ والجغرافيا";
+      if (input.classId) {
+        const cls = await getClassById(input.classId);
+        if (cls) {
+          gradeLevel = cls.gradeLevel || "";
+          subject = cls.subject || subject;
+        }
+      }
+
+      const lesson = await createLesson({
+        userId: ctx.user.id,
+        classId: input.classId,
+        title: `مذكرة: ${situation.title}`,
+        subject,
+        gradeLevel,
+        unitTitle: section?.title || "",
+        objectives: situation.objectives || "",
+        content: situation.content || "",
+        plan: situation.content || "",
+        tags: JSON.stringify({ sourceSituation: situation.id, sourceSection: situation.sectionId }),
+      } as any);
+
+      return lesson;
     }),
   }),
 
