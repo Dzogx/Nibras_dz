@@ -40,8 +40,8 @@ export default function Curriculum() {
   const utils = trpc.useUtils();
   const { data: documents, isLoading } = trpc.curriculum.list.useQuery({
     search: search || undefined,
-    subject: subject || undefined,
-    gradeLevel: gradeLevel || undefined,
+    subject: subject !== "all" ? subject : undefined,
+    gradeLevel: gradeLevel !== "all" ? gradeLevel : undefined,
     type: type || undefined,
   });
 
@@ -148,7 +148,7 @@ export default function Curriculum() {
                 <SelectValue placeholder="المادة" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع المواد</SelectItem>
+                <SelectItem value="all">جميع المواد</SelectItem>
                 {subjects.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -157,7 +157,7 @@ export default function Curriculum() {
                 <SelectValue placeholder="المستوى" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">جميع المستويات</SelectItem>
+                <SelectItem value="all">جميع المستويات</SelectItem>
                 {gradeLevels.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
               </SelectContent>
             </Select>

@@ -15,6 +15,9 @@ import {
   getTeachingNotes, createTeachingNote, updateTeachingNote, deleteTeachingNote,
   getAIResources, getAIResourceById, createAIResource, updateAIResource, deleteAIResource, duplicateAIResource,
   getInspectorReviews, createInspectorReview, getInspectorReviewById,
+  getAnnualPlanSections, getAnnualPlanSectionById, createAnnualPlanSection, updateAnnualPlanSection, deleteAnnualPlanSection,
+  getLearningSituations, getLearningSituationsByUserId, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
+  getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
 } from "./db";
 import {
   getAssessmentRule,
@@ -380,15 +383,23 @@ export const appRouter = router({
 قَيِّم الدرس المقدم لك وفق المعايير التالية:
 
 1. **التوافق مع المنهج الرسمي الجزائري**: هل المحتوى يتوافق مع المنهج الرسمي؟ هل يستند إلى وثائق المنهج المرجعية؟
-2. **وضوح أهداف التعلم**: هل الأهداف محددة وقابلة للقياس؟
-3. **جودة التقييم وأسئلة التقييم**: هل الأسئلة متنوعة ومناسبة؟
-4. **تطبيق تصنيف بلوم (Bloom's Taxonomy)**: هل يشمل مستويات مختلفة (تذكر، فهم، تطبيق، تحليل، تقييم، إبداع)؟
-5. **دمج التعلم النشط**: هل يتضمن أنشطة تفاعلية تشجع مشاركة الطلاب؟
+2. **وضوح أهداف التعلم**: هل الأهداف محددة وقابلة للقياس؟ إذا كانت الأهداف غائبة أو غير واضحة، أشر إلى ذلك كخطأ جوهري.
+3. **جودة التقييم وأسئلة التقييم**: هل الأسئلة متنوعة ومناسبة؟ هل تتوافق مع المدة الزمنية؟
+4. **تطبيق تصنيف بلوم (Bloom's Taxonomy)**: هل يشمل مستويات مختلفة (تذكر، فهم، تطبيق، تحليل، تقييم، إبداع)؟ إذا كان كله على مستوى واحد فقط، أشر إلى ذلك.
+5. **دمج التعلم النشط**: هل يتضمن أنشطة تفاعلية تشجع مشاركة الطلاب؟ إذا كان كلها شرح مباشر بدون نشاط، أشر إلى ذلك.
 6. **استراتيجيات التمييز والتمايز**: هل يأخذ بعين الاعتبار الفروق الفردية بين التلاميذ؟
+7. **توزيع الزمن**: هل المدة الزمنية واقعية للمحتوى المقدم؟
+8. **التقويم التكويني**: هل يتضمن وسائل لتقويم فهم التلاميذ أثناء الحصة؟
 
-قدم تقييماً مفصلاً مع نقاط القوة والضعف وتوصيات عملية للتحسين. أعِطِ تقييماً عاماً من 100.
+كشف الأخطاء التربوية الحقيقية:
+- إذا لم توجد أهداف تعليمية محددة → خطأ جوهري
+- إذا لم يوجد نشاط تفاعلي → خطأ جوهري
+- إذا كانت جميع الأسئلة على مستوى التذكر فقط → نقص جوهري
+- إذا لم يوجد تقويم داخلي → نقص
+- إذا كان المحتوى غير مرتبط بالمنهج → خطأ جوهري
 
-أجب بتنسيق Markdown منظم بعناوين واضحة.`
+أجب بتنسيق JSON بهذا الشكل:
+{"overallScore": 0-100, "criteria": {"curriculumAlignment": {"score": 0-20, "findings": ""}, "learningObjectives": {"score": 0-20, "findings": ""}, "assessmentQuality": {"score": 0-20, "findings": ""}, "bloomsTaxonomy": {"score": 0-20, "findings": ""}, "activeLearning": {"score": 0-20, "findings": ""}}, "criticalErrors": ["خطأ 1", "خطأ 2"], "recommendations": ["توصية 1", "توصية 2"]}`
           },
           {
             role: "user",
@@ -466,10 +477,18 @@ ${curriculumContext}`
 3. **جودة الأسئلة وصعوبتها**: هل الأسئلة واضحة ومناسبة للمستوى؟ هل تتضمن مستويات صعوبة متنوعة؟
 4. **تطبيق تصنيف بلوم (Bloom's Taxonomy)**: هل يتضمن مستويات مختلفة (تذكر، فهم، تطبيق، تحليل، تقييم، إبداع)؟
 5. **عدالة التقييم**: هل التقييم عادل وشامل؟ هل يقيس ما تم تدريسه فعلاً؟
+6. **تطبيق قواعد التقويم الوطنية**: هل توزيع النقاط متوافق مع القواعد الرسمية (10+10 أو 13+7)؟ هل المدة مناسبة؟
+7. **ربط الأسئلة بالكفاءات**: هل كل سؤال مرتبط بكفاءة محددة يقيسها؟
 
-قدم تقييماً مفصلاً مع توصيات عملية للتحسين. أعِطِ تقييماً عاماً من 100.
+كشف الأخطاء التربوية الحقيقية:
+- إذا كان توزيع النقاط لا يتوافق مع القواعد الوطنية → خطأ جوهري
+- إذا كانت الأسئلة كلها على مستوى التذكر → نقص جوهري
+- إذا لم يكن هناك ربط بالكفاءات → نقص
+- إذا كانت المدة غير مناسبة → ملاحظة
+- إذا كان هناك سؤال لا يقيس أي هدف → خطأ
 
-أجب بتنسيق Markdown منظم بعناوين واضحة.`
+أجب بتنسيق JSON بهذا الشكل:
+{"overallScore": 0-100, "criteria": {"curriculumAlignment": {"score": 0-20, "findings": ""}, "learningObjectives": {"score": 0-20, "findings": ""}, "assessmentQuality": {"score": 0-20, "findings": ""}, "bloomsTaxonomy": {"score": 0-20, "findings": ""}, "activeLearning": {"score": 0-20, "findings": ""}}, "criticalErrors": ["خطأ 1", "خطأ 2"], "recommendations": ["توصية 1", "توصية 2"]}`
           },
           {
             role: "user",
@@ -609,6 +628,39 @@ ${diffContext.join("\n")}
 التزم بالخيارات أعلاه عند التوليد. إذا كان المستوى "مختلط" أو "متنوع"، قدّم تدرجاً في الصعوبة يناسب جميع المستويات.`
         : "";
 
+      // RAG: Retrieve relevant curriculum documents
+      let curriculumContext = "";
+      let curriculumCitations: Array<{ id: number; title: string; type: string; source: string }> = [];
+      try {
+        const docs = await getCurriculumForTopic(
+          `${input.title} ${input.unitTitle || ""} ${input.subject}`,
+          input.gradeLevel,
+          input.subject
+        );
+        if (docs.length > 0) {
+          curriculumCitations = docs.map(d => ({
+            id: d.id,
+            title: d.title,
+            type: d.type,
+            source: d.sourceReference || "المنهاج الرسمي",
+          }));
+          const docExcerpts = docs.map((d, i) =>
+            `[${i + 1}] ${d.title} (${d.type} - ${d.gradeLevel}):
+${d.content.substring(0, 300)}`
+          ).join("\n\n");
+          curriculumContext = `
+
+وثائق المنهاج الرسمية المرجعية (استخدمها كأساس للمحتوى):
+${docExcerpts}
+
+استشهد بهذه الوثائق عند التوليد بالصيغة: [مرجع: ${docs.length > 0 ? docs[0].id : 0} — ${docs.length > 0 ? docs[0].title : "غير متوفر"}]`;
+        } else {
+          curriculumContext = "\n\nتنبيه: لم يتم العثور على وثائق منهاج رسمية مطابقة. صرّح بذلك صراحةً ولا تخترع معلومات منهاجية.";
+        }
+      } catch (e) {
+        curriculumContext = "\n\nتنبيه: تعذر الوصول إلى قاعدة المنهاج.";
+      }
+
       const prompts: Record<string, string> = {
         lessonPlan: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ خطة درس مفصلة ومبنية على المنهج الرسمي الجزائري.
 المتطلبات:
@@ -621,7 +673,7 @@ ${input.lessonNumber ? `- رقم الدرس: ${input.lessonNumber}` : ""}
 ${input.duration ? `- المدة: ${input.duration}` : ""}
 ${diffBlock}
 
-قدم خطة درس تتضمن: الأهداف، المحتوى، الأنشطة، الأدوات، التقويم. استند دائماً إلى المنهج الرسمي الجزائري.`,
+قدم خطة درس تتضمن: الأهداف، المحتوى، الأنشطة، الأدوات، التقويم. استند دائماً إلى المنهج الرسمي الجزائري.${curriculumContext}`,
 
         activity: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ نشاط تعلم نشط جذاب.
 - الموضوع: ${input.title}
@@ -630,7 +682,7 @@ ${diffBlock}
 - المدة: ${input.duration || "حصة واحدة"}
 ${diffBlock}
 
-صمم نشاطاً تفاعلياً يشجع المشاركة الفعالة للطلاب.`,
+صمم نشاطاً تفاعلياً يشجع المشاركة الفعالة للطلاب.${curriculumContext}`,
 
         homework: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ واجباً منزلياً مناسباً.
 - الموضوع: ${input.title}
@@ -638,7 +690,7 @@ ${diffBlock}
 - المستوى: ${input.gradeLevel}
 ${diffBlock}
 
-أعِدّ تمارين متنوعة تشمل: أسئلة مباشرة، تحليل، وتطبيق عملي.`,
+أعِدّ تمارين متنوعة تشمل: أسئلة مباشرة، تحليل، وتطبيق عملي.${curriculumContext}`,
 
         classQuestions: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ مجموعة أسئلة صفية.
 - الموضوع: ${input.title}
@@ -646,7 +698,7 @@ ${diffBlock}
 - المستوى: ${input.gradeLevel}
 ${diffBlock}
 
-قدم أسئلة متنوعة تشمل مستويات تصنيف بلوم المختلفة: تذكر، فهم، تطبيق، تحليل، تقييم، إبداع.`,
+قدم أسئلة متنوعة تشمل مستويات تصنيف بلوم المختلفة: تذكر، فهم، تطبيق، تحليل، تقييم، إبداع.${curriculumContext}`,
 
         differentiation: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ استراتيجيات تمييز.
 - الموضوع: ${input.title}
@@ -654,7 +706,7 @@ ${diffBlock}
 - المستوى: ${input.gradeLevel}
 ${diffBlock}
 
-قدم استراتيجيات تمايز لتناسب: الطلاب المتقدمين، الطلاب العاديين، الطلاب الذين يحتاجون دعماً إضافياً.`,
+قدم استراتيجيات تمايز لتناسب: الطلاب المتقدمين، الطلاب العاديين، الطلاب الذين يحتاجون دعماً إضافياً.${curriculumContext}`,
       };
 
       const response = await invokeLLM({
@@ -680,11 +732,12 @@ ${diffBlock}
         type: input.contentType,
         title: input.title,
         content,
-        metadata: { subject: input.subject, gradeLevel: input.gradeLevel },
+        metadata: { subject: input.subject, gradeLevel: input.gradeLevel, curriculumCitations },
         tags: [typeLabels[input.contentType], input.subject, input.gradeLevel],
+        sourceDocumentIds: curriculumCitations.length > 0 ? curriculumCitations.map(c => c.id) : undefined,
       });
 
-      return { resourceId: result?.id, content };
+      return { resourceId: result?.id, content, curriculumCitations };
     }),
 
     generateAssessment: protectedProcedure.input(z.object({
@@ -928,10 +981,38 @@ ${rulesContext}
         }
       }
 
+      // Get sections and situations for the class
+      let currentSection = null;
+      let nextSituation = null;
+      let completedSituations = 0;
+      let totalSituations = 0;
+      try {
+        if (input.classId) {
+          const plans = await getAnnualPlans(ctx.user.id);
+          const classPlan = plans.find(p => p.classId === input.classId);
+          if (classPlan) {
+            const sections = await getAnnualPlanSections(classPlan.id);
+            totalSituations = sections.length;
+            for (const section of sections) {
+              const situations = await getLearningSituations(section.id);
+              completedSituations += situations.filter(s => s.isCompleted).length;
+              if (!currentSection) {
+                currentSection = { id: section.id, number: section.sectionNumber, title: section.title, isCompleted: section.isCompleted };
+                const firstIncomplete = situations.find(s => !s.isCompleted);
+                if (firstIncomplete) nextSituation = { id: firstIncomplete.id, title: firstIncomplete.title, sectionNumber: section.sectionNumber };
+              }
+            }
+          }
+        }
+      } catch (e) { /* sections not yet configured */ }
+
       return {
         completedLessons: lessonSummaries,
         totalCompleted: lessonSummaries.length,
         competencies: coveredCompetencies,
+        currentSection,
+        nextSituation,
+        sectionProgress: { completed: completedSituations, total: totalSituations },
       };
     }),
 
@@ -946,6 +1027,176 @@ ${rulesContext}
         subject: input.subject,
       });
       return docs;
+    }),
+  }),
+
+  // ─── Annual Plan Sections ──────────────────────────────────
+  sections: router({
+    list: protectedProcedure.input(z.object({ annualPlanId: z.number() })).query(async ({ input }) => {
+      const sections = await getAnnualPlanSections(input.annualPlanId);
+      // Include situations for each section
+      const withSituations = await Promise.all(sections.map(async (s) => {
+        const situations = await getLearningSituations(s.id);
+        return { ...s, situations };
+      }));
+      return withSituations;
+    }),
+    create: protectedProcedure.input(z.object({
+      annualPlanId: z.number(),
+      sectionNumber: z.number(),
+      title: z.string(),
+      duration: z.string().optional(),
+      competencies: z.string().optional(),
+      objectives: z.string().optional(),
+      resources: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      return await createAnnualPlanSection({ ...input, userId: ctx.user.id });
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      title: z.string().optional(),
+      duration: z.string().optional(),
+      competencies: z.string().optional(),
+      objectives: z.string().optional(),
+      resources: z.string().optional(),
+      isCompleted: z.boolean().optional(),
+    })).mutation(async ({ input }) => {
+      await updateAnnualPlanSection(input.id, input);
+      return { success: true } as const;
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await deleteAnnualPlanSection(input.id);
+      return { success: true } as const;
+    }),
+  }),
+
+  // ─── Learning Situations ───────────────────────────────────
+  situations: router({
+    list: protectedProcedure.input(z.object({ sectionId: z.number() })).query(async ({ input }) => {
+      return await getLearningSituations(input.sectionId);
+    }),
+    create: protectedProcedure.input(z.object({
+      sectionId: z.number(),
+      situationNumber: z.number(),
+      title: z.string(),
+      objectives: z.string().optional(),
+      content: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      return await createLearningSituation({ ...input, userId: ctx.user.id });
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      title: z.string().optional(),
+      objectives: z.string().optional(),
+      content: z.string().optional(),
+      isCompleted: z.boolean().optional(),
+    })).mutation(async ({ input }) => {
+      await updateLearningSituation(input.id, input);
+      return { success: true } as const;
+    }),
+    toggleCompleted: protectedProcedure.input(z.object({ id: z.number(), isCompleted: z.boolean() })).mutation(async ({ input }) => {
+      await toggleLearningSituationCompleted(input.id, input.isCompleted);
+      return { success: true } as const;
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await deleteLearningSituation(input.id);
+      return { success: true } as const;
+    }),
+  }),
+
+  // ─── Assessment Results ────────────────────────────────────
+  results: router({
+    list: protectedProcedure.input(z.object({ classId: z.number() })).query(async ({ ctx, input }) => {
+      return await getAssessmentResults(ctx.user.id, { classId: input.classId });
+    }),
+    create: protectedProcedure.input(z.object({
+      classId: z.number(),
+      resourceId: z.number().optional(),
+      title: z.string(),
+      date: z.date().optional(),
+      totalStudents: z.number(),
+      participatedStudents: z.number().optional(),
+      averageScore: z.number().optional(),
+      passedCount: z.number().optional(),
+      historyAverage: z.number().optional(),
+      geographyAverage: z.number().optional(),
+      domainScores: z.record(z.string(), z.number()).optional(),
+      competencyMastery: z.record(z.string(), z.number()).optional(),
+      weakAreas: z.string().optional(),
+      notes: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      return await createAssessmentResult({ ...input, userId: ctx.user.id });
+    }),
+    update: protectedProcedure.input(z.object({
+      id: z.number(),
+      totalStudents: z.number().optional(),
+      participatedStudents: z.number().optional(),
+      averageScore: z.number().optional(),
+      passedCount: z.number().optional(),
+      historyAverage: z.number().optional(),
+      geographyAverage: z.number().optional(),
+      domainScores: z.record(z.string(), z.number()).optional(),
+      competencyMastery: z.record(z.string(), z.number()).optional(),
+      weakAreas: z.string().optional(),
+      notes: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      await updateAssessmentResult(input.id, input);
+      return { success: true } as const;
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+      await deleteAssessmentResult(input.id);
+      return { success: true } as const;
+    }),
+    analyze: protectedProcedure.input(z.object({ classId: z.number() })).query(async ({ ctx, input }) => {
+      const results = await getAssessmentResults(ctx.user.id, { classId: input.classId });
+      if (results.length === 0) return { totalAssessments: 0, weakDomains: [], suggestions: [] };
+
+      // Calculate averages across all assessments
+      const avgHistory = results.reduce((sum, r) => sum + (r.historyAverage || 0), 0) / results.length;
+      const avgGeography = results.reduce((sum, r) => sum + (r.geographyAverage || 0), 0) / results.length;
+      const overallAvg = results.reduce((sum, r) => sum + (r.averageScore || 0), 0) / results.length;
+
+      // Identify weak domains
+      const weakDomains: string[] = [];
+      if (avgHistory < 10) weakDomains.push("التاريخ");
+      if (avgGeography < 10) weakDomains.push("الجغرافيا");
+
+      // Aggregate domain scores
+      const domainAverages: Record<string, number[]> = {};
+      results.forEach(r => {
+        const scores = r.domainScores as Record<string, number> | null;
+        if (scores) {
+          Object.entries(scores).forEach(([domain, score]) => {
+            if (!domainAverages[domain]) domainAverages[domain] = [];
+            domainAverages[domain].push(score);
+          });
+        }
+      });
+
+      // Find weak domains (< 10)
+      Object.entries(domainAverages).forEach(([domain, scores]) => {
+        const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+        if (avg < 10 && !weakDomains.includes(domain)) weakDomains.push(domain);
+      });
+
+      // Generate suggestions based on weak areas
+      const suggestions: string[] = [];
+      if (weakDomains.includes("التاريخ")) suggestions.push("مراجعة مفهوم الزمن التاريخي وأساليب تحليل الوثائق التاريخية");
+      if (weakDomains.includes("الجغرافيا")) suggestions.push("تعزيز مهارات قراءة الخرائط والتحليل الجغرافي");
+      if (weakDomains.length > 0) {
+        suggestions.push("تنظيم حصص دعم علاجية مركزة على المجالات الضعيفة");
+        suggestions.push("إعادة تدريس الوضعيات التعليمية ذات الصلة بأنشطة تفاعلية");
+      }
+      if (overallAvg >= 10) suggestions.push("مواصلة تعزيز المكتسبات مع إثراء للمتعففين");
+
+      return {
+        totalAssessments: results.length,
+        overallAverage: Math.round(overallAvg * 100) / 100,
+        avgHistory: Math.round(avgHistory * 100) / 100,
+        avgGeography: Math.round(avgGeography * 100) / 100,
+        weakDomains,
+        suggestions,
+      };
     }),
   }),
 });

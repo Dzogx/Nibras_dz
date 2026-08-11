@@ -12,6 +12,12 @@ import {
   InsertAIResource, aiResources,
   InsertInspectorReview, inspectorReviews,
   curriculumSearchIndex,
+  annualPlanSections,
+  learningSituations,
+  assessmentResults,
+  InsertAnnualPlanSection,
+  InsertLearningSituation,
+  InsertAssessmentResult,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -383,4 +389,110 @@ export async function getInspectorReviewById(id: number) {
   if (!db) return undefined;
   const result = await db.select().from(inspectorReviews).where(eq(inspectorReviews.id, id)).limit(1);
   return result.length > 0 ? result[0] : undefined;
+}
+
+// ─── Annual Plan Sections ─────────────────────────────────────
+export async function getAnnualPlanSections(annualPlanId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(annualPlanSections).where(eq(annualPlanSections.annualPlanId, annualPlanId)).orderBy(annualPlanSections.sectionNumber);
+}
+
+export async function getAnnualPlanSectionById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(annualPlanSections).where(eq(annualPlanSections.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createAnnualPlanSection(data: InsertAnnualPlanSection) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [result] = await db.insert(annualPlanSections).values(data);
+  return { id: result.insertId };
+}
+
+export async function updateAnnualPlanSection(id: number, data: Partial<InsertAnnualPlanSection>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(annualPlanSections).set(data as any).where(eq(annualPlanSections.id, id));
+}
+
+export async function deleteAnnualPlanSection(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(annualPlanSections).where(eq(annualPlanSections.id, id));
+}
+
+// ─── Learning Situations ──────────────────────────────────────
+export async function getLearningSituations(sectionId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(learningSituations).where(eq(learningSituations.sectionId, sectionId)).orderBy(learningSituations.situationNumber);
+}
+
+export async function getLearningSituationsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(learningSituations).where(eq(learningSituations.userId, userId)).orderBy(desc(learningSituations.createdAt));
+}
+
+export async function createLearningSituation(data: InsertLearningSituation) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [result] = await db.insert(learningSituations).values(data);
+  return { id: result.insertId };
+}
+
+export async function updateLearningSituation(id: number, data: Partial<InsertLearningSituation>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(learningSituations).set(data as any).where(eq(learningSituations.id, id));
+}
+
+export async function deleteLearningSituation(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(learningSituations).where(eq(learningSituations.id, id));
+}
+
+export async function toggleLearningSituationCompleted(id: number, isCompleted: boolean) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(learningSituations).set({ isCompleted }).where(eq(learningSituations.id, id));
+}
+
+// ─── Assessment Results ───────────────────────────────────────
+export async function getAssessmentResults(userId: number, filters?: { classId?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(assessmentResults.userId, userId)];
+  if (filters?.classId) conditions.push(eq(assessmentResults.classId, filters.classId));
+  return await db.select().from(assessmentResults).where(and(...conditions)).orderBy(desc(assessmentResults.createdAt));
+}
+
+export async function getAssessmentResultById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(assessmentResults).where(eq(assessmentResults.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function createAssessmentResult(data: InsertAssessmentResult) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [result] = await db.insert(assessmentResults).values(data);
+  return { id: result.insertId };
+}
+
+export async function updateAssessmentResult(id: number, data: Partial<InsertAssessmentResult>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(assessmentResults).set(data as any).where(eq(assessmentResults.id, id));
+}
+
+export async function deleteAssessmentResult(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(assessmentResults).where(eq(assessmentResults.id, id));
 }

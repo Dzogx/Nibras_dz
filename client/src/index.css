@@ -169,3 +169,47 @@
 /* RTL-specific adjustments */
 [dir="rtl"] .mr-2 { margin-right: 0; margin-left: 0.5rem; }
 [dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
+
+/* A4 Print Styles */
+@media print {
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+  
+  body * {
+    visibility: hidden;
+  }
+  
+  .print-container,
+  .print-container * {
+    visibility: visible;
+  }
+  
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    font-family: 'Noto Naskh Arabic', 'Cairo', sans-serif;
+    line-height: 1.8;
+    font-size: 12pt;
+  }
+  
+  .print-header {
+    border-bottom: 2px solid #1e40af;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+  
+  .print-body {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  
+  .print\:hidden {
+    display: none !important;
+  }
+}

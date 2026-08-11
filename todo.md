@@ -95,3 +95,22 @@
 - [x] Vitest tests for backend procedures
 - [x] End-to-end verification of all features
 - [x] Enhanced Lesson Generator differentiation UI with ability levels
+
+## Pedagogical Loop Closure (Pilot)
+- [x] New table: annualPlanSections (structured: section number, title, competencies, resources)
+- [x] New table: learningSituations (linked to sections: title, objectives, resources)
+- [x] New table: assessmentResults (aggregate per-class: total students, passed, averages by domain)
+- [x] Migrate and apply schema
+- [x] Backend: CRUD for sections and situations
+- [x] Backend: Teacher OS context returns current section + next situation
+- [x] Backend: aggregate results analysis (mastery rates, weak domains)
+- [x] Backend: remediation/suggestions based on weak domains
+- [x] Backend: fix Lesson Generator to actually use curriculum RAG (call getCurriculumForTopic)
+- [x] Backend: Inspector detects real pedagogical errors (missing objectives, wrong Bloom, missing assessment)
+- [x] Seed real Algerian curriculum corpus (4 levels, 2 subjects) with metadata
+- [x] Frontend: structured annual plan builder (sections + situations)
+- [x] Frontend: Teacher OS progress view (current section, next situation, done/not done)
+- [x] Frontend: results entry form (aggregate per-class)
+- [x] Frontend: analysis view (mastery rates, weak domains, remediation suggestions)
+- [x] Frontend: A4 print for any resource/memo
+- [x] Tests for full scenario

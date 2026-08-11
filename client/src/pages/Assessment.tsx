@@ -12,6 +12,7 @@ import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
+import { A4PrintButton, A4PrintContent } from '@/components/A4Print';
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -460,8 +461,11 @@ export default function Assessment() {
                     <p className="mt-2 text-xs text-blue-500 italic">كل سؤال في التقييم مرتبط بوثيقة المنهاج المرجعية المناسبة من القائمة أعلاه.</p>
                   </div>
                 )}
-                <div className="prose prose-sm max-w-none text-right" dir="rtl">
-                  <Streamdown>{generated}</Streamdown>
+                <div className="print-container">
+                  <A4PrintButton title="اختبار" subtitle="" />
+                  <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
+                    <Streamdown>{generated}</Streamdown>
+                  </div>
                 </div>
               </div>
             ) : (

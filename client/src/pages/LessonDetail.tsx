@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
+import { A4PrintButton } from "@/components/A4Print";
 
 export default function LessonDetail({ id }: { id: string }) {
   const [, setLocation] = useLocation();
@@ -95,6 +96,7 @@ export default function LessonDetail({ id }: { id: string }) {
         {lesson.subject && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{lesson.subject}</span>}
         {lesson.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.gradeLevel}</span>}
         {lesson.unitTitle && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.unitTitle}</span>}
+        <A4PrintButton title={lesson.title} subtitle={`${lesson.gradeLevel || ""} - ${lesson.subject || ""}`} />
       </div>
 
       {/* Edit Form */}

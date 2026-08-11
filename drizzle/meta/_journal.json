@@ -15,6 +15,13 @@
       "when": 1785935866495,
       "tag": "0001_regular_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1786486643505,
+      "tag": "0002_loving_virginia_dare",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, bigint, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, bigint, boolean, double } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -237,6 +237,73 @@ export const inspectorReviews = mysqlTable("inspectorReviews", {
 
 export type InspectorReview = typeof inspectorReviews.$inferSelect;
 export type InsertInspectorReview = typeof inspectorReviews.$inferInsert;
+
+/**
+ * Annual plan sections (المقاطع) — structured units within an annual plan
+ */
+export const annualPlanSections = mysqlTable("annualPlanSections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  annualPlanId: int("annualPlanId").notNull(),
+  sectionNumber: int("sectionNumber").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  duration: varchar("duration", { length: 64 }),
+  competencies: text("competencies"),
+  objectives: text("objectives"),
+  resources: text("resources"),
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AnnualPlanSection = typeof annualPlanSections.$inferSelect;
+export type InsertAnnualPlanSection = typeof annualPlanSections.$inferInsert;
+
+/**
+ * Learning situations (الوضعيات التعليمية) — specific situations within sections
+ */
+export const learningSituations = mysqlTable("learningSituations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  sectionId: int("sectionId").notNull(),
+  situationNumber: int("situationNumber").notNull(),
+  title: varchar("title", { length: 256 }).notNull(),
+  objectives: text("objectives"),
+  content: text("content"),
+  isCompleted: boolean("isCompleted").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type LearningSituation = typeof learningSituations.$inferSelect;
+export type InsertLearningSituation = typeof learningSituations.$inferInsert;
+
+/**
+ * Aggregate assessment results (نتائج مجمعة) — per-class per-assessment
+ */
+export const assessmentResults = mysqlTable("assessmentResults", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId").notNull(),
+  resourceId: int("resourceId"),
+  title: varchar("title", { length: 256 }).notNull(),
+  date: timestamp("date"),
+  totalStudents: int("totalStudents").notNull(),
+  participatedStudents: int("participatedStudents"),
+  averageScore: double("averageScore"),
+  passedCount: int("passedCount"),
+  historyAverage: double("historyAverage"),
+  geographyAverage: double("geographyAverage"),
+  domainScores: json("domainScores"),
+  competencyMastery: json("competencyMastery"),
+  weakAreas: text("weakAreas"),
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AssessmentResult = typeof assessmentResults.$inferSelect;
+export type InsertAssessmentResult = typeof assessmentResults.$inferInsert;
 
 /**
  * Curriculum search index (for fast search)

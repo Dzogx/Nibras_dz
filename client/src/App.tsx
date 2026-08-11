@@ -14,6 +14,7 @@ import LessonGenerator from "./pages/LessonGenerator";
 import Assessment from "./pages/Assessment";
 import ContentLibrary from "./pages/ContentLibrary";
 import Inspector from "./pages/Inspector";
+import Results from "./pages/Results";
 import Profile from "./pages/Profile";
 import LessonDetail from "./pages/LessonDetail";
 import AnnualPlanDetail from "./pages/AnnualPlanDetail";
@@ -57,6 +58,9 @@ function Router() {
       </Route>
       <Route path="/inspector">
         {() => <DashboardLayout><Inspector /></DashboardLayout>}
+      </Route>
+      <Route path="/results">
+        {() => <DashboardLayout><Results /></DashboardLayout>}
       </Route>
       <Route path="/profile">
         {() => <DashboardLayout><Profile /></DashboardLayout>}

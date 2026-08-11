@@ -41,7 +41,7 @@ export default function ContentLibrary() {
 
   const utils = trpc.useUtils();
   const { data: resources, isLoading } = trpc.aiResources.list.useQuery(
-    filterType ? { type: filterType } : undefined
+    filterType !== "all" ? { type: filterType } : undefined
   );
 
   const deleteMutation = trpc.aiResources.delete.useMutation({
@@ -73,7 +73,7 @@ export default function ContentLibrary() {
             <SelectValue placeholder="جميع الأنواع" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">جميع الأنواع</SelectItem>
+            <SelectItem value="all">جميع الأنواع</SelectItem>
             {Object.entries(typeLabels).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
           </SelectContent>
         </Select>

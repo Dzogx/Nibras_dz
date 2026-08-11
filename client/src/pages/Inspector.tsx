@@ -7,12 +7,98 @@ import { Label } from "@/components/ui/label";
 import { Eye, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from 'streamdown';
+import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
+
+function InspectorResult({ result, rawResult }: { result: any; rawResult: string }) {
+  const criteria = result?.criteria || {};
+  const criteriaLabels: Record<string, string> = {
+    curriculumAlignment: "التوافق مع المنهج",
+    learningObjectives: "أهداف التعلم",
+    assessmentQuality: "جودة التقييم",
+    bloomsTaxonomy: "تصنيف بلوم",
+    activeLearning: "التعلم النشط",
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 16) return "text-emerald-600";
+    if (score >= 12) return "text-amber-600";
+    return "text-red-600";
+  };
+
+  return (
+    <div className="space-y-4 print-container">
+      <div className="flex justify-between items-center print:hidden">
+        <span></span>
+        <A4PrintButton title="تقرير التفتيش" subtitle="" />
+      </div>
+      {/* Overall Score */}
+      <div className="text-center py-4">
+        <div className={`text-4xl font-bold ${getScoreColor(result?.overallScore || 0)}`}>
+          {result?.overallScore || 0}/100
+        </div>
+        <p className="text-sm text-muted-foreground mt-1">التقييم العام</p>
+      </div>
+
+      {/* Criteria */}
+      <div className="space-y-3">
+        {Object.entries(criteria).map(([key, value]: [string, any]) => (
+          <div key={key} className="p-3 rounded-lg bg-muted/50">
+            <div className="flex items-center justify-between mb-1">
+              <span className="font-medium text-sm">{criteriaLabels[key] || key}</span>
+              <span className={`text-sm font-bold ${getScoreColor(value?.score || 0)}`}>
+                {value?.score || 0}/20
+              </span>
+            </div>
+            {value?.findings && (
+              <p className="text-xs text-muted-foreground mt-1">{value.findings}</p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Critical Errors */}
+      {result?.criticalErrors?.length > 0 && (
+        <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+          <p className="font-medium text-sm text-red-700 mb-2">أخطاء جوهرية:</p>
+          <ul className="space-y-1">
+            {result.criticalErrors.map((err: string, i: number) => (
+              <li key={i} className="text-sm text-red-600">• {err}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Recommendations */}
+      {result?.recommendations?.length > 0 && (
+        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <p className="font-medium text-sm text-blue-700 mb-2">توصيات:</p>
+          <ul className="space-y-1">
+            {result.recommendations.map((rec: string, i: number) => (
+              <li key={i} className="text-sm text-blue-600">• {rec}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Fallback for raw result */}
+      {rawResult && !result?.criteria && (
+        <div className="print-container">
+          <A4PrintButton title="تقرير التفتيش" subtitle="" />
+          <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
+            <Streamdown>{rawResult}</Streamdown>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Inspector() {
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(null);
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(null);
   const [reviewType, setReviewType] = useState<"lesson" | "assessment">("lesson");
-  const [result, setResult] = useState<string>("");
+  const [result, setResult] = useState<any>(null);
+  const [rawResult, setRawResult] = useState<string>("");
 
   const utils = trpc.useUtils();
   const { data: lessons } = trpc.lessons.list.useQuery();
@@ -22,7 +108,14 @@ export default function Inspector() {
   const reviewLessonMutation = trpc.inspector.reviewLesson.useMutation({
     onSuccess: (data: any) => {
       utils.inspector.reviews.invalidate();
-      setResult(data?.evaluation || "تم التقييم بنجاح");
+      const evalStr = data?.evaluation || "";
+      try {
+        const parsed = JSON.parse(evalStr);
+        setResult(parsed);
+      } catch {
+        setRawResult(evalStr);
+        setResult(null);
+      }
       toast.success("تم تقييم الدرس");
     },
     onError: () => toast.error("خطأ في التقييم"),
@@ -31,7 +124,14 @@ export default function Inspector() {
   const reviewAssessmentMutation = trpc.inspector.reviewAssessment.useMutation({
     onSuccess: (data: any) => {
       utils.inspector.reviews.invalidate();
-      setResult(data?.evaluation || "تم التقييم بنجاح");
+      const evalStr = data?.evaluation || "";
+      try {
+        const parsed = JSON.parse(evalStr);
+        setResult(parsed);
+      } catch {
+        setRawResult(evalStr);
+        setResult(null);
+      }
       toast.success("تم تقييم التقييم");
     },
     onError: () => toast.error("خطأ في التقييم"),
@@ -114,9 +214,7 @@ export default function Inspector() {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : result ? (
-              <div className="prose prose-sm max-w-none text-right" dir="rtl">
-                <Streamdown>{result}</Streamdown>
-              </div>
+              <InspectorResult result={result} rawResult={rawResult} />
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <Eye className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />

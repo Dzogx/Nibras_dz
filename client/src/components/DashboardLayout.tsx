@@ -33,6 +33,7 @@ import {
   Eye,
   Settings,
   GraduationCap,
+  BarChart3,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -48,6 +49,7 @@ const menuItems = [
   { icon: Sparkles, label: "مُولّد الدروس", path: "/lesson-generator" },
   { icon: Library, label: "استوديو التقييم", path: "/assessment" },
   { icon: Library, label: "مكتبة المحتوى", path: "/content-library" },
+  { icon: BarChart3, label: "النتائج", path: "/results" },
   { icon: Eye, label: "وضع المفتش", path: "/inspector" },
   { icon: Settings, label: "الملف الشخصي", path: "/profile" },
 ];

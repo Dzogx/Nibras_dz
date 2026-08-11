@@ -8,6 +8,7 @@ import {
   Sparkles,
   Eye,
   ArrowLeft,
+  Target,
   Plus,
   FileText,
   CheckCircle2,
@@ -44,6 +45,11 @@ export default function Dashboard() {
 
   const completedLessons = useMemo(() => lessons?.filter(l => l.isCompleted).length ?? 0, [lessons]);
   const pendingLessons = useMemo(() => lessons?.filter(l => !l.isCompleted).length ?? 0, [lessons]);
+
+  const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery({
+    classId: classes?.[0]?.id,
+  });
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -193,6 +199,64 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Teacher OS Progress */}
+      <Card className="border-blue-200 bg-blue-50/30">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Target className="w-4 h-4 text-blue-600" />
+            تقدم Teacher OS
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {teacherOSContext?.currentSection ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium">المقطع الحالي</p>
+                  <p className="text-lg font-bold text-blue-700">
+                    {teacherOSContext.currentSection.title} (المقطع {teacherOSContext.currentSection.number})
+                  </p>
+                </div>
+              </div>
+              {teacherOSContext.nextSituation ? (
+                <div className="bg-blue-100/50 rounded-lg p-3">
+                  <p className="text-xs text-blue-600 font-medium mb-1">الوضعية التالية</p>
+                  <p className="text-sm font-medium">{teacherOSContext.nextSituation.title}</p>
+                  <p className="text-xs text-muted-foreground">المقطع {teacherOSContext.nextSituation.sectionNumber}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">لا توجد وضعيات متبقية</p>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {teacherOSContext.sectionProgress.completed}/{teacherOSContext.sectionProgress.total} وضعية منجزة
+                </span>
+                <div className="flex-1 bg-muted rounded-full h-1.5">
+                  <div
+                    className="bg-blue-500 h-1.5 rounded-full"
+                    style={{ width: `${teacherOSContext.sectionProgress.total ? (teacherOSContext.sectionProgress.completed / teacherOSContext.sectionProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+              {teacherOSContext.competencies.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">الكفاءات المغطاة</p>
+                  <div className="flex flex-wrap gap-1">
+                    {teacherOSContext.competencies.slice(0, 5).map((c, i) => (
+                      <span key={i} className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{c}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-muted-foreground">اختر فصلاً لعرض التقدم في المخطط السنوي</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
