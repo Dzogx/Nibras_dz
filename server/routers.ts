@@ -45,7 +45,17 @@ export const appRouter = router({
   // ─── Teacher Profile ───────────────────────────────────────
   profile: router({
     get: protectedProcedure.query(async ({ ctx }) => {
-      return await getTeacherProfile(ctx.user.id);
+      const profile = await getTeacherProfile(ctx.user.id);
+      if (profile) return profile;
+      return {
+        id: 0,
+        userId: ctx.user.id,
+        displayName: "",
+        subject: "",
+        academicYear: "",
+        school: "",
+        province: "",
+      } as any;
     }),
     create: protectedProcedure.input(z.object({
       displayName: z.string().optional(),
@@ -783,7 +793,7 @@ ${diffBlock}
               title: s.title,
               sectionTitle: section ? section.title : undefined,
               objectives: s.objectives || undefined,
-              competencies: undefined,
+              competencies: section?.competencies || undefined,
               situationNumber: s.situationNumber,
             });
           }

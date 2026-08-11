@@ -324,20 +324,6 @@ export function buildAssessmentContext(params: {
       }
     });
   }
-  // Completed situations context
-  if (params.completedSituations && params.completedSituations.length > 0) {
-    context.push("");
-    context.push(`=== الوضعيات التعليمية المنجزة (من Teacher OS) ===`);
-    context.push(`عدد الوضعيات المنجزة: ${params.completedSituations.length}`);
-    params.completedSituations.forEach((situation, index) => {
-      const section = situation.sectionTitle ? `[${situation.sectionTitle}]` : "";
-      const num = situation.situationNumber ? ` (الوضعية ${situation.situationNumber})` : "";
-      context.push(`${index + 1}. ${section}${num} ${situation.title}`);
-      if (situation.objectives) {
-        context.push(`   الأهداف: ${situation.objectives}`);
-      }
-    });
-  }
   // Question distribution guidance
   context.push("");
   context.push(`=== توزيع الأسئلة المقترح ===`);
