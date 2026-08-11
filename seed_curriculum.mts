@@ -105,13 +105,13 @@ async function main() {
     for (const section of plan.sections) {
       if (!section.section_title && !section.terminal_competency && section.situations.length === 0) continue;
 
-      const sectionTitle = (section.section_title || `المقطع ${section.chapter}`).slice(0, 256);
+      const sectionTitle = (section.section_title || `المقطع ${section.number}`).slice(0, 256);
 
       // Insert section
       const sectionInsertResult = await db.insert(annualPlanSections).values({
         userId,
         annualPlanId: planId,
-        sectionNumber: section.chapter,
+        sectionNumber: section.number,
         title: sectionTitle,
         duration: section.duration || "",
         competencies: section.terminal_competency || "",
@@ -124,14 +124,14 @@ async function main() {
       // Insert terminal competency doc
       if (section.terminal_competency) {
         await db.insert(curriculumDocuments).values({
-          title: `الكفاءة الختامية ${section.chapter} - ${subject} - ${level}`,
+          title: `الكفاءة الختامية ${section.number} - ${subject} - ${level}`,
           type: "competency",
           subject: subject,
           gradeLevel: level,
           content: section.terminal_competency,
           academicYear: year,
-          unitNumber: section.chapter,
-          tags: ["الكفاءة الختامية", `المقطع ${section.chapter}`],
+          unitNumber: section.number,
+          tags: ["الكفاءة الختامية", `المقطع ${section.number}`],
           sourceReference: source,
         });
       }
@@ -155,15 +155,15 @@ async function main() {
         // Insert situation doc for RAG
         if (sit.objectives || sit.activities) {
           await db.insert(curriculumDocuments).values({
-            title: `الوضعية ${sit.number} - ${subject} - ${level} - المقطع ${section.chapter}`,
+            title: `الوضعية ${sit.number} - ${subject} - ${level} - المقطع ${section.number}`,
             type: "unit",
             subject: subject,
             gradeLevel: level,
             content: (sit.objectives || "") + "\n\n" + (sit.activities || ""),
             academicYear: year,
-            unitNumber: section.chapter,
+            unitNumber: section.number,
             lessonNumber: sit.number,
-            tags: ["الوضعية التعليمية", `المقطع ${section.chapter}`],
+            tags: ["الوضعية التعليمية", `المقطع ${section.number}`],
             sourceReference: source,
           });
         }
@@ -178,7 +178,7 @@ async function main() {
       gradeLevel: level,
       content: `الكفاءة الشاملة: ${plan.global_competency || ""}\n\n` +
         plan.sections.map(s =>
-          `المقطع ${s.chapter}: ${s.section_title || ""}\nالكفاءة الختامية: ${s.terminal_competency || ""}\nالوضعيات: ${s.situations.length}`
+          `المقطع ${s.number}: ${s.section_title || ""}\nالكفاءة الختامية: ${s.terminal_competency || ""}\nالوضعيات: ${s.situations.length}`
         ).join("\n\n"),
       academicYear: year,
       tags: ["المخطط السنوي"],
