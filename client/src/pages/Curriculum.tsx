@@ -23,9 +23,9 @@ const docTypes = [
 
 export default function Curriculum() {
   const [search, setSearch] = useState("");
-  const [subject, setSubject] = useState("");
-  const [gradeLevel, setGradeLevel] = useState("");
-  const [type, setType] = useState("");
+  const [subject, setSubject] = useState("all");
+  const [gradeLevel, setGradeLevel] = useState("all");
+  const [type, setType] = useState("all");
   const [isAdding, setIsAdding] = useState(false);
 
   const [newDoc, setNewDoc] = useState({
@@ -166,7 +166,8 @@ export default function Curriculum() {
                 <SelectValue placeholder="النوع" />
               </SelectTrigger>
               <SelectContent>
-                {docTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                <SelectItem value="all">جميع الأنواع</SelectItem>
+                {docTypes.slice(1).map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

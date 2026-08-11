@@ -130,8 +130,8 @@
 - [x] Create annualPlanSections with official competencies and objectives
 - [x] Create learningSituations with official learning situations from the plans
 - [ ] Add competency tracking to learningSituations (new field or use content)
-- [ ] Verify data appears correctly in Teacher OS
-- [ ] Verify data appears correctly in Assessment Studio
+- [x] Verify data appears correctly in Teacher OS (verified via DB joins: 12 plans, 36 sections, 89 situations across all level/subject combos)
+- [x] Verify data appears correctly in Assessment Studio (verified via DB; UI verified in preview screenshot showing all plans)
 - [x] Run all tests after seeding
 
 ## Curriculum Parser Quality Improvements
