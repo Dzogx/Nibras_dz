@@ -124,4 +124,21 @@ describe("Curriculum Seeding Data Integrity", () => {
       "التاريخ العام",
     ]);
   });
+
+  it("should use only the canonical section names across all official plans", async () => {
+    const db = await getDb();
+    const [result] = await db.execute(
+      sql`SELECT ap.gradeLevel, ap.subject, aps.sectionNumber, aps.title
+          FROM annualPlanSections aps
+          JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          WHERE (ap.subject IN ('التاريخ والجغرافيا', 'التاريخ')
+                 AND aps.title NOT IN ('الوثائق التاريخية', 'التاريخ الوطني', 'التاريخ العام'))
+             OR (ap.subject = 'الجغرافيا'
+                 AND aps.title NOT IN ('المجال الجغرافي', 'السكان والتنمية', 'السكان والبيئة'))
+             OR (ap.subject = 'التربية المدنية'
+                 AND aps.title NOT IN ('الحياة الجماعية', 'الحياة المدنية', 'الحياة الديمقراطية ومؤسسات الجمهورية'))
+          ORDER BY ap.gradeLevel, ap.subject, aps.sectionNumber`
+    );
+    expect(result as any[]).toEqual([]);
+  });
 });
