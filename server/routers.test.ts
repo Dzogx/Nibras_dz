@@ -493,6 +493,49 @@ describe("ai.generateAssessment with curriculum citations", () => {
   });
 });
 
+// ─── Teaching Templates Tests ───────────────────────────────────
+describe("ai.generateLesson with teaching template", () => {
+  beforeEach(() => {
+    resetMocks();
+    (db.getCurriculumForTopic as any).mockResolvedValue([]);
+    (db.getLessonById as any).mockResolvedValue({ id: 81, tags: ["وضعية تعلمية"] });
+    (db.updateLesson as any).mockResolvedValue({ id: 81 });
+    (db.createAIResource as any).mockResolvedValue({ id: 501 });
+    (invokeLLM as any).mockResolvedValue({
+      choices: [{ message: { content: "مذكرة مبنية وفق الوضعية التعليمية." } }],
+    });
+  });
+
+  it("passes the selected template to the lesson prompt and preserves it on the lesson and resource", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateLesson({
+      lessonId: 81,
+      classId: 7,
+      title: "التعرف على موقع الجزائر وأهميته",
+      subject: "الجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      duration: "ساعة واحدة",
+      contentType: "lessonPlan",
+      teachingTemplateKey: "problem_solving",
+    });
+
+    const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("الوضعية-المشكلة وحل المشكلة");
+    expect(prompt).toContain("صياغة الفرضيات");
+    expect(prompt).toContain("لا تغيّرها ولا تخترع مضامين منهاجية");
+    expect(db.updateLesson).toHaveBeenCalledWith(81, {
+      tags: ["وضعية تعلمية", "قالب تدريس: الوضعية-المشكلة وحل المشكلة"],
+    });
+    expect(db.createAIResource).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        teachingTemplate: expect.objectContaining({ key: "problem_solving" }),
+      }),
+      tags: expect.arrayContaining(["قالب تدريس: الوضعية-المشكلة وحل المشكلة"]),
+    }));
+    expect(result.teachingTemplate?.key).toBe("problem_solving");
+  });
+});
+
 // ─── getCompetencyCategories Tests ─────────────────────────────
 describe("ai.getCompetencyCategories", () => {
   it("returns competency categories", async () => {

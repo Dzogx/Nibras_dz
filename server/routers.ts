@@ -29,6 +29,7 @@ import {
   getExamHeader,
   COMPETENCY_CATEGORIES,
 } from "./rules/nationalRules";
+import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 
 export const appRouter = router({
   system: systemRouter,
@@ -567,6 +568,7 @@ ${curriculumContext}`
       activityType: z.enum(["group_work", "individual", "pair_work", "whole_class", "mixed"]).optional(),
       difficultyLevel: z.enum(["easy", "medium", "hard", "progressive"]).optional(),
       supportStrategy: z.enum(["scaffolding", "extension", "simplification", "enrichment", "none"]).optional(),
+      teachingTemplateKey: z.enum(TEACHING_TEMPLATES.map(template => template.key) as [string, ...string[]]).optional(),
     })).mutation(async ({ ctx, input }) => {
       // Build differentiation context
       const diffContext: string[] = [];
@@ -639,6 +641,21 @@ ${diffContext.join("\n")}
 التزم بالخيارات أعلاه عند التوليد. إذا كان المستوى "مختلط" أو "متنوع"، قدّم تدرجاً في الصعوبة يناسب جميع المستويات.`
         : "";
 
+      const teachingTemplate = input.contentType === "lessonPlan"
+        ? getTeachingTemplate(input.teachingTemplateKey)
+        : undefined;
+      const templateBlock = teachingTemplate
+        ? `
+
+إطار الحصة التربوي المختار من الأستاذ: ${teachingTemplate.label}
+الغرض من القالب: ${teachingTemplate.description}
+مراحل التنفيذ المطلوبة بالترتيب:
+${teachingTemplate.stages.map((stage, index) => `${index + 1}. ${stage}`).join("\n")}
+ضابط القالب: ${teachingTemplate.promptGuidance}
+
+استخدم هذه المراحل كبنية عملية للمذكرة، لا كعناوين شكلية فقط. يبقى عنوان الوضعية وكفاءتها ووثائق المنهاج المرجع الملزم؛ لا تغيّرها ولا تخترع مضامين منهاجية.`
+        : "";
+
       // RAG: Retrieve relevant curriculum documents
       let curriculumContext = "";
       let curriculumCitations: Array<{ id: number; title: string; type: string; source: string }> = [];
@@ -683,8 +700,9 @@ ${input.unitNumber ? `- رقم الوحدة: ${input.unitNumber}` : ""}
 ${input.lessonNumber ? `- رقم الدرس: ${input.lessonNumber}` : ""}
 ${input.duration ? `- المدة: ${input.duration}` : ""}
 ${diffBlock}
+${templateBlock}
 
-قدم خطة درس تتضمن: الأهداف، المحتوى، الأنشطة، الأدوات، التقويم. استند دائماً إلى المنهج الرسمي الجزائري.${curriculumContext}`,
+قدم مذكرة درس عملية تتضمن: السياق والكفاءة/الأهداف المتاحة، الوسائل، سير الحصة وفق مراحل الإطار المختار، أنشطة الأستاذ والمتعلم، تقويماً مرحلياً وختامياً، وتكييفاً مختصراً عند الحاجة. استند دائماً إلى المنهج الرسمي الجزائري.${curriculumContext}`,
 
         activity: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ نشاط تعلم نشط جذاب.
 - الموضوع: ${input.title}
@@ -736,6 +754,16 @@ ${diffBlock}
         differentiation: "استراتيجيات تمييز",
       };
 
+      if (input.lessonId && teachingTemplate) {
+        const lesson = await getLessonById(input.lessonId);
+        const existingTags = Array.isArray(lesson?.tags)
+          ? lesson.tags.filter(tag => typeof tag !== "string" || !tag.startsWith("قالب تدريس:"))
+          : [];
+        await updateLesson(input.lessonId, {
+          tags: [...existingTags, `قالب تدريس: ${teachingTemplate.label}`],
+        } as any);
+      }
+
       const result = await createAIResource({
         userId: ctx.user.id,
         lessonId: input.lessonId,
@@ -743,12 +771,21 @@ ${diffBlock}
         type: input.contentType,
         title: input.title,
         content,
-        metadata: { subject: input.subject, gradeLevel: input.gradeLevel, curriculumCitations },
-        tags: [typeLabels[input.contentType], input.subject, input.gradeLevel],
+        metadata: {
+          subject: input.subject,
+          gradeLevel: input.gradeLevel,
+          curriculumCitations,
+          teachingTemplate: teachingTemplate ? {
+            key: teachingTemplate.key,
+            label: teachingTemplate.label,
+            stages: teachingTemplate.stages,
+          } : undefined,
+        },
+        tags: [typeLabels[input.contentType], input.subject, input.gradeLevel, ...(teachingTemplate ? [`قالب تدريس: ${teachingTemplate.label}`] : [])],
         sourceDocumentIds: curriculumCitations.length > 0 ? curriculumCitations.map(c => c.id) : undefined,
       });
 
-      return { resourceId: result?.id, content, curriculumCitations };
+      return { resourceId: result?.id, content, curriculumCitations, teachingTemplate };
     }),
 
     generateAssessment: protectedProcedure.input(z.object({

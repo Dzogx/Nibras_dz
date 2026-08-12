@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
 import { Separator } from "@/components/ui/separator";
+import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -91,6 +92,7 @@ export default function LessonGenerator() {
     activityType: "mixed" as string,
     difficultyLevel: "progressive" as string,
     supportStrategy: "scaffolding" as string,
+    teachingTemplateKey: "guided_inquiry" as TeachingTemplateKey,
   });
 
   const utils = trpc.useUtils();
@@ -169,6 +171,31 @@ export default function LessonGenerator() {
             <div><Label>عنوان الوحدة</Label>
               <Input value={form.unitTitle} onChange={e => setForm({ ...form, unitTitle: e.target.value })} />
             </div>
+            {form.contentType === "lessonPlan" && (
+              <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <div>
+                  <Label className="text-sm font-semibold">إطار بناء المذكرة</Label>
+                  <p className="mt-1 text-xs text-muted-foreground">ينظم القالب سير الحصة فقط؛ يبقى المنهاج الرسمي والوضعية والكفاءة المرجع الملزم.</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {TEACHING_TEMPLATES.map(template => {
+                    const isSelected = form.teachingTemplateKey === template.key;
+                    return (
+                      <button
+                        key={template.key}
+                        type="button"
+                        onClick={() => setForm({ ...form, teachingTemplateKey: template.key })}
+                        className={`rounded-lg border p-3 text-right transition-colors ${isSelected ? "border-primary bg-background shadow-sm" : "border-border bg-background/60 hover:border-primary/50"}`}
+                        aria-pressed={isSelected}
+                      >
+                        <span className="block text-sm font-semibold">{template.label}</span>
+                        <span className="mt-1 block text-xs leading-5 text-muted-foreground">{template.description}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div><Label>رقم الوحدة</Label>
                 <Input type="number" value={form.unitNumber || ""} onChange={e => setForm({ ...form, unitNumber: e.target.value ? parseInt(e.target.value) : undefined })} />

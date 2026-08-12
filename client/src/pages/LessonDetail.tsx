@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Save, CheckCircle2, Clock, Plus, FileText } from "lucide-react";
+import { ArrowRight, Save, CheckCircle2, Clock, Plus, FileText, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { A4PrintButton } from "@/components/A4Print";
+import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 
 export default function LessonDetail({ id }: { id: string }) {
   const [, setLocation] = useLocation();
@@ -63,6 +64,7 @@ export default function LessonDetail({ id }: { id: string }) {
   // Notes
   const { data: notes } = trpc.teachingNotes.list.useQuery({ lessonId });
   const [newNote, setNewNote] = useState("");
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<TeachingTemplateKey>("guided_inquiry");
 
   const addNoteMutation = trpc.teachingNotes.create.useMutation({
     onSuccess: () => {
@@ -70,6 +72,23 @@ export default function LessonDetail({ id }: { id: string }) {
       setNewNote("");
       toast.success("تمت إضافة الملاحظة");
     },
+  });
+
+  useEffect(() => {
+    const templateTag = Array.isArray(lesson?.tags)
+      ? lesson.tags.find(tag => typeof tag === "string" && tag.startsWith("قالب تدريس:"))
+      : undefined;
+    const matchedTemplate = TEACHING_TEMPLATES.find(template => templateTag === `قالب تدريس: ${template.label}`);
+    if (matchedTemplate) setSelectedTemplateKey(matchedTemplate.key);
+  }, [lesson?.id, lesson?.tags]);
+
+  const generateMemoMutation = trpc.ai.generateLesson.useMutation({
+    onSuccess: async (data) => {
+      await updateMutation.mutateAsync({ id: lessonId, content: data.content });
+      utils.aiResources.list.invalidate();
+      toast.success(`تم توليد المذكرة وفق قالب «${data.teachingTemplate?.label || "الحصة"}»`);
+    },
+    onError: () => toast.error("تعذر توليد المذكرة. حاول مجدداً."),
   });
 
   if (isLoading) return <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>;
@@ -100,6 +119,54 @@ export default function LessonDetail({ id }: { id: string }) {
       </div>
 
       {/* Edit Form */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            إطار بناء المذكرة
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">اختر طريقة سير الحصة قبل التوليد. لا يغيّر القالب الوضعية أو أهدافها الرسمية.</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {TEACHING_TEMPLATES.map(template => {
+              const isSelected = selectedTemplateKey === template.key;
+              return (
+                <button
+                  key={template.key}
+                  type="button"
+                  onClick={() => setSelectedTemplateKey(template.key)}
+                  className={`rounded-lg border p-3 text-right transition-colors ${isSelected ? "border-primary bg-background shadow-sm" : "border-border bg-background/70 hover:border-primary/50"}`}
+                  aria-pressed={isSelected}
+                >
+                  <span className="block text-sm font-semibold">{template.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-muted-foreground">{template.description}</span>
+                </button>
+              );
+            })}
+          </div>
+          <Button
+            onClick={() => generateMemoMutation.mutate({
+              lessonId,
+              classId: lesson.classId || undefined,
+              title: lesson.title,
+              subject: lesson.subject || "الاجتماعيات",
+              gradeLevel: lesson.gradeLevel || "",
+              unitTitle: lesson.unitTitle || undefined,
+              unitNumber: lesson.unitNumber || undefined,
+              lessonNumber: lesson.lessonNumber || undefined,
+              duration: lesson.duration || undefined,
+              contentType: "lessonPlan",
+              teachingTemplateKey: selectedTemplateKey,
+            })}
+            disabled={generateMemoMutation.isPending}
+          >
+            {generateMemoMutation.isPending ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2" />}
+            {lesson.content ? "إعادة توليد محتوى المذكرة" : "توليد محتوى المذكرة"}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
