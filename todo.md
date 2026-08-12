@@ -150,3 +150,8 @@
 - [x] Regenerated structured.json from the live DB (12 plans, 36 sections, 91 situations, 114 documents) for full reproducibility
 - [x] Updated curriculum-seed tests for the subject split and 91-situation count; 48/48 tests passing
 - [x] Removed one-time fix scripts; kept seed_curriculum + dump_structured as the canonical reproducible pipeline
+
+## مراجعة التدرجات السنوية للتاريخ والجغرافيا
+- [x] حصر ملفات التدرجات السنوية المرفوعة وتحديد المستويات والسنوات التي تغطيها
+- [x] استخراج عناوين الوضعيات التعليمية-التعلمية والمقاطع ومدد الحصص من المصادر المرفوعة
+- [x] مطابقة التدرجات مع بيانات المنهاج الحالية وتوثيق الفروقات دون إدماجها قبل الاعتماد
