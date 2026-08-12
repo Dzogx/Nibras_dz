@@ -5,6 +5,15 @@
  * في التعليم المتوسط الجزائري لمادة الدراسات الاجتماعية.
  *
  * أي تحديث للقواعد يتم من مكان واحد فقط هنا.
+ *
+ * المصادر الرسمية:
+ * - دليل بناء اختبارات مادة التاريخ والجغرافيا في امتحان شهادة التعليم
+ *   المتوسط (ديسمبر 2018): بنية الاختبار (3-4 وضعيات للتاريخ، 2-3
+ *   للجغرافيا)، تدرج Bloom الصريح، الإجابة النموذجية وشبكة التقويم.
+ * - المخططات السنوية لبناء التعلمات (المرجع المنهاجي).
+ *
+ * التوزيع: 1AM/2AM/3AM: تاريخ 10 + جغرافيا 10 | 4AM/BEM: تاريخ 13 + جغرافيا 7
+ * التربية المدنية: اختبار مستقل 20 نقطة، ساعة واحدة.
  */
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -15,6 +24,31 @@ export interface SubjectWeight {
   label: string;
 }
 
+/**
+ * مواصفات بنية الأسئلة الرسمية داخل الاختبار حسب المادة.
+ * مستخرجة من دليل بناء الاختبارات 2018:
+ * - التاريخ (4AM): الجزء الأول 9 نقاط = 03-04 وضعيات بسيطة مستقلة،
+ *   الجزء الثاني 4 نقاط = وضعية إدماج واحدة مع تعليمة وسندات.
+ * - الجغرافيا (4AM): الجزء الأول 4 نقاط = 02-03 وضعيات بسيطة،
+ *   الجزء الثاني 3 نقاط = وضعية إدماج واحدة مع تعليمة وسندات.
+ * - 1AM/2AM/3AM: يُعمَّم مبدأ «وضعيات بسيطة + وضعية إدماج» مع حفظ
+ *   توزيع النقاط 10/10.
+ */
+export interface QuestionBlueprint {
+  /** المادة داخل الاختبار */
+  subject: string;
+  /** نقاط الجزء الأول (الوضعيات البسيطة) */
+  part1Points: number;
+  /** الحد الأدنى لعدد الوضعيات البسيطة في الجزء الأول */
+  part1MinQuestions: number;
+  /** الحد الأقصى لعدد الوضعيات البسيطة في الجزء الأول */
+  part1MaxQuestions: number;
+  /** نقاط الجزء الثاني (وضعية الإدماج) */
+  part2Points: number;
+  /** عدد وضعيات الإدماج في الجزء الثاني (دائماً 1) */
+  part2IntegrationQuestion: 1;
+}
+
 export interface AssessmentRule {
   gradeLevel: string;
   subject: string;
@@ -23,6 +57,14 @@ export interface AssessmentRule {
   examType: "combined" | "independent";
   weights: SubjectWeight[];
   maxQuestions: number;
+  /** مواصفات بنية الأسئلة الرسمية حسب المادة داخل الاختبار */
+  questionBlueprints?: QuestionBlueprint[];
+  /**
+   * معايير شبكة التقويم الرسمية لوضعية الإدماج (دليل 2018):
+   * الإتقان، التمايز، تنظيم الورقة، اللغة، الخط، الفصل بين العناصر،
+   * علامات الوقف.
+   */
+  rubricCriteria?: string[];
   description: string;
 }
 
@@ -57,6 +99,11 @@ const RULES: Record<string, AssessmentRule> = {
       { subject: "الجغرافيا", points: 10, label: "الجغرافيا" },
     ],
     maxQuestions: 8,
+    questionBlueprints: [
+      { subject: "التاريخ", part1Points: 8, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 2, part2IntegrationQuestion: 1 },
+      { subject: "الجغرافيا", part1Points: 8, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 2, part2IntegrationQuestion: 1 },
+    ],
+    rubricCriteria: ["الإتقان", "التمايز", "تنظيم الورقة", "اللغة", "الخط", "الفصل بين العناصر", "علامات الوقف"],
     description: "اختبار واحد يجمع التاريخ والجغرافيا، كل مادة 10 نقاط",
   },
 
@@ -72,6 +119,11 @@ const RULES: Record<string, AssessmentRule> = {
       { subject: "الجغرافيا", points: 10, label: "الجغرافيا" },
     ],
     maxQuestions: 8,
+    questionBlueprints: [
+      { subject: "التاريخ", part1Points: 8, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 2, part2IntegrationQuestion: 1 },
+      { subject: "الجغرافيا", part1Points: 8, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 2, part2IntegrationQuestion: 1 },
+    ],
+    rubricCriteria: ["الإتقان", "التمايز", "تنظيم الورقة", "اللغة", "الخط", "الفصل بين العناصر", "علامات الوقف"],
     description: "اختبار واحد يجمع التاريخ والجغرافيا، كل مادة 10 نقاط",
   },
 
@@ -87,6 +139,11 @@ const RULES: Record<string, AssessmentRule> = {
       { subject: "الجغرافيا", points: 10, label: "الجغرافيا" },
     ],
     maxQuestions: 8,
+    questionBlueprints: [
+      { subject: "التاريخ", part1Points: 8, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 2, part2IntegrationQuestion: 1 },
+      { subject: "الجغرافيا", part1Points: 8, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 2, part2IntegrationQuestion: 1 },
+    ],
+    rubricCriteria: ["الإتقان", "التمايز", "تنظيم الورقة", "اللغة", "الخط", "الفصل بين العناصر", "علامات الوقف"],
     description: "اختبار واحد يجمع التاريخ والجغرافيا، كل مادة 10 نقاط",
   },
 
@@ -102,6 +159,12 @@ const RULES: Record<string, AssessmentRule> = {
       { subject: "الجغرافيا", points: 7, label: "الجغرافيا" },
     ],
     maxQuestions: 8,
+    // البنية الرسمية من دليل 2018: التاريخ 9+4، الجغرافيا 4+3
+    questionBlueprints: [
+      { subject: "التاريخ", part1Points: 9, part1MinQuestions: 3, part1MaxQuestions: 4, part2Points: 4, part2IntegrationQuestion: 1 },
+      { subject: "الجغرافيا", part1Points: 4, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 3, part2IntegrationQuestion: 1 },
+    ],
+    rubricCriteria: ["الإتقان", "التمايز", "تنظيم الورقة", "اللغة", "الخط", "الفصل بين العناصر", "علامات الوقف"],
     description: "اختبار واحد يجمع التاريخ والجغرافيا (شهادة التعليم المتوسط)، التاريخ 13 نقطة والجغرافيا 7 نقاط",
   },
 
@@ -122,6 +185,10 @@ const RULES: Record<string, AssessmentRule> = {
       { subject: "التربية المدنية", points: 20, label: "التربية المدنية" },
     ],
     maxQuestions: 6,
+    questionBlueprints: [
+      { subject: "التربية المدنية", part1Points: 16, part1MinQuestions: 3, part1MaxQuestions: 4, part2Points: 4, part2IntegrationQuestion: 1 },
+    ],
+    rubricCriteria: ["الإتقان", "التمايز", "تنظيم الورقة", "اللغة", "الخط", "الفصل بين العناصر", "علامات الوقف"],
     description: "اختبار مستقل، 20 نقطة، المدة ساعة واحدة",
   },
 };
@@ -228,11 +295,16 @@ export function getExamStructure(gradeLevel: string, subject: string): ExamStruc
 
 /**
  * Get question distribution based on Bloom's taxonomy
- * Returns how many questions should target each bloom level
+ * Returns how many questions should target each bloom level.
+ *
+ * يلتزم بالشرط الرسمي (دليل 2018): الأسئلة تعالج مختلف مستويات التفكير
+ * ولا تقتصر على الحفظ والاسترجاع، وتتدرج من البسيط إلى المركب.
  */
 export function getBloomDistribution(numQuestions: number, rule?: AssessmentRule): { bloomId: string; count: number; name: string }[] {
-  const distribution = [];
+  const distribution: { bloomId: string; count: number; name: string }[] = [];
   let remaining = numQuestions;
+
+  const isBEM = rule?.gradeLevel === "السنة الرابعة متوسط";
 
   for (const level of BLOOM_LEVELS) {
     const count = Math.round(numQuestions * level.weight);
@@ -244,6 +316,24 @@ export function getBloomDistribution(numQuestions: number, rule?: AssessmentRule
         name: level.nameAr,
       });
       remaining -= actualCount;
+    }
+  }
+
+  // For BEM: guarantee coverage of higher-order thinking levels
+  // (لا تقتصر على الحفظ والاسترجاع)
+  if (isBEM && remaining === 0) {
+    const hasHigherOrder = distribution.some(d =>
+      d.bloomId === "analyze" || d.bloomId === "evaluate" || d.bloomId === "create",
+    );
+    if (!hasHigherOrder && distribution.some(d => d.bloomId === "remember" && d.count > 1)) {
+      const remember = distribution.find(d => d.bloomId === "remember")!;
+      remember.count -= 1;
+      const analyze = distribution.find(d => d.bloomId === "analyze");
+      if (analyze) {
+        analyze.count += 1;
+      } else {
+        distribution.push({ bloomId: "analyze", count: 1, name: "تحليل" });
+      }
     }
   }
 
@@ -262,7 +352,10 @@ export function getBloomDistribution(numQuestions: number, rule?: AssessmentRule
 
 /**
  * Build the assessment prompt context from Teacher OS data
- * This creates the curriculum-context block for AI generation
+ * This creates the curriculum-context block for AI generation.
+ *
+ * يتضمن المواصفات الرسمية من دليل 2018: بنية الأسئلة حسب المادة،
+ * تدرج Bloom الإلزامي، شروط الصياغة، ومعايير شبكة التقويم.
  */
 export function buildAssessmentContext(params: {
   gradeLevel: string;
@@ -289,6 +382,17 @@ export function buildAssessmentContext(params: {
     context.push(`    • ${w.label}: ${w.points} نقطة`);
   });
 
+  // Official question structure (دليل 2018): بنية الأسئلة حسب المادة
+  if (rule.questionBlueprints && rule.questionBlueprints.length > 0) {
+    context.push("");
+    context.push(`=== بنية الاختبار الرسمية (دليل بناء الاختبارات 2018) ===`);
+    rule.questionBlueprints.forEach(bp => {
+      context.push(`المادة: ${bp.subject}`);
+      context.push(`- الجزء الأول (${bp.part1Points} نقاط): من ${bp.part1MinQuestions} إلى ${bp.part1MaxQuestions} وضعيات بسيطة مستقلة عن بعضها، تعالج مختلف مستويات التفكير لدى المترشح بحيث لا تقتصر على الحفظ والاسترجاع، وتغطي منهاج المادة، مع ربط كل سؤال بالكفاءة التي يقيسها وتفصيل العلامات إلى إجمالية وجزئية`);
+      context.push(`- الجزء الثاني (${bp.part2Points} نقاط): وضعية إدماج واحدة لمعالجة إشكالية مركبة في سياقها، متبوعة بتعليمة تحدد المهمة المطلوبة، وسندات (نصوص، سلالم زمنية، خرائط، جداول، معطيات إحصائية، صور، أحداث وتواريخ معلمية)`);
+    });
+  }
+
   // Competencies context
   context.push("");
   context.push(`=== الكفاءات المستهدفة ===`);
@@ -299,6 +403,15 @@ export function buildAssessmentContext(params: {
     context.push(`- التحكم في المنهجية`);
     context.push(`- التحليل والاستنتاج`);
   }
+
+  // Bloom's taxonomy requirement (شرط إلزامي من الدليل 2018)
+  context.push("");
+  context.push(`=== تدرج مستويات التفكير (Bloom) — إلزامي ===`);
+  context.push(`يجب أن تتدرج الأسئلة من البسيط إلى المركب: من المعرفة (التذكر) إلى الفهم إلى التطبيق ثم التحليل والتركيب ثم إصدار الأحكام. لا تقتصر الأسئلة على الحفظ والاسترجاع، ولا تترك كفاءات المنهاج دون قياس. التوزيع المقترح:`);
+  const bloomDist = getBloomDistribution(rule.maxQuestions, rule);
+  bloomDist.forEach(d => {
+    context.push(`- ${d.name}: ${d.count} سؤال`);
+  });
 
   // Completed lessons context
   context.push("");
@@ -330,13 +443,24 @@ export function buildAssessmentContext(params: {
       }
     });
   }
+
+  // Rubric criteria (معايير شبكة التقويم الرسمية لوضعية الإدماج)
+  if (rule.rubricCriteria && rule.rubricCriteria.length > 0) {
+    context.push("");
+    context.push(`=== معايير شبكة التقويم الرسمية (وضعية الإدماج) ===`);
+    context.push(`المعايير ومؤشراتها: ${rule.rubricCriteria.join("، ")}`);
+    context.push(`أرفق لكل سؤال العلامة المخصصة له، وللإجابة النموذجية شبكة تقويم مطابقة لشبكة التقويم الرسمية، مع مراعاة الأجوبة المتوقعة وتوزيع العلامات إلى جزئية وإجمالية من النصف إلى النقطة`);
+  }
+
   // Question distribution guidance
   context.push("");
-  context.push(`=== توزيع الأسئلة المقترح ===`);
-  const bloomDist = getBloomDistribution(rule.maxQuestions, rule);
-  bloomDist.forEach(d => {
-    context.push(`- ${d.name}: ${d.count} سؤال`);
-  });
+  context.push(`=== شروط صياغة الأسئلة (دليل 2018) ===`);
+  context.push(`1. التدرج من البسيط إلى المركب مراعاةً للقدرات العقلية للمتعلم`);
+  context.push(`2. استعمال مصطلحات متداولة لا تقبل التأويل`);
+  context.push(`3. ترقيم الأسئلة (التعليمة) ووضع العلامة المخصصة لكل جزء من السؤال`);
+  context.push(`4. انسجام الكم المعرفي مع الحجم الساعي المخصص للامتحان`);
+  context.push(`5. مواضيع من ابتكار المصمم غير مستهلكة وفي متناول المترشح المتوسط`);
+  context.push(`6. التقيد بالمنهاج الرسمي والوثيقة المرافقة والمخططات السنوية لبناء التعلمات`);
 
   return context.join("\n");
 }

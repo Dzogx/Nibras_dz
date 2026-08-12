@@ -610,3 +610,90 @@ describe("ai.getAssessmentRules", () => {
     expect(result.length).toBeGreaterThan(0);
   });
 });
+
+// ─── Official 2018 Exam Guide Structure Tests (بنية الاختبار من دليل 2018) ───
+describe("Official exam question structure (دليل بناء الاختبارات 2018)", () => {
+  it("4AM History has official structure: part1 9pts with 3-4 situations, part2 4pts integration", () => {
+    const rule = getAssessmentRule("السنة الرابعة متوسط", "التاريخ والجغرافيا");
+    expect(rule).toBeDefined();
+    expect(rule!.totalPoints).toBe(20);
+    expect(rule!.weights.find(w => w.subject === "التاريخ")?.points).toBe(13);
+    expect(rule!.weights.find(w => w.subject === "الجغرافيا")?.points).toBe(7);
+
+    const bp = rule!.questionBlueprints!.find(b => b.subject === "التاريخ");
+    expect(bp).toBeDefined();
+    expect(bp!.part1Points + bp!.part2Points).toBe(13);
+    expect(bp!.part1MinQuestions).toBeGreaterThanOrEqual(3);
+    expect(bp!.part1MaxQuestions).toBeLessThanOrEqual(4);
+    expect(bp!.part2IntegrationQuestion).toBe(1);
+  });
+
+  it("4AM Geography has official structure: part1 4pts with 2-3 situations, part2 3pts integration", () => {
+    const rule = getAssessmentRule("السنة الرابعة متوسط", "التاريخ والجغرافيا");
+    const bp = rule!.questionBlueprints!.find(b => b.subject === "الجغرافيا");
+    expect(bp).toBeDefined();
+    expect(bp!.part1Points + bp!.part2Points).toBe(7);
+    expect(bp!.part1MinQuestions).toBeGreaterThanOrEqual(2);
+    expect(bp!.part1MaxQuestions).toBeLessThanOrEqual(3);
+    expect(bp!.part2IntegrationQuestion).toBe(1);
+  });
+
+  it("1AM/2AM/3AM combined exams: each subject 10pts with simple + integration parts, and official rubric criteria present", () => {
+    for (const level of ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط"]) {
+      const rule = getAssessmentRule(level, "التاريخ والجغرافيا");
+      expect(rule).toBeDefined();
+      expect(rule!.totalPoints).toBe(20);
+      expect(rule!.weights).toHaveLength(2);
+      expect(rule!.weights.every(w => w.points === 10)).toBe(true);
+      expect(rule!.questionBlueprints?.length).toBe(2);
+      for (const bp of rule!.questionBlueprints!) {
+        expect(bp.part1Points + bp.part2Points).toBe(10);
+        expect(bp.part1MinQuestions).toBeGreaterThan(0);
+        expect(bp.part1MaxQuestions).toBeGreaterThanOrEqual(bp.part1MinQuestions);
+        expect(bp.part2IntegrationQuestion).toBe(1);
+      }
+      expect(rule!.rubricCriteria).toContain("الإتقان");
+      expect(rule!.rubricCriteria).toContain("التمايز");
+      expect(rule!.rubricCriteria).toContain("اللغة");
+    }
+  });
+
+  it("Civic Education independent exam: 20pts, 1 hour, with question blueprint", () => {
+    const rule = getAssessmentRule("السنة الرابعة متوسط", "التربية المدنية");
+    expect(rule).toBeDefined();
+    expect(rule!.examType).toBe("independent");
+    expect(rule!.totalPoints).toBe(20);
+    expect(rule!.duration).toContain("ساعة واحدة");
+    expect(rule!.questionBlueprints).toBeDefined();
+    const bp = rule!.questionBlueprints![0];
+    expect(bp.part1Points + bp.part2Points).toBe(20);
+    expect(bp.part2IntegrationQuestion).toBe(1);
+  });
+
+  it("Bloom distribution for BEM guarantees higher-order thinking (لا تقتصر على الحفظ)", () => {
+    const rule = getAssessmentRule("السنة الرابعة متوسط", "التاريخ والجغرافيا");
+    const dist = getBloomDistribution(rule!.maxQuestions, rule);
+    const total = dist.reduce((s, d) => s + d.count, 0);
+    expect(total).toBe(rule!.maxQuestions);
+    const hasHigherOrder = dist.some(d => ["analyze", "evaluate", "create"].includes(d.bloomId));
+    expect(hasHigherOrder).toBe(true);
+  });
+
+  it("buildAssessmentContext includes official 2018 sections (structure, Bloom, rubric, conditions)", () => {
+    const ctx = buildAssessmentContext({
+      gradeLevel: "السنة الرابعة متوسط",
+      subject: "التاريخ والجغرافيا",
+      completedLessons: [{ title: "درس تجريبي" }],
+      completedSituations: [{ title: "وضعية تجريبية" }],
+    });
+    expect(ctx).toContain("=== بنية الاختبار الرسمية (دليل بناء الاختبارات 2018) ===");
+    expect(ctx).toContain("3 إلى 4 وضعيات بسيطة");
+    expect(ctx).toContain("2 إلى 3 وضعيات بسيطة");
+    expect(ctx).toContain("وضعية إدماج واحدة");
+    expect(ctx).toContain("=== تدرج مستويات التفكير (Bloom) — إلزامي ===");
+    expect(ctx).toContain("لا تقتصر الأسئلة على الحفظ والاسترجاع");
+    expect(ctx).toContain("=== معايير شبكة التقويم الرسمية (وضعية الإدماج) ===");
+    expect(ctx).toContain("الإتقان");
+    expect(ctx).toContain("=== شروط صياغة الأسئلة (دليل 2018) ===");
+  });
+});
