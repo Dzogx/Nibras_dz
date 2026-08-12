@@ -18,10 +18,9 @@ describe("Curriculum Seeding Data Integrity", () => {
 
   it("should have sections for all 4 levels of History/Geography", async () => {
     const db = await getDb();
-    // History plans are stored under both official subjects: 'التاريخ والجغرافيا'
-    // (1AM/2AM/4AM official PDF titles) and 'التاريخ' (3AM official PDF title).
+    // Historical plans use two source labels, but share the same three canonical sections.
     const [result] = await db.execute(
-      sql`SELECT COUNT(DISTINCT ap.gradeLevel) as cnt FROM annualPlanSections aps JOIN annualPlans ap ON aps.annualPlanId = ap.id WHERE ap.subject IN ('التاريخ والجغرافيا', 'التاريخ') AND aps.title IN ('التاريخ الاجتماعي', 'التاريخ الوطني', 'التاريخ العام', 'الوثائق التاريخية', 'تاريخ الجزائر في القرن 19', 'السياسة الستعمارية في الجزائر', 'النضال الوطني والتقدم')`
+      sql`SELECT COUNT(DISTINCT ap.gradeLevel) as cnt FROM annualPlanSections aps JOIN annualPlans ap ON aps.annualPlanId = ap.id WHERE ap.subject IN ('التاريخ والجغرافيا', 'التاريخ') AND aps.title IN ('الوثائق التاريخية', 'التاريخ الوطني', 'التاريخ العام')`
     );
     const count = (result as any[])[0].cnt;
     expect(parseInt(count)).toBe(4);
@@ -90,5 +89,39 @@ describe("Curriculum Seeding Data Integrity", () => {
     );
     const count = (result as any[])[0].cnt;
     expect(parseInt(count)).toBeGreaterThan(20);
+  });
+
+  it("should assign 4AM geography situations to the three canonical sections", async () => {
+    const db = await getDb();
+    const [result] = await db.execute(
+      sql`SELECT aps.title AS title, COUNT(ls.id) AS situationCount
+          FROM annualPlanSections aps
+          JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          LEFT JOIN learningSituations ls ON ls.sectionId = aps.id
+          WHERE ap.gradeLevel = 'السنة الرابعة متوسط' AND ap.subject = 'الجغرافيا'
+          GROUP BY aps.id, aps.title
+          ORDER BY aps.sectionNumber`
+    );
+    expect(result as any[]).toEqual([
+      { title: "المجال الجغرافي", situationCount: 3 },
+      { title: "السكان والتنمية", situationCount: 3 },
+      { title: "السكان والبيئة", situationCount: 3 },
+    ]);
+  });
+
+  it("should use the canonical history section names for 4AM", async () => {
+    const db = await getDb();
+    const [result] = await db.execute(
+      sql`SELECT aps.title AS title
+          FROM annualPlanSections aps
+          JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          WHERE ap.gradeLevel = 'السنة الرابعة متوسط' AND ap.subject = 'التاريخ والجغرافيا'
+          ORDER BY aps.sectionNumber`
+    );
+    expect((result as any[]).map((row) => row.title)).toEqual([
+      "الوثائق التاريخية",
+      "التاريخ الوطني",
+      "التاريخ العام",
+    ]);
   });
 });
