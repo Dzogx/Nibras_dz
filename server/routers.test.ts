@@ -697,3 +697,14 @@ describe("Official exam question structure (دليل بناء الاختبارا
     expect(ctx).toContain("=== شروط صياغة الأسئلة (دليل 2018) ===");
   });
 });
+
+  it("Civic Education official structure from 2018 guide: part1 12pts with 2-3 simple situations, part2 8pts composite assessment situation", () => {
+    const rule = getAssessmentRule("السنة الرابعة متوسط", "التربية المدنية") ?? getAssessmentRule("any", "التربية المدنية");
+    expect(rule).toBeDefined();
+    const bp = rule!.questionBlueprints![0];
+    expect(bp.part1Points).toBe(12);
+    expect(bp.part1MinQuestions).toBe(2);
+    expect(bp.part1MaxQuestions).toBe(3);
+    expect(bp.part2Points).toBe(8);
+    expect(bp.part2IntegrationQuestion).toBe(1);
+  });

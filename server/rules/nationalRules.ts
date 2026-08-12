@@ -175,6 +175,11 @@ const RULES: Record<string, AssessmentRule> = {
   "السنة الرابعة متوسط:الجغرافيا": { gradeLevel: "السنة الرابعة متوسط", subject: "الجغرافيا", totalPoints: 7, duration: "ساعة ونصف (ضمن اختبار الاجتماعيات المشترك)", examType: "combined", weights: [{ subject: "الجغرافيا", points: 7, label: "الجغرافيا" }], maxQuestions: 4, description: "الجغرافيا في اختبار شهادة التعليم المتوسط، 7 نقاط" },
 
   // التربية المدنية - جميع المستويات
+  // البنية الرسمية من دليل بناء اختبارات مادة التربية المدنية في امتحان
+  // شهادة التعليم المتوسط (ديسمبر 2018): جزءان — الجزء الأول 12 نقطة يحتوي
+  // على وضعيتين أو ثلاث وضعيات بسيطة منفصلة (تعريف مصطلحات، تعداد مفاهيم،
+  // تحديد مهام وخصائص)، والجزء الثاني 8 نقاط وضعية تقويمية مركبة من الواقع
+  // المعيش مع تعليمة للحل وسندات. المدة ساعة واحدة والمعامل 1.
   "التربية المدنية": {
     gradeLevel: "any",
     subject: "التربية المدنية",
@@ -186,10 +191,10 @@ const RULES: Record<string, AssessmentRule> = {
     ],
     maxQuestions: 6,
     questionBlueprints: [
-      { subject: "التربية المدنية", part1Points: 16, part1MinQuestions: 3, part1MaxQuestions: 4, part2Points: 4, part2IntegrationQuestion: 1 },
+      { subject: "التربية المدنية", part1Points: 12, part1MinQuestions: 2, part1MaxQuestions: 3, part2Points: 8, part2IntegrationQuestion: 1 },
     ],
     rubricCriteria: ["الإتقان", "التمايز", "تنظيم الورقة", "اللغة", "الخط", "الفصل بين العناصر", "علامات الوقف"],
-    description: "اختبار مستقل، 20 نقطة، المدة ساعة واحدة",
+    description: "اختبار مستقل (المعامل 1)، ساعة واحدة: الجزء الأول 12 نقطة (2-3 وضعيات بسيطة) + الجزء الثاني 8 نقاط (وضعية تقويمية مركبة)",
   },
 };
 
