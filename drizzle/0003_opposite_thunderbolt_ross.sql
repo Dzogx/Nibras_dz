@@ -1,0 +1,2 @@
+ALTER TABLE `curriculumDocuments` MODIFY COLUMN `subject` enum('الجغرافيا','التاريخ والجغرافيا','التربية المدنية','التاريخ والجغرافيا والتربية المدنية') NOT NULL;--> statement-breakpoint
+ALTER TABLE `teacherProfiles` MODIFY COLUMN `subject` enum('الجغرافيا','التاريخ والجغرافيا','التربية المدنية','التاريخ والجغرافيا والتربية المدنية') NOT NULL DEFAULT 'التاريخ والجغرافيا';

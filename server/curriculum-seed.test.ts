@@ -18,8 +18,10 @@ describe("Curriculum Seeding Data Integrity", () => {
 
   it("should have sections for all 4 levels of History/Geography", async () => {
     const db = await getDb();
+    // History plans are stored under both official subjects: 'التاريخ والجغرافيا'
+    // (1AM/2AM/4AM official PDF titles) and 'التاريخ' (3AM official PDF title).
     const [result] = await db.execute(
-      sql`SELECT COUNT(DISTINCT gradeLevel) as cnt FROM annualPlanSections aps JOIN annualPlans ap ON aps.annualPlanId = ap.id WHERE ap.subject = 'التاريخ والجغرافيا'`
+      sql`SELECT COUNT(DISTINCT ap.gradeLevel) as cnt FROM annualPlanSections aps JOIN annualPlans ap ON aps.annualPlanId = ap.id WHERE ap.subject IN ('التاريخ والجغرافيا', 'التاريخ') AND aps.title IN ('التاريخ الاجتماعي', 'التاريخ الوطني', 'التاريخ العام', 'الوثائق التاريخية', 'تاريخ الجزائر في القرن 19', 'السياسة الستعمارية في الجزائر', 'النضال الوطني والتقدم')`
     );
     const count = (result as any[])[0].cnt;
     expect(parseInt(count)).toBe(4);
@@ -59,6 +61,26 @@ describe("Curriculum Seeding Data Integrity", () => {
     );
     const count = (result as any[])[0].cnt;
     expect(parseInt(count)).toBeGreaterThan(30);
+  });
+
+  it("should have the 4 standalone geography plans (official 2022 Geo PDFs)", async () => {
+    const db = await getDb();
+    const [result] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM annualPlans WHERE subject = 'الجغرافيا' AND title LIKE 'المخطط السنوي 2022/2023%'`
+    );
+    const count = (result as any[])[0].cnt;
+    expect(parseInt(count)).toBe(4);
+  });
+
+  it("should have at least 90 learning situations across all plans", async () => {
+    const db = await getDb();
+    const [result] = await db.execute(
+      sql`SELECT COUNT(*) as cnt FROM learningSituations ls JOIN annualPlanSections aps ON ls.sectionId = aps.id`
+    );
+    const count = (result as any[])[0].cnt;
+    // Official source: 1AM 9 + 2AM 8 + 3AM 9 + 4AM 0 (History 4AM PDF is summary-only),
+    // Civic 8+7+6+9, Geography 9+8+9+9 = 91 situations
+    expect(parseInt(count)).toBe(91);
   });
 
   it("should have competency documents per level", async () => {

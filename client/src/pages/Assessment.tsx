@@ -15,7 +15,7 @@ import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from '@/components/A4Print';
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
-const subjects = ["التاريخ والجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
+const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
 const assessmentTypes = [
   { value: "quiz", label: "اختبار قصير" },
   { value: "exam", label: "امتحان فصلي" },

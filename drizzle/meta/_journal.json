@@ -22,6 +22,13 @@
       "when": 1786486643505,
       "tag": "0002_loving_virginia_dare",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1786492494381,
+      "tag": "0003_opposite_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }

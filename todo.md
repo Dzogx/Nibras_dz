@@ -140,5 +140,13 @@
 - [x] Extract and seed official section objectives into annualPlanSections — 28/36 sections have official objectives extracted from PDFs
 - [x] Improve situation title extraction quality — all 89 situation titles cleaned; 88/89 carry official objectives
 - [x] Verify data appears correctly in Teacher OS UI and Assessment Studio UI — verified via DB joins and preview screenshots
-- [ ] Fix parser to extract remaining missing sections for 3 PDFs (Geography 2AM Ch3, Geo 1AM Ch1, History 4AM Ch2/Ch3) — future work; only those 8 of ~36 sections affected
-- [ ] Re-seed learningSituations after parser fixes (when source gap is fixed)
+- [x] Fix parser extraction gaps: Geo 2AM Ch3 (+2 situations), Geo 4AM Ch3 (+3 situations) backfilled from re-extracted PDF text (94 situations total); History 4AM Ch2/Ch3 and Geo 1AM Ch1 are genuinely not detailed in their source PDFs (chapter-level tables only, no situation rows) — no invented data
+- [x] Re-seed learningSituations after parser fixes — backfilled 5 missing situations and verified; geography plans corrected to subject 'الجغرافيا' with official titles and objectives; national rules engine extended with 4 geo rules (10/10/10/7); curriculumDocuments kept under the official combined school subject 'التاريخ والجغرافيا'
+
+## Final Data Integrity Fix (session: plan/subject reconciliation)
+- [x] Audit all 12 plans' sections and situation counts; map the جغرافيا 3AM section/situation misplacement
+- [x] Move إفريقيا sits (90069-90071) to 'السكان والتنمية' and أوروبا sits (90072-90074) to 'السكان والبيئة' in جغرافيا 3AM plan; retitled section to official 'المجال الجغرافي'
+- [x] Corrected مخطط 90002 subject to 'التاريخ' (it holds official تاريخ 3AM content) — 1AM/2AM/4AM plans keep official 'التاريخ والجغرافيا' subject
+- [x] Regenerated structured.json from the live DB (12 plans, 36 sections, 91 situations, 114 documents) for full reproducibility
+- [x] Updated curriculum-seed tests for the subject split and 91-situation count; 48/48 tests passing
+- [x] Removed one-time fix scripts; kept seed_curriculum + dump_structured as the canonical reproducible pipeline

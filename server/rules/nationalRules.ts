@@ -105,6 +105,12 @@ const RULES: Record<string, AssessmentRule> = {
     description: "اختبار واحد يجمع التاريخ والجغرافيا (شهادة التعليم المتوسط)، التاريخ 13 نقطة والجغرافيا 7 نقاط",
   },
 
+  // الجغرافيا كمادة مستقلة في المخططات السنوية — تتبع نفس قواعد اختبار الاجتماعيات المدمج
+  "السنة الأولى متوسط:الجغرافيا": { gradeLevel: "السنة الأولى متوسط", subject: "الجغرافيا", totalPoints: 10, duration: "ساعة ونصف (ضمن اختبار الاجتماعيات المشترك)", examType: "combined", weights: [{ subject: "الجغرافيا", points: 10, label: "الجغرافيا" }], maxQuestions: 4, description: "الجغرافيا في اختبار مشترك مع التاريخ، 10 نقاط" },
+  "السنة الثانية متوسط:الجغرافيا": { gradeLevel: "السنة الثانية متوسط", subject: "الجغرافيا", totalPoints: 10, duration: "ساعة ونصف (ضمن اختبار الاجتماعيات المشترك)", examType: "combined", weights: [{ subject: "الجغرافيا", points: 10, label: "الجغرافيا" }], maxQuestions: 4, description: "الجغرافيا في اختبار مشترك مع التاريخ، 10 نقاط" },
+  "السنة الثالثة متوسط:الجغرافيا": { gradeLevel: "السنة الثالثة متوسط", subject: "الجغرافيا", totalPoints: 10, duration: "ساعة ونصف (ضمن اختبار الاجتماعيات المشترك)", examType: "combined", weights: [{ subject: "الجغرافيا", points: 10, label: "الجغرافيا" }], maxQuestions: 4, description: "الجغرافيا في اختبار مشترك مع التاريخ، 10 نقاط" },
+  "السنة الرابعة متوسط:الجغرافيا": { gradeLevel: "السنة الرابعة متوسط", subject: "الجغرافيا", totalPoints: 7, duration: "ساعة ونصف (ضمن اختبار الاجتماعيات المشترك)", examType: "combined", weights: [{ subject: "الجغرافيا", points: 7, label: "الجغرافيا" }], maxQuestions: 4, description: "الجغرافيا في اختبار شهادة التعليم المتوسط، 7 نقاط" },
+
   // التربية المدنية - جميع المستويات
   "التربية المدنية": {
     gradeLevel: "any",

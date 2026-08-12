@@ -26,6 +26,7 @@ export const teacherProfiles = mysqlTable("teacherProfiles", {
   userId: int("userId").notNull(),
   displayName: varchar("displayName", { length: 128 }),
   subject: mysqlEnum("subject", [
+    "الجغرافيا",
     "التاريخ والجغرافيا",
     "التربية المدنية",
     "التاريخ والجغرافيا والتربية المدنية",
@@ -67,6 +68,7 @@ export const curriculumDocuments = mysqlTable("curriculumDocuments", {
     "lesson",
   ]).notNull(),
   subject: mysqlEnum("subject", [
+    "الجغرافيا",
     "التاريخ والجغرافيا",
     "التربية المدنية",
     "التاريخ والجغرافيا والتربية المدنية",

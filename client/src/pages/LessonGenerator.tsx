@@ -13,7 +13,7 @@ import { Streamdown } from 'streamdown';
 import { Separator } from "@/components/ui/separator";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
-const subjects = ["التاريخ والجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
+const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
 const contentTypes = [
   { value: "lessonPlan", label: "خطة درس" },
   { value: "activity", label: "نشاط تعلم نشط" },
