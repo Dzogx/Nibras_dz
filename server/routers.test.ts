@@ -34,6 +34,9 @@ vi.mock("./db", () => ({
   getCurriculumForTopic: vi.fn(),
   getTeachingNotes: vi.fn(),
   updateCurriculumDocument: vi.fn(),
+  getAnnualPlanSections: vi.fn(),
+  getLearningSituations: vi.fn(),
+  getLearningSituationsByUserId: vi.fn(),
   deleteCurriculumDocument: vi.fn(),
   updateLesson: vi.fn(),
   deleteLesson: vi.fn(),
@@ -368,6 +371,38 @@ describe("ai.getTeacherOSContext", () => {
 
     expect(result.completedLessons).toHaveLength(0);
     expect(result.totalCompleted).toBe(0);
+  });
+
+  it("maps an annual plan to the class via classId and reports section progress", async () => {
+    // The annual plans are linked to classes through classId; without this link
+    // getTeacherOSContext returns empty progress (the bug reported Aug 12).
+    (db.getLessons as any).mockResolvedValue([]);
+    (db.getAnnualPlans as any).mockResolvedValue([
+      { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2022/2023" },
+    ]);
+    (db.getAnnualPlanSections as any).mockResolvedValue([
+      { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
+      { id: 2, sectionNumber: 2, title: "التاريخ الوطني", isCompleted: true },
+    ]);
+    (db.getLearningSituations as any)
+      .mockResolvedValueOnce([
+        { id: 101, situationNumber: 1, title: "وضعية 1", isCompleted: true },
+        { id: 102, situationNumber: 2, title: "وضعية 2", isCompleted: false },
+      ])
+      .mockResolvedValueOnce([
+        { id: 201, situationNumber: 1, title: "وضعية 3", isCompleted: true },
+      ]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getTeacherOSContext({ classId: 1 });
+
+    // getAnnualPlans is invoked twice inside getTeacherOSContext (progress + completed list)
+    expect(db.getAnnualPlans).toHaveBeenCalledTimes(2);
+    expect(db.getAnnualPlans).toHaveBeenCalledWith(1);
+    expect(result.currentSection).toBeTruthy();
+    expect(result.currentSection.title).toBe("الوثائق التاريخية");
+    expect(result.nextSituation.title).toBe("وضعية 2");
+    expect(result.sectionProgress).toEqual({ completed: 2, total: 2 });
   });
 });
 
