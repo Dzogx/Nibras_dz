@@ -473,6 +473,27 @@ describe("ai.generateAssessment with curriculum citations", () => {
     expect(result.curriculumCitations[0].referenceNumber).toBe(1);
   });
 
+  it("returns a controlled Arabic error instead of crashing when the AI response has no choices", async () => {
+    (invokeLLM as any).mockResolvedValue({
+      error: { message: "المزود لم يُرجع استجابة صالحة" },
+    });
+
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.ai.generateAssessment({
+      title: "اختبار",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "quiz",
+      topic: "الثورة الجزائرية",
+    })).rejects.toMatchObject({
+      code: "BAD_GATEWAY",
+      message: expect.stringContaining("لم تُرجع محتوى صالحاً"),
+    });
+
+    expect(db.createAIResource).not.toHaveBeenCalled();
+  });
+
   it("handles empty curriculum results gracefully", async () => {
     (db.getCurriculumForTopic as any).mockResolvedValue([]);
 

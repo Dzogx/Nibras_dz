@@ -766,7 +766,7 @@ ${diffBlock}
       if (!content) {
         throw new TRPCError({
           code: "BAD_GATEWAY",
-          message: "تعذر توليد المذكرة لأن خدمة الذكاء الاصطناعي لم تُرجع محتوى صالحاً. حاول مجدداً بعد لحظات.",
+          message: "تعذر توليد المحتوى لأن خدمة الذكاء الاصطناعي لم تُرجع محتوى صالحاً. حاول مجدداً بعد لحظات.",
         });
       }
       const typeLabels: Record<string, string> = {
@@ -954,13 +954,20 @@ ${rulesContext}
         ],
       });
 
-      const content = getLLMTextContent(response) ?? "تعذر توليد المحتوى.";
       const typeLabels: Record<string, string> = {
         quiz: "اختبار قصير",
         exam: "امتحان",
         rubric: "معايير تقييم",
         answerKey: "مفتاح إجابات",
       };
+
+      const content = getLLMTextContent(response);
+      if (!content) {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: `تعذر توليد ${typeLabels[input.assessmentType] ?? "المحتوى"} لأن خدمة الذكاء الاصطناعي لم تُرجع محتوى صالحاً. حاول مجدداً بعد لحظات.`,
+        });
+      }
 
       // Build metadata with rules engine info
       // Build curriculum citations from retrieved docs
