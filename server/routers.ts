@@ -31,6 +31,26 @@ import {
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 
+/**
+ * يتحقق من بنية استجابة مزود الذكاء الاصطناعي وقت التشغيل.
+ * لا يكفي نوع TypeScript وحده لأن الاستجابة الخارجية قد تكون رسالة خطأ أو جسماً ناقصاً.
+ */
+function getLLMTextContent(response: unknown): string | undefined {
+  if (!response || typeof response !== "object") return undefined;
+
+  const choices = (response as { choices?: unknown }).choices;
+  if (!Array.isArray(choices) || choices.length === 0) return undefined;
+
+  const firstChoice = choices[0];
+  if (!firstChoice || typeof firstChoice !== "object") return undefined;
+
+  const message = (firstChoice as { message?: unknown }).message;
+  if (!message || typeof message !== "object") return undefined;
+
+  const content = (message as { content?: unknown }).content;
+  return typeof content === "string" && content.trim().length > 0 ? content : undefined;
+}
+
 export const appRouter = router({
   system: systemRouter,
 
@@ -429,8 +449,7 @@ ${curriculumContext}`
         ],
       });
 
-      const rawContent = response.choices[0]?.message?.content;
-      const evaluation = typeof rawContent === "string" ? rawContent : "تعذر إتمام التقييم.";
+      const evaluation = getLLMTextContent(response) ?? "تعذر إتمام التقييم.";
 
       // Parse structured criteria from evaluation
       const parseCriterion = (evaluation: string, keyword: string): string => {
@@ -515,8 +534,7 @@ ${curriculumContext}`
         ],
       });
 
-      const rawContent2 = response.choices[0]?.message?.content;
-      const evaluation = typeof rawContent2 === "string" ? rawContent2 : "تعذر إتمام التقييم.";
+      const evaluation = getLLMTextContent(response) ?? "تعذر إتمام التقييم.";
 
       const parseCriterion = (evaluation: string, keyword: string): string => {
         const lines = evaluation.split("\n");
@@ -744,8 +762,13 @@ ${diffBlock}
         ],
       });
 
-      const rawContent1 = response.choices[0]?.message?.content;
-      const content = typeof rawContent1 === "string" ? rawContent1 : "تعذر توليد المحتوى.";
+      const content = getLLMTextContent(response);
+      if (!content) {
+        throw new TRPCError({
+          code: "BAD_GATEWAY",
+          message: "تعذر توليد المذكرة لأن خدمة الذكاء الاصطناعي لم تُرجع محتوى صالحاً. حاول مجدداً بعد لحظات.",
+        });
+      }
       const typeLabels: Record<string, string> = {
         lessonPlan: "خطة درس",
         activity: "نشاط تعلم",
@@ -931,8 +954,7 @@ ${rulesContext}
         ],
       });
 
-      const rawContent3 = response.choices[0]?.message?.content;
-      const content = typeof rawContent3 === "string" ? rawContent3 : "تعذر توليد المحتوى.";
+      const content = getLLMTextContent(response) ?? "تعذر توليد المحتوى.";
       const typeLabels: Record<string, string> = {
         quiz: "اختبار قصير",
         exam: "امتحان",

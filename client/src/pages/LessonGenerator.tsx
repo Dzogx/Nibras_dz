@@ -104,7 +104,7 @@ export default function LessonGenerator() {
       setResourceId(data.resourceId ?? null);
       toast.success("تم توليد المحتوى بنجاح");
     },
-    onError: () => toast.error("خطأ في التوليد"),
+    onError: (error) => toast.error(error.message || "تعذر توليد المذكرة. حاول مجدداً بعد لحظات."),
   });
 
   const copyContent = () => {

@@ -534,6 +534,31 @@ describe("ai.generateLesson with teaching template", () => {
     }));
     expect(result.teachingTemplate?.key).toBe("problem_solving");
   });
+
+  it("returns a controlled Arabic error instead of crashing when the AI response has no choices", async () => {
+    (invokeLLM as any).mockResolvedValue({
+      error: { message: "المزود لم يُرجع استجابة صالحة" },
+    });
+
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.ai.generateLesson({
+      lessonId: 81,
+      classId: 7,
+      title: "التعرف على موقع الجزائر وأهميته",
+      subject: "الجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      duration: "ساعة واحدة",
+      contentType: "lessonPlan",
+      teachingTemplateKey: "guided_inquiry",
+    })).rejects.toMatchObject({
+      code: "BAD_GATEWAY",
+      message: expect.stringContaining("لم تُرجع محتوى صالحاً"),
+    });
+
+    expect(db.createAIResource).not.toHaveBeenCalled();
+    expect(db.updateLesson).not.toHaveBeenCalled();
+  });
 });
 
 // ─── getCompetencyCategories Tests ─────────────────────────────
