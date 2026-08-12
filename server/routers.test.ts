@@ -61,6 +61,7 @@ import {
   getBloomDistribution,
   buildAssessmentContext,
   getExamHeader,
+  BLOOM_ARABIC_VERBS,
   getAllRules,
   COMPETENCY_CATEGORIES,
 } from "./rules/nationalRules";
@@ -708,3 +709,32 @@ describe("Official exam question structure (دليل بناء الاختبارا
     expect(bp.part2Points).toBe(8);
     expect(bp.part2IntegrationQuestion).toBe(1);
   });
+
+describe("Bloom Arabic verbs table (جدول تصنيف الأفعال لمادة الاجتماعيات)", () => {
+  it("has all six Bloom levels with verbs", () => {
+    expect(BLOOM_ARABIC_VERBS.remember.verbs.length).toBeGreaterThan(10);
+    expect(BLOOM_ARABIC_VERBS.understand.verbs.length).toBeGreaterThan(10);
+    expect(BLOOM_ARABIC_VERBS.apply.verbs.length).toBeGreaterThan(10);
+    expect(BLOOM_ARABIC_VERBS.analyze.verbs.length).toBeGreaterThan(10);
+    expect(BLOOM_ARABIC_VERBS.create.verbs.length).toBeGreaterThan(10);
+    expect(BLOOM_ARABIC_VERBS.evaluate.verbs.length).toBeGreaterThan(10);
+    expect(BLOOM_ARABIC_VERBS.remember.verbs).toContain("عرّف");
+    expect(BLOOM_ARABIC_VERBS.analyze.verbs).toContain("حلّل");
+    expect(BLOOM_ARABIC_VERBS.evaluate.verbs).toContain("برّر");
+    expect(BLOOM_ARABIC_VERBS.create.verbs).toContain("ابتكر");
+  });
+
+  it("buildAssessmentContext injects approved verbs with question counts into the prompt", () => {
+    const ctx = buildAssessmentContext({
+      gradeLevel: "السنة الرابعة متوسط",
+      subject: "التاريخ والجغرافيا",
+      completedLessons: [{ title: "درس تجريبي" }],
+      completedSituations: [{ title: "وضعية تجريبية" }],
+    });
+    expect(ctx).toContain("استعمل أفعال هذا المستوى عند الصياغة");
+    expect(ctx).toContain("جدول تصنيف الأفعال لمادة الاجتماعيات");
+    expect(ctx).toContain("[1 سؤال مطلوب]");
+    expect(ctx).toContain("المعرفة (الاستدكار أو تمييز المعلومات)");
+    expect(ctx).toContain("التحليل");
+  });
+});
