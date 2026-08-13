@@ -86,7 +86,7 @@ export default function Results() {
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground text-center py-8">لا توجد أقسام. أنشئ قسماً أولاً من صفحة الفصول.</p>
+              <p className="text-muted-foreground text-center py-8">لا توجد أقسام. أنشئ قسماً أولاً من صفحة الأقسام.</p>
             )}
           </CardContent>
         </Card>

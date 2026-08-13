@@ -724,8 +724,8 @@ ${docExcerpts}
 - عنوان الدرس: ${input.title}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
-${input.unitTitle ? `- الوحدة: ${input.unitTitle}` : ""}
-${input.unitNumber ? `- رقم الوحدة: ${input.unitNumber}` : ""}
+${input.unitTitle ? `- الوضعية التعليمية: ${input.unitTitle}` : ""}
+${input.unitNumber ? `- رقم الوضعية في المقطع: ${input.unitNumber}` : ""}
 ${input.lessonNumber ? `- رقم الدرس: ${input.lessonNumber}` : ""}
 ${input.duration ? `- المدة: ${input.duration}` : ""}
 ${diffBlock}
@@ -873,7 +873,7 @@ ${diffBlock}
       // ─── Retrieve curriculum knowledge base documents (RAG) ──
       const curriculumDocs = await getCurriculumForTopic(input.topic, input.gradeLevel, input.subject);
       const curriculumContext = curriculumDocs.length > 0
-        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.unitNumber ? ` (الوحدة ${doc.unitNumber})` : ''}${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: يجب ربط كل سؤال بوثيقة المنهاج الرسمية ذات الصلة من القائمة أعلاه. بعد كل سؤال ضع الاستشهاد بالصيغة التالية:\n[مرجع: رقم الوثيقة — عنوان الوثيقة — الوحدة/القسم]\nمثال: [مرجع: 1 — وثيقة المنهاج السنة الرابعة — الوحدة 3 — درس الثورة الجزائرية]\nلا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
+        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: يجب ربط كل سؤال بوثيقة المنهاج الرسمية ذات الصلة من القائمة أعلاه. بعد كل سؤال ضع الاستشهاد بالصيغة التالية:\n[مرجع: رقم الوثيقة — عنوان الوثيقة — المقطع]\nمثال: [مرجع: 1 — وثيقة المنهاج السنة الرابعة — المقطع الثاني: التاريخ الوطني — درس الثورة الجزائرية]\nلا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
         : "لا توجد وثائق منهاج مطابقة في قاعدة المعرفة. أنشئ الأسئلة بناءً على الموضوع المطلوب فقط.";
 
       // ─── Build rules context ─────────────────────────────────

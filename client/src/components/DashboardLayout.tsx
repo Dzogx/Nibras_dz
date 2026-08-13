@@ -43,7 +43,7 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "لوحة التحكم", path: "/dashboard" },
   { icon: BookOpen, label: "قاعدة المنهج", path: "/curriculum" },
-  { icon: GraduationCap, label: "الفصول", path: "/classes" },
+  { icon: GraduationCap, label: "الأقسام", path: "/classes" },
   { icon: FileText, label: "الخطط السنوية", path: "/annual-plans" },
   { icon: ClipboardList, label: "الدروس", path: "/lessons" },
   { icon: Sparkles, label: "مُولّد الدروس", path: "/lesson-generator" },

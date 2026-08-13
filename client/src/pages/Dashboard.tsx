@@ -20,7 +20,7 @@ import { useLocation } from "wouter";
 import { useMemo } from "react";
 
 const statCards = [
-  { icon: GraduationCap, label: "الفصول", path: "/classes", color: "bg-blue-500/10 text-blue-600" },
+  { icon: GraduationCap, label: "الأقسام", path: "/classes", color: "bg-blue-500/10 text-blue-600" },
   { icon: ClipboardList, label: "الدروس", path: "/lessons", color: "bg-emerald-500/10 text-emerald-600" },
   { icon: FileText, label: "الخطط السنوية", path: "/annual-plans", color: "bg-violet-500/10 text-violet-600" },
   { icon: Library, label: "الموارد المُولّدة", path: "/content-library", color: "bg-amber-500/10 text-amber-600" },
@@ -83,7 +83,7 @@ export default function Dashboard() {
                 <card.icon className="w-5 h-5" />
               </div>
               <p className="text-2xl font-bold">
-                {card.label === "الفصول" ? classes?.length ?? 0 :
+                {card.label === "الأقسام" ? classes?.length ?? 0 :
                  card.label === "الدروس" ? lessons?.length ?? 0 :
                  card.label === "الخطط السنوية" ? annualPlans?.length ?? 0 :
                  resources?.length ?? 0}
@@ -252,7 +252,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground">اختر فصلاً لعرض التقدم في المخطط السنوي</p>
+              <p className="text-sm text-muted-foreground">اختر قسماً لعرض التقدم في المخطط السنوي</p>
             </div>
           )}
         </CardContent>

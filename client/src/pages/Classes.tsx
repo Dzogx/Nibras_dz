@@ -30,17 +30,17 @@ export default function Classes() {
   const createMutation = trpc.classes.create.useMutation({
     onSuccess: () => {
       utils.classes.list.invalidate();
-      toast.success("تمت إضافة الفصل");
+      toast.success("تمت إضافة القسم");
       setIsAdding(false);
       setNewClass({ name: "", gradeLevel: gradeLevels[0], section: "", subject: subjects[0], academicYear: "2025-2026", studentCount: undefined });
     },
-    onError: () => toast.error("خطأ في إضافة الفصل"),
+    onError: () => toast.error("خطأ في إضافة القسم"),
   });
 
   const updateMutation = trpc.classes.update.useMutation({
     onSuccess: () => {
       utils.classes.list.invalidate();
-      toast.success("تم تحديث الفصل");
+      toast.success("تم تحديث القسم");
       setEditClassId(null);
     },
     onError: () => toast.error("خطأ في التحديث"),
@@ -49,7 +49,7 @@ export default function Classes() {
   const deleteMutation = trpc.classes.delete.useMutation({
     onSuccess: () => {
       utils.classes.list.invalidate();
-      toast.success("تم حذف الفصل");
+      toast.success("تم حذف القسم");
     },
   });
 
@@ -69,22 +69,22 @@ export default function Classes() {
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">إدارة الفصول</h1>
-          <p className="text-muted-foreground mt-1">إنشاء وإدارة الفصول الدراسية</p>
+          <h1 className="text-2xl font-bold">إدارة الأقسام</h1>
+          <p className="text-muted-foreground mt-1">إنشاء وإدارة أقسامك الدراسية</p>
         </div>
         <Dialog open={isAdding} onOpenChange={setIsAdding}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 ml-2" />
-              إضافة فصل
+              إضافة قسم
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>إضافة فصل جديد</DialogTitle>
+              <DialogTitle>إضافة قسم جديد</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div><Label>اسم الفصل</Label>
+              <div><Label>اسم القسم</Label>
                 <Input value={newClass.name} onChange={e => setNewClass({ ...newClass, name: e.target.value })} placeholder="مثال: 1 متوسط 1" />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -117,9 +117,9 @@ export default function Classes() {
         {/* Edit Dialog */}
         <Dialog open={editClassId !== null} onOpenChange={open => { if (!open) setEditClassId(null); }}>
           <DialogContent>
-            <DialogHeader><DialogTitle>تعديل الفصل</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>تعديل القسم</DialogTitle></DialogHeader>
             <div className="space-y-4">
-              <div><Label>اسم الفصل</Label>
+              <div><Label>اسم القسم</Label>
                 <Input value={newClass.name} onChange={e => setNewClass({ ...newClass, name: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -189,7 +189,7 @@ export default function Classes() {
         <Card><CardContent className="p-12 text-center">
           <GraduationCap className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
           <h3 className="text-lg font-medium mb-2">لا توجد فصول</h3>
-          <p className="text-muted-foreground">أضف فصلك الأول للبدء</p>
+          <p className="text-muted-foreground">أضف قسمك الأول للبدء</p>
         </CardContent></Card>
       )}
     </div>

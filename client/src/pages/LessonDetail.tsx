@@ -186,8 +186,8 @@ export default function LessonDetail({ id }: { id: string }) {
               <Input value={editForm.gradeLevel} onChange={e => setEditForm({ ...editForm, gradeLevel: e.target.value })} />
             </div>
           </div>
-          <div><Label>عنوان الوحدة</Label>
-            <Input value={editForm.unitTitle} onChange={e => setEditForm({ ...editForm, unitTitle: e.target.value })} />
+          <div><Label>عنوان الوضعية التعليمية</Label>
+            <Input value={editForm.unitTitle} onChange={e => setEditForm({ ...editForm, unitTitle: e.target.value })} placeholder="مثال: الحياة الجماعية" />
           </div>
           <div><Label>المدة</Label>
             <Input value={editForm.duration} onChange={e => setEditForm({ ...editForm, duration: e.target.value })} />

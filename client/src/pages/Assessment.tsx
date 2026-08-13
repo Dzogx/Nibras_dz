@@ -182,7 +182,7 @@ export default function Assessment() {
         <pre>${generated}</pre>
         ${curriculumCitations.length > 0 ? `<div class="citations">
           <h3>الاستشهادات من وثائق المنهاج الرسمية (${curriculumCitations.length} وثيقة)</h3>
-          ${curriculumCitations.map(c => `<div class="cit-item"><span class="cit-ref">[${c.referenceNumber}]</span> ${c.title} — ${c.sourceReference}${c.unitNumber ? ` (الوحدة ${c.unitNumber})` : ''}${c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ''}</div>`).join('')}
+          ${curriculumCitations.map(c => `<div class="cit-item"><span class="cit-ref">[${c.referenceNumber}]</span> ${c.title} — ${c.sourceReference}${c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ''}</div>`).join('')}
         </div>` : ''}
       </body>
       </html>
@@ -408,9 +408,9 @@ export default function Assessment() {
                     <div>
                       <Label>الفلترة حسب الفصل</Label>
                       <Select value={form.classId ? String(form.classId) : "all"} onValueChange={v => setForm({ ...form, classId: v === "all" ? undefined : parseInt(v) })}>
-                        <SelectTrigger><SelectValue placeholder="جميع الفصول" /></SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="جميع الأقسام" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="all">جميع الفصول</SelectItem>
+                          <SelectItem value="all">جميع الأقسام</SelectItem>
                           {classesList.map(c => (
                             <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                           ))}
@@ -488,7 +488,7 @@ export default function Assessment() {
                           <Badge variant="outline" className="text-xs shrink-0">[مرجع: {c.referenceNumber}]</Badge>
                           <span>
                             {c.title} — {c.sourceReference}
-                            {c.unitNumber ? ` (الوحدة ${c.unitNumber})` : ""}
+                            
                             {c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ""}
                           </span>
                         </div>

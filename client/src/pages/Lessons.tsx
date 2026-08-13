@@ -89,8 +89,8 @@ export default function Lessons() {
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><Label>عنوان الوحدة</Label>
-                  <Input value={newLesson.unitTitle} onChange={e => setNewLesson({ ...newLesson, unitTitle: e.target.value })} />
+                <div><Label>عنوان الوضعية التعليمية</Label>
+                  <Input value={newLesson.unitTitle} onChange={e => setNewLesson({ ...newLesson, unitTitle: e.target.value })} placeholder="مثال: نظام المطر الموسمي" />
                 </div>
                 <div><Label>المدة</Label>
                   <Input value={newLesson.duration} onChange={e => setNewLesson({ ...newLesson, duration: e.target.value })} placeholder="1 ساعة" />

@@ -75,11 +75,11 @@ export default function AnnualPlans() {
                   </Select>
                 </div>
               </div>
-              <div><Label>الفصل (اختياري)</Label>
+              <div><Label>القسم (اختياري)</Label>
                 <Select value={newPlan.classId?.toString() || "none"} onValueChange={v => setNewPlan({ ...newPlan, classId: v === "none" ? undefined : parseInt(v) })}>
-                  <SelectTrigger><SelectValue placeholder="اختر فصلاً" /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="اختر قسماً" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">بدون فصل</SelectItem>
+                    <SelectItem value="none">بدون قسم</SelectItem>
                     {classesList?.map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

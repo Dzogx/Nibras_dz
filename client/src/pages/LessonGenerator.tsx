@@ -24,7 +24,7 @@ const contentTypes = [
 ];
 
 const studentLevels = [
-  { value: "mixed", label: "مختلطة (جميع المستويات)", description: "مناسب لفصل متنوع المستويات" },
+  { value: "mixed", label: "مختلطة (جميع المستويات)", description: "مناسب لقسم متنوع المستويات" },
   { value: "advanced", label: "متقدمين (أقوياء)", description: "تلاميذ متميزون في المادة" },
   { value: "average", label: "متوسطين (عاديون)", description: "المستوى المتوسط للفصل" },
   { value: "needs_support", label: "يحتاجون دعماً إضافياً", description: "تلاميذ يعانون صعوبات" },
@@ -168,8 +168,8 @@ export default function LessonGenerator() {
                 <Input value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} placeholder="1 ساعة" />
               </div>
             </div>
-            <div><Label>عنوان الوحدة</Label>
-              <Input value={form.unitTitle} onChange={e => setForm({ ...form, unitTitle: e.target.value })} />
+            <div><Label>عنوان الوضعية التعليمية</Label>
+              <Input value={form.unitTitle} onChange={e => setForm({ ...form, unitTitle: e.target.value })} placeholder="مثال: وثائق الفترة الاستعمارية (نشاط الوثائق)" />
             </div>
             {form.contentType === "lessonPlan" && (
               <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
@@ -197,8 +197,8 @@ export default function LessonGenerator() {
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>رقم الوحدة</Label>
-                <Input type="number" value={form.unitNumber || ""} onChange={e => setForm({ ...form, unitNumber: e.target.value ? parseInt(e.target.value) : undefined })} />
+              <div><Label>رقم الوضعية</Label>
+                <Input type="number" value={form.unitNumber || ""} onChange={e => setForm({ ...form, unitNumber: e.target.value ? parseInt(e.target.value) : undefined })} placeholder="1" />
               </div>
               <div><Label>رقم الدرس</Label>
                 <Input type="number" value={form.lessonNumber || ""} onChange={e => setForm({ ...form, lessonNumber: e.target.value ? parseInt(e.target.value) : undefined })} />
