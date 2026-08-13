@@ -66,9 +66,18 @@ export const appRouter = router({
   // ─── Teacher Profile ───────────────────────────────────────
   profile: router({
     get: protectedProcedure.query(async ({ ctx }) => {
-      const profile = await getTeacherProfile(ctx.user.id);
-      if (profile) return profile;
-      return {
+      let profile = await getTeacherProfile(ctx.user.id);
+      if (!profile) {
+        // إنشاء الملف الشخصي تلقائياً عند أول دخول حتى لا تظهر الحقول فارغة
+        const userName = (ctx.user as any)?.name || "";
+        await createTeacherProfile({
+          userId: ctx.user.id,
+          displayName: userName || undefined,
+          subject: "التاريخ والجغرافيا والتربية المدنية",
+        } as any);
+        profile = await getTeacherProfile(ctx.user.id);
+      }
+      return profile || {
         id: 0,
         userId: ctx.user.id,
         displayName: "",

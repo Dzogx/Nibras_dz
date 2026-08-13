@@ -802,3 +802,19 @@ describe("أنماط الوضعيات البسيطة والسندات الرسم
     expect(ctx).toContain("الإتقان والتمييز");
   });
 });
+
+describe("profile auto-create on first sign-in", () => {
+  beforeEach(resetMocks);
+  it("profile.get creates a profile automatically when none exists", async () => {
+    (db.getTeacherProfile as any).mockResolvedValueOnce(undefined).mockResolvedValue({ id: 7, userId: 1, displayName: "Test Teacher", subject: "التاريخ والجغرافيا والتربية المدنية" });
+    (db.createTeacherProfile as any).mockResolvedValue({ id: 7 });
+    const caller = appRouter.createCaller(createMockContext({ name: "Test Teacher" }));
+    const profile = await caller.profile.get();
+    expect(db.getTeacherProfile).toHaveBeenCalledWith(1);
+    expect(db.createTeacherProfile).toHaveBeenCalled();
+    expect(profile).toBeTruthy();
+    expect(profile.userId).toBe(1);
+    expect(profile.displayName).toBe("Test Teacher");
+    expect(profile.subject).toBeTruthy();
+  });
+});
