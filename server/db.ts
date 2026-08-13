@@ -431,6 +431,13 @@ export async function getLearningSituations(sectionId: number) {
   return await db.select().from(learningSituations).where(eq(learningSituations.sectionId, sectionId)).orderBy(learningSituations.situationNumber);
 }
 
+export async function getLearningSituationById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(learningSituations).where(eq(learningSituations.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
 export async function getLearningSituationsByUserId(userId: number) {
   const db = await getDb();
   if (!db) return [];

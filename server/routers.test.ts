@@ -64,6 +64,9 @@ import {
   BLOOM_ARABIC_VERBS,
   getAllRules,
   COMPETENCY_CATEGORIES,
+  getLessonSessionContext,
+  AI_ROLE_PRINCIPLE,
+  ACTIVE_LEARNING_STRATEGIES,
   SIMPLE_QUESTION_PATTERNS,
   INTEGRATION_DOCUMENT_TYPES,
   INTEGRATION_RUBRIC_CRITERIA,
@@ -335,6 +338,20 @@ describe("nationalRules", () => {
     expect(context).toContain("عدد الدروس المنجزة: 1");
   });
 
+  it("getLessonSessionContext includes the pedagogical chain, 15 session elements and classroom constraints", () => {
+    const ctx = getLessonSessionContext();
+    expect(ctx).toContain("سلسلة البناء التربوي الملزمة");
+    expect(ctx).toContain("←");
+    expect(ctx).toContain("يجب أن تحتوي المذكرة على هذه العناصر الخمسة عشر");
+    for (let i = 1; i <= 15; i++) expect(ctx).toContain(`${i}. `);
+    expect(ctx).toContain("قيود الواقع الصفي");
+    expect(ctx).toContain("عارض");
+    expect(ctx).toContain("بديل");
+    expect(AI_ROLE_PRINCIPLE).toContain("مسودة");
+  });
+  it("approved active-learning strategies count is 12", () => {
+    expect(ACTIVE_LEARNING_STRATEGIES).toHaveLength(12);
+  });
   it("getExamHeader generates proper header", () => {
     const header = getExamHeader("السنة الرابعة متوسط", "التاريخ والجغرافيا");
     expect(header).toContain("الجمهورية الجزائرية الديمقراطية الشعبية");

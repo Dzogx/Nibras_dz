@@ -17,7 +17,7 @@ import {
   getAIResources, getAIResourceById, createAIResource, updateAIResource, deleteAIResource, duplicateAIResource,
   getInspectorReviews, createInspectorReview, getInspectorReviewById,
   getAnnualPlanSections, getAnnualPlanSectionById, createAnnualPlanSection, updateAnnualPlanSection, deleteAnnualPlanSection,
-  getLearningSituations, getLearningSituationsByUserId, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
+  getLearningSituations, getLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
 } from "./db";
 import {
@@ -28,6 +28,8 @@ import {
   buildAssessmentContext,
   getExamHeader,
   COMPETENCY_CATEGORIES,
+  getLessonSessionContext,
+  AI_ROLE_PRINCIPLE,
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 
@@ -431,6 +433,9 @@ export const appRouter = router({
 6. **استراتيجيات التمييز والتمايز**: هل يأخذ بعين الاعتبار الفروق الفردية بين التلاميذ؟
 7. **توزيع الزمن**: هل المدة الزمنية واقعية للمحتوى المقدم؟
 8. **التقويم التكويني**: هل يتضمن وسائل لتقويم فهم التلاميذ أثناء الحصة؟
+9. **اكتمال عناصر الحصة اليومية الخمسة عشر**: (بيانات الحصة، الكفاءة المستهدفة حرفياً من المنهاج، أهداف قابلة للقياس، المكتسبات القبلية، الوسائل مع بديل الغياب، استراتيجية تعلم نشط، سير الحصة بالزمن، دور الأستاذ، دور المتعلم، النشاط الرئيسي، منتج التلميذ، تقويم تكويني، النشاط الختامي، الواجب المنزلي، علاج للمتعثرين وإثراء للمتفوقين). خصم نقاط واضحة عن كل عنصر غائب.
+10. **الواقعية الصفية**: التصميم يجب أن يناسب أقساماً كبيرة من 40 إلى 45 تلميذاً ولا يفترض عارضاً ضوئياً أو إنترنتاً أو طباعة كثيرة.
+11. **ارتباط الكفاءة بالوضعية**: الكفاءة المستهدفة يجب أن تكون من وثائق المنهاج كما هي دون صياغة ذاتية.
 
 كشف الأخطاء التربوية الحقيقية:
 - إذا لم توجد أهداف تعليمية محددة → خطأ جوهري
@@ -720,8 +725,8 @@ ${docExcerpts}
 
       const prompts: Record<string, string> = {
         lessonPlan: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ خطة درس مفصلة ومبنية على المنهج الرسمي الجزائري.
-المتطلبات:
-- عنوان الدرس: ${input.title}
+بيانات الحصة:
+- عنوان الدرس (الوضعية التعليمية): ${input.title}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${input.unitTitle ? `- الوضعية التعليمية: ${input.unitTitle}` : ""}
@@ -731,16 +736,22 @@ ${input.duration ? `- المدة: ${input.duration}` : ""}
 ${diffBlock}
 ${templateBlock}
 
-قدم مذكرة درس عملية تتضمن: السياق والكفاءة/الأهداف المتاحة، الوسائل، سير الحصة وفق مراحل الإطار المختار، أنشطة الأستاذ والمتعلم، تقويماً مرحلياً وختامياً، وتكييفاً مختصراً عند الحاجة. استند دائماً إلى المنهج الرسمي الجزائري.${curriculumContext}`,
+${getLessonSessionContext()}
 
-        activity: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ نشاط تعلم نشط جذاب.
+${AI_ROLE_PRINCIPLE}
+
+استند دائماً إلى المنهاج الرسمي الجزائري ولا تخترع معلومة منهاجية.${curriculumContext}
+
+كل مخرج مسودة قابلة للتعديل: الكفاءة والكفاءات والمقاطع من وثائق المنهاج فقط، وبقية الصياغة يراجعها الأستاذ قبل الاعتماد.`,
+
+        activity: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ نشاط تعلم نشط.
 - الموضوع: ${input.title}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 - المدة: ${input.duration || "حصة واحدة"}
 ${diffBlock}
 
-صمم نشاطاً تفاعلياً يشجع المشاركة الفعالة للطلاب.${curriculumContext}`,
+صمم نشاطاً تفاعلياً يحدد بوضوح العناصر التسعة: هدف واضح، تعليمة مباشرة، زمن محدد، تنظيم العمل، أدوار داخل المجموعة، منتج ملموس، معيار نجاح معلوم، طريقة عرض أو تصحيح سريع، وبديل قليل الوسائل. اختر استراتيجية واحدة من القائمة المعتمدة: فرز البطاقات، فكر ثم زاوج ثم شارك، الخريطة الصامتة، الخط الزمني، حقيبة الأدلة، محطات التعلم، الجيسكو، معرض مصغر، تحدي الأخطاء، تدريس الأقران، مناظرة مضبوطة، قضية مدنية. صمم لأقسام كبيرة من 40 إلى 45 تلميذاً ولا تفترض عارضاً أو إنترنتاً أو طباعة كثيرة.${curriculumContext}`,
 
         homework: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ واجباً منزلياً مناسباً.
 - الموضوع: ${input.title}
@@ -1166,6 +1177,9 @@ ${rulesContext}
 
   // ─── Annual Plan Sections ──────────────────────────────────
   sections: router({
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return await getAnnualPlanSectionById(input.id);
+    }),
     list: protectedProcedure.input(z.object({ annualPlanId: z.number() })).query(async ({ input }) => {
       const sections = await getAnnualPlanSections(input.annualPlanId);
       // Include situations for each section
@@ -1243,6 +1257,9 @@ ${rulesContext}
   situations: router({
     list: protectedProcedure.input(z.object({ sectionId: z.number() })).query(async ({ input }) => {
       return await getLearningSituations(input.sectionId);
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
+      return await getLearningSituationById(input.id);
     }),
     create: protectedProcedure.input(z.object({
       sectionId: z.number(),

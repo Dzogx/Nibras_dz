@@ -223,7 +223,11 @@ export default function Dashboard() {
                 <div className="bg-blue-100/50 rounded-lg p-3">
                   <p className="text-xs text-blue-600 font-medium mb-1">الوضعية التالية</p>
                   <p className="text-sm font-medium">{teacherOSContext.nextSituation.title}</p>
-                  <p className="text-xs text-muted-foreground">المقطع {teacherOSContext.nextSituation.sectionNumber}</p>
+                  <p className="text-xs text-muted-foreground mb-2">المقطع {teacherOSContext.nextSituation.sectionNumber}</p>
+                  <Button size="sm" className="w-full gap-1" onClick={() => setLocation(`/lesson-generator?situationId=${teacherOSContext.nextSituation!.id}`)}>
+                    <BookOpen className="w-3.5 h-3.5" />
+                    حضّر الحصة
+                  </Button>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">لا توجد وضعيات متبقية</p>

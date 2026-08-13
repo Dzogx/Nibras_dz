@@ -12,6 +12,9 @@ import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
 import { Separator } from "@/components/ui/separator";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
+import { BookOpenCheck, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useEffect, useRef } from "react";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -69,11 +72,33 @@ const supportStrategies = [
   { value: "none", label: "بدون استراتيجية محددة" },
 ];
 
+function parseSearchParam(name: string): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return new URLSearchParams(window.location.search).get(name) || undefined;
+}
+
 export default function LessonGenerator() {
   const [, setLocation] = useLocation();
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // ربط مباشر من لوحة التحكم: /lesson-generator?situationId=X (حضّر الحصة)
+  const situationIdParam = parseSearchParam("situationId");
+  const situationId = situationIdParam ? parseInt(situationIdParam) : undefined;
+  const { data: linkedSituation } = trpc.situations.getById.useQuery(
+    { id: situationId ?? 0 },
+    { enabled: Boolean(situationId) }
+  );
+  const { data: linkedSection } = trpc.sections.getById.useQuery(
+    { id: linkedSituation?.sectionId ?? 0 },
+    { enabled: Boolean(linkedSituation?.sectionId) }
+  );
+  const { data: linkedPlan } = trpc.annualPlans.getById.useQuery(
+    { id: linkedSection?.annualPlanId ?? 0 },
+    { enabled: Boolean(linkedSection?.annualPlanId) }
+  );
+
   const [form, setForm] = useState({
     classId: undefined as number | undefined,
     title: "",
@@ -97,6 +122,22 @@ export default function LessonGenerator() {
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
+
+  const linkedInitialized = useRef(false);
+  useEffect(() => {
+    if (!linkedInitialized.current && linkedSituation && linkedSection && linkedPlan) {
+      linkedInitialized.current = true;
+      setForm(prev => ({
+        ...prev,
+        title: linkedSituation.title,
+        subject: linkedPlan.subject,
+        gradeLevel: linkedPlan.gradeLevel,
+        unitTitle: linkedSituation.title,
+        unitNumber: linkedSituation.situationNumber,
+        duration: "حصة واحدة",
+      }));
+    }
+  }, [linkedSituation, linkedSection, linkedPlan]);
 
   const generateMutation = trpc.ai.generateLesson.useMutation({
     onSuccess: (data) => {
@@ -128,6 +169,21 @@ export default function LessonGenerator() {
         <h1 className="text-2xl font-bold">مُولّد الدروس بالذكاء الاصطناعي</h1>
         <p className="text-muted-foreground mt-1">توليد خطط الدروس والأنشطة والأسئلة بالاستناد إلى المنهج الرسمي</p>
       </div>
+
+      {linkedSituation && linkedSection && linkedPlan && (
+        <Alert className="border-blue-300 bg-blue-50">
+          <BookOpenCheck className="w-4 h-4 text-blue-600" />
+          <AlertDescription>
+            <span className="font-medium">حصة مقترحة من المخطط السنوي:</span> المقطع {linkedSection.sectionNumber} «{linkedSection.title}» — الوضعية {linkedSituation.situationNumber}: «{linkedSituation.title}» — {linkedPlan.subject} / {linkedPlan.gradeLevel}
+          </AlertDescription>
+        </Alert>
+      )}
+      {linkedSituation && !linkedSection && (
+        <Alert variant="destructive">
+          <AlertCircle className="w-4 h-4" />
+          <AlertDescription>تعذر تحميل بيانات الوضعية المرتبطة. يمكنك إدخال بيانات الحصة يدوياً أدناه.</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Form */}
