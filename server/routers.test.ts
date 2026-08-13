@@ -64,6 +64,10 @@ import {
   BLOOM_ARABIC_VERBS,
   getAllRules,
   COMPETENCY_CATEGORIES,
+  SIMPLE_QUESTION_PATTERNS,
+  INTEGRATION_DOCUMENT_TYPES,
+  INTEGRATION_RUBRIC_CRITERIA,
+  BLOOM_LEVELS,
 } from "./rules/nationalRules";
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
@@ -736,5 +740,65 @@ describe("Bloom Arabic verbs table (جدول تصنيف الأفعال لماد�
     expect(ctx).toContain("[1 سؤال مطلوب]");
     expect(ctx).toContain("المعرفة (الاستدكار أو تمييز المعلومات)");
     expect(ctx).toContain("التحليل");
+  });
+});
+describe("أنماط الوضعيات البسيطة والسندات الرسمية (من تحليل مكتبة التقويمات)", () => {
+  it("أنماط الوضعيات البسيطة موجودة للمواد الثلاث", () => {
+    expect(SIMPLE_QUESTION_PATTERNS["التاريخ"]).toHaveLength(4);
+    expect(SIMPLE_QUESTION_PATTERNS["الجغرافيا"]).toHaveLength(3);
+    expect(SIMPLE_QUESTION_PATTERNS["التربية المدنية"]).toHaveLength(3);
+  });
+
+  it("كل نمط له معرّف فريد ووصف ونمط علامة ومستوى بلوم صالح", () => {
+    for (const [subject, patterns] of Object.entries(SIMPLE_QUESTION_PATTERNS)) {
+      const ids = new Set<string>();
+      for (const p of patterns) {
+        expect(p.patternId).toBeTruthy();
+        expect(p.name).toBeTruthy();
+        expect(p.description.length).toBeGreaterThan(10);
+        expect(p.scoringPattern).toBeTruthy();
+        expect(BLOOM_LEVELS.some(b => b.id === p.bloomLevelId)).toBe(true);
+        ids.add(p.patternId);
+      }
+      expect(ids.size).toBe(patterns.length); // لا تكرار في المعرّفات
+    }
+  });
+
+  it("أنماط التاريخ تبدأ بالأسهل (معرفة) وتنتهي بالأصعب (تحليل)", () => {
+    const history = SIMPLE_QUESTION_PATTERNS["التاريخ"];
+    expect(history[0].bloomLevelId).toBe("remember");
+    expect(history[history.length - 1].bloomLevelId).toBe("analyze");
+  });
+
+  it("أنواع سندات الإدماج محددة للمواد الثلاث", () => {
+    for (const subject of ["التاريخ", "الجغرافيا", "التربية المدنية"]) {
+      expect(INTEGRATION_DOCUMENT_TYPES[subject].length).toBeGreaterThanOrEqual(2);
+    }
+    expect(INTEGRATION_DOCUMENT_TYPES["التربية المدنية"].some(s => s.includes("دستور"))).toBe(true);
+  });
+
+  it("شبكة تقييم وضعية الإدماج الرسمية تحتوي المعايير الأربعة", () => {
+    for (const subject of ["التاريخ", "الجغرافيا", "التربية المدنية"]) {
+      const crits = INTEGRATION_RUBRIC_CRITERIA[subject];
+      expect(crits).toHaveLength(4);
+      const names = crits.map(c => c.name);
+      expect(names.some(n => n.includes("الملاءمة"))).toBe(true);
+      expect(names.some(n => n.includes("أدوات المادة"))).toBe(true);
+      expect(names.some(n => n.includes("المنهجية") || n.includes("الاتساق"))).toBe(true);
+      expect(names.some(n => n.includes("الإتقان"))).toBe(true);
+    }
+  });
+
+  it("الأنماط والسندات تُدرج في سياق التوليد", () => {
+    const ctx = buildAssessmentContext({
+      gradeLevel: "السنة الرابعة متوسط",
+      subject: "التربية المدنية",
+      completedLessons: [{ title: "درس تجريبي" }],
+      completedSituations: [{ title: "وضعية تجريبية" }],
+    });
+    expect(ctx).toContain("أنماط الوضعيات البسيطة الرسمية");
+    expect(ctx).toContain("سندات من هذه الأنواع");
+    expect(ctx).toContain("الملاءمة مع الوضعية");
+    expect(ctx).toContain("الإتقان والتمييز");
   });
 });

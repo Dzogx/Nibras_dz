@@ -49,6 +49,88 @@ export interface QuestionBlueprint {
   part2IntegrationQuestion: 1;
 }
 
+/**
+ * نمط وضعية بسيطة رسمي مستخرج من موضوعات BEM الرسمية (DzExams — قسم officiel).
+ * هذه الأنماط المتكررة عبر موضوعات BEM الرسمية 2023–2025.
+ * لا تُنسخ منها أي أسئلة أو نصوص — فقط أنماط بنيوية.
+ */
+export interface SimpleQuestionPattern {
+  /** معرف النمط */
+  patternId: string;
+  /** اسم النمط بالعربية */
+  name: string;
+  /** وصف موجز لنمط الصياغة */
+  description: string;
+  /** نمط توزيع العلامة الظاهر في المفاتيح الرسمية */
+  scoringPattern: string;
+  /** مستوى بلوم الغالب على هذا النمط */
+  bloomLevelId: string;
+}
+
+/**
+ * أنماط الوضعيات البسيطة الرسمية حسب المادة (متكررة في موضوعات BEM الرسمية).
+ */
+export const SIMPLE_QUESTION_PATTERNS: Record<string, SimpleQuestionPattern[]> = {
+  "التاريخ": [
+    { patternId: "dates", name: "تحديد تواريخ", description: "تسمية ثلاث أحداث أو أكثر بتواريخها الرسمية (سنة أو تاريخ دقيق)", scoringPattern: "عنصر × 1 نقطة", bloomLevelId: "remember" },
+    { patternId: "definitions", name: "تعريف مصطلحات", description: "تعريف مصطلحات تاريخية مباشرة بلا سياق", scoringPattern: "مصطلح × 1 نقطة", bloomLevelId: "remember" },
+    { patternId: "document_study", name: "دراسة وثيقة تاريخية", description: "وثيقة تاريخية يُحلَّلها المترشح وفق جدول رباعي: طبيعة الوثيقة، صاحبها، الإطار الزماني والمكاني، مضمونها", scoringPattern: "محور × 1 نقطة", bloomLevelId: "understand" },
+    { patternId: "causal_explanation", name: "تعليل أو موقف", description: "سؤال تعليلي قصير أو إبراز موقف من قضية (وطنية أو عالمية)", scoringPattern: "تعليل كامل = العلامة", bloomLevelId: "analyze" },
+  ],
+  "الجغرافيا": [
+    { patternId: "definitions", name: "تعريف أو شرح مصطلحات", description: "شرح مصطلحين جغرافيين أو التفريق بين مصطلحين", scoringPattern: "مصطلح × 1 نقطة", bloomLevelId: "understand" },
+    { patternId: "classification", name: "تعداد أو تصنيف", description: "تعداد عناصر (أقاليم، موارد، أطراف...) أو تصنيف عناصر في فئات", scoringPattern: "عنصر × 1 نقطة", bloomLevelId: "apply" },
+    { patternId: "causal_explanation", name: "تعليل سببي", description: "إبراز أسباب ظاهرة جغرافية (بسبب اختلاف التساقط، موقع المنطقة...)", scoringPattern: "تعليل كامل = العلامة", bloomLevelId: "analyze" },
+  ],
+  "التربية المدنية": [
+    { patternId: "definitions", name: "تعريف مصطلحات", description: "تعريف مصطلحات مدنية مباشرة بلا سياق", scoringPattern: "مصطلح × 1 نقطة", bloomLevelId: "remember" },
+    { patternId: "classification_table", name: "تصنيف أو مطابقة", description: "وضع عناصر (حقوق، أدوار...) في الخانة المناسبة ضمن جدول من أعمدة محددة", scoringPattern: "خانة × 0.5 نقطة", bloomLevelId: "understand" },
+    { patternId: "short_application", name: "تطبيق قصير بتعليل", description: "وضعية تطبيقية موجزة جداً (سياق مهني بحياد سطرين) مع تعليلين", scoringPattern: "تعليل × 2 نقطة", bloomLevelId: "apply" },
+  ],
+};
+
+/**
+ * السندات الرسمية المقترحة لوضعية الإدماج، مرتبة حسب تكرارها في موضوعات BEM.
+ * لا تُنسخ منها أي نصوص — فقط تصنيفات السندات.
+ */
+export const INTEGRATION_DOCUMENT_TYPES: Record<string, string[]> = {
+  "التاريخ": ["مقتطف من الكتاب المدرسي", "وثيقة تاريخية مكتوبة", "نصوص قصيرة", "تواريخ وأحداث معلمية"],
+  "الجغرافيا": ["جدول إحصائي", "خريطة أو صورة جوية", "نص قانوني أو تشريعي", "مقتطف كتابي"],
+  "التربية المدنية": ["مادة من الدستور", "نص قانوني", "تصريح أو موقف موجز", "مقتطف كتابي"],
+};
+
+/**
+ * الشبكة الرسمية لمعايير تقييم وضعية الإدماج كما تظهر في المفاتيح الفعلية
+ * لموضوعات BEM (ملاءمة، أدوات المادة، منهجية، إتقان وتمييز).
+ */
+export interface IntegrationRubricCriterion {
+  /** اسم المعيار */
+  name: string;
+  /** مؤشراته كما ترد في المفاتيح الرسمية */
+  indicators: string;
+}
+
+export const INTEGRATION_RUBRIC_CRITERIA: Record<string, IntegrationRubricCriterion[]> = {
+  "التاريخ": [
+    { name: "الملاءمة مع الوضعية", indicators: "فهم التعليمة واحترام مضمونها، الكتابة في حدود عدد الأسطر المطلوب" },
+    { name: "استعمال أدوات المادة ومفاهيمها", indicators: "توظيف المصطلحات والمفاهيم المحددة" },
+    { name: "المنهجية", indicators: "مقدمة، عرض، خاتمة؛ تسلسل وتراتب الأفكار" },
+    { name: "الإتقان والتمييز", indicators: "نظافة الورقة، سلامة اللغة، مقروئية الخط، تجنّب التشطيب" },
+  ],
+  "الجغرافيا": [
+    { name: "الملاءمة مع الوضعية", indicators: "فهم التعليمة واحترام مضمونها، الكتابة في حدود عدد الأسطر المطلوب" },
+    { name: "استعمال أدوات المادة ومفاهيمها", indicators: "توظيف المصطلحات والمفاهيم المحددة" },
+    { name: "المنهجية", indicators: "مقدمة، عرض، خاتمة؛ تسلسل وتراتب الأفكار" },
+    { name: "الإتقان والتمييز", indicators: "نظافة الورقة، سلامة اللغة، مقروئية الخط، تجنّب التشطيب" },
+  ],
+  "التربية المدنية": [
+    { name: "الملاءمة مع الوضعية", indicators: "فهم التعليمة واحترام مضمونها، الكتابة في حدود عدد الأسطر المطلوب" },
+    { name: "استعمال أدوات المادة ومفاهيمها", indicators: "توظيف المصطلحات والمفاهيم المحددة في الموضوع" },
+    { name: "الاتساق والمنهجية", indicators: "أفكار منظمة (مقدمة–عرض–خاتمة)، تراتب الأفكار" },
+    { name: "الإتقان والتمييز", indicators: "نظافة الورقة، سلامة اللغة، مقروئية الخط، تجنّب التشطيب" },
+  ],
+};
+
 export interface AssessmentRule {
   gradeLevel: string;
   subject: string;
@@ -423,8 +505,16 @@ export function buildAssessmentContext(params: {
     context.push(`=== بنية الاختبار الرسمية (دليل بناء الاختبارات 2018) ===`);
     rule.questionBlueprints.forEach(bp => {
       context.push(`المادة: ${bp.subject}`);
-      context.push(`- الجزء الأول (${bp.part1Points} نقاط): من ${bp.part1MinQuestions} إلى ${bp.part1MaxQuestions} وضعيات بسيطة مستقلة عن بعضها، تعالج مختلف مستويات التفكير لدى المترشح بحيث لا تقتصر على الحفظ والاسترجاع، وتغطي منهاج المادة، مع ربط كل سؤال بالكفاءة التي يقيسها وتفصيل العلامات إلى إجمالية وجزئية`);
-      context.push(`- الجزء الثاني (${bp.part2Points} نقاط): وضعية إدماج واحدة لمعالجة إشكالية مركبة في سياقها، متبوعة بتعليمة تحدد المهمة المطلوبة، وسندات (نصوص، سلالم زمنية، خرائط، جداول، معطيات إحصائية، صور، أحداث وتواريخ معلمية)`);
+      context.push(`- الجزء الأول (${bp.part1Points} نقاط): من ${bp.part1MinQuestions} إلى ${bp.part1MaxQuestions} وضعيات بسيطة مستقلة عن بعضها، بلا سياق سردي، متدرجة من الأسهل إلى الأصعب`);
+      const patterns = SIMPLE_QUESTION_PATTERNS[bp.subject] ?? [];
+      if (patterns.length > 0) {
+        context.push(`  أنماط الوضعيات البسيطة الرسمية (اختر منها بحسب المنهاج المنجز وتدرج الصعوبة):`);
+        patterns.forEach(p => {
+          context.push(`    • ${p.name}: ${p.description} — توزيع العلامة: ${p.scoringPattern}`);
+        });
+        context.push(`  ملاحظة من المفاتيح الرسمية: تقبل كل الإجابات الصحيحة، وتُفصَّل العلامة إلى جزئية وإجمالية لكل عنصر`);
+      }
+      context.push(`- الجزء الثاني (${bp.part2Points} نقاط): وضعية إدماج واحدة لمعالجة إشكالية مركبة في سياقها، متبوعة بتعليمة تحدد المهمة المطلوبة (مقالة أو فقرة في حدود 10–12 سطراً)، مع 2–3 سندات من هذه الأنواع: ${(INTEGRATION_DOCUMENT_TYPES[bp.subject] ?? []).join("، ")}`);
     });
   }
 
@@ -494,6 +584,15 @@ export function buildAssessmentContext(params: {
     context.push(`=== معايير شبكة التقويم الرسمية (وضعية الإدماج) ===`);
     context.push(`المعايير ومؤشراتها: ${rule.rubricCriteria.join("، ")}`);
     context.push(`أرفق لكل سؤال العلامة المخصصة له، وللإجابة النموذجية شبكة تقويم مطابقة لشبكة التقويم الرسمية، مع مراعاة الأجوبة المتوقعة وتوزيع العلامات إلى جزئية وإجمالية من النصف إلى النقطة`);
+    context.push(``);
+    context.push(`الشبكة الرسمية لوضعية الإدماج (كما ترد في المفاتيح الفعلية لموضوعات BEM):`);
+    (Object.keys(INTEGRATION_RUBRIC_CRITERIA) as Array<keyof typeof INTEGRATION_RUBRIC_CRITERIA>).forEach(subj => {
+      const crits = INTEGRATION_RUBRIC_CRITERIA[subj];
+      if (rule.weights.some(w => w.subject === subj)) {
+        context.push(`  ${subj}:`);
+        crits.forEach(c => context.push(`    • ${c.name}: ${c.indicators}`));
+      }
+    });
   }
 
   // Question distribution guidance
