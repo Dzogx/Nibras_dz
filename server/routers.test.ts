@@ -807,6 +807,30 @@ describe("أنماط الوضعيات البسيطة والسندات الرسم
     }
   });
 
+  it("قواعد السندات تُدرج لكل مادة فرعية داخل المادة المركبة (التاريخ والجغرافيا)", () => {
+    const ctx = buildAssessmentContext({
+      gradeLevel: "السنة الأولى متوسط",
+      subject: "التاريخ والجغرافيا",
+      completedLessons: [{ title: "درس تجريبي" }],
+    });
+    // صيغ السندات يجب أن تظهر للمادتين الفرعيتين
+    expect(ctx).toContain("وثيقة تاريخية مكتوبة");
+    expect(ctx).toContain("جدول إحصائي");
+    expect(ctx).toContain("خريطة أو صورة جوية");
+    // قاعدة العدد للمستويات 1–3AM: سند واحد كحد أقصى
+    expect(ctx).toContain("سند واحد كحد أقصى");
+    expect(ctx).not.toContain("2–3 سندات");
+  });
+  it("وضعية الإدماج في 4AM تحمل تعليمة وسندات وعدد سندات 2–3", () => {
+    const ctx = buildAssessmentContext({
+      gradeLevel: "السنة الرابعة متوسط",
+      subject: "التاريخ والجغرافيا",
+      completedLessons: [{ title: "درس تجريبي" }],
+    });
+    expect(ctx).toContain("وضعية إدماج واحدة لمعالجة إشكالية مركبة في سياقها");
+    expect(ctx).toContain("تواريخ وأحداث معلمية");
+    expect(ctx).toContain("2–3 سندات");
+  });
   it("الأنماط والسندات تُدرج في سياق التوليد", () => {
     const ctx = buildAssessmentContext({
       gradeLevel: "السنة الرابعة متوسط",

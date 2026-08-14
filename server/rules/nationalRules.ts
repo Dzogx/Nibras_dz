@@ -713,18 +713,25 @@ export function buildAssessmentContext(params: {
         });
         context.push(`  ملاحظة من المفاتيح الرسمية: تقبل كل الإجابات الصحيحة، وتُفصَّل العلامة إلى جزئية وإجمالية لكل عنصر`);
       }
-      context.push(`- الجزء الثاني (${bp.part2Points} نقاط): وضعية إدماج واحدة لمعالجة إشكالية مركبة في سياقها، متبوعة بتعليمة تحدد المهمة المطلوبة (مقالة أو فقرة في حدود 10–12 سطراً)، مع سندات من هذه الأنواع: ${(INTEGRATION_DOCUMENT_TYPES[bp.subject] ?? []).join("، ")}`);
+      const bpDocs = INTEGRATION_DOCUMENT_TYPES[bp.subject] ?? [];
+      context.push(`- الجزء الثاني (${bp.part2Points} نقاط): وضعية إدماج واحدة لمعالجة إشكالية مركبة في سياقها، متبوعة بتعليمة تحدد المهمة المطلوبة (مقالة أو فقرة في حدود 10–12 سطراً)، مع سندات من هذه الأنواع: ${bpDocs.length > 0 ? bpDocs.join("، ") : "نصوص، جداول، خرائط"}`);
+      const bpDocSpec = DOCUMENT_GENERATION_SPEC[bp.subject] ?? [];
+      if (bpDocSpec.length > 0) {
+        context.push(`  صيغ السندات المعتمدة ل${bp.subject} عند توليدها:`);
+        bpDocSpec.forEach(s => context.push(`    • ${s.type}: ${s.format}`));
+      }
     });
   }
 
   // Document generation rules (إلزامية عند توليد السندات داخل الوضعيات الإدماجية)
   const docSpec = DOCUMENT_GENERATION_SPEC[params.subject] ?? [];
-  const docCount =
-    params.gradeLevel === "4AM" || params.gradeLevel === "BEM"
-      ? "2–3 سندات"
-      : params.subject === "التربية المدنية"
-        ? "1–2 سندان"
-        : "سند واحد كحد أقصى";
+  // قاعدة العدد حسب المستوى: 4AM/BEM تحتاج وضعية إدماج أعقد (2–3 سندات)،
+  // أما بقية المستويات (1–3AM والتربية المدنية بكل مستوياتها) فوضعية إدماج أبسط (سند واحد كحد أقصى)
+  const gradeKey =
+    params.gradeLevel === "4AM" || params.gradeLevel === "BEM" || params.gradeLevel.includes("الرابعة متوسط")
+      ? "4AM"
+      : "1-3AM";
+  const docCount = gradeKey === "4AM" ? "2–3 سندات" : "سند واحد كحد أقصى";
   context.push("");
   context.push(`=== قواعد توليد السندات (دليل 2018 — إلزامية) ===`);
   context.push(`- عدد السندات في وضعية الإدماج ${docCount}، وهي وظيفية فقط: ترتبط ارتباطاً مباشراً بالتعليمة والمهارات المطلوبة، ولا تُدرج سندات زائدة أو تزيينية`);
@@ -733,6 +740,18 @@ export function buildAssessmentContext(params: {
   if (docSpec.length > 0) {
     context.push(`- صيغ السندات المعتمدة ل${params.subject}:`);
     docSpec.forEach(s => context.push(`    • ${s.type}: ${s.format}`));
+  }
+  // عند مادة مركبة (التاريخ والجغرافيا): إدراج صيغ السندات لكل مادة فرعية إن لم تُدرج ضمن المخططات
+  if (rule.examType === "combined" && docSpec.length === 0) {
+    const subSpecs = (rule.weights ?? [])
+      .map(w => w.subject)
+      .filter((s): s is string => !!s)
+      .map(s => DOCUMENT_GENERATION_SPEC[s])
+      .filter((sp): sp is DocumentGenerationSpec[] => Array.isArray(sp) && sp.length > 0);
+    if (subSpecs.length > 0) {
+      context.push(`- صيغ السندات المعتمدة لكل مادة فرعية في الاختبار:`);
+      subSpecs.forEach(sp => sp.forEach(s => context.push(`    • ${s.type} (${params.subject}): ${s.format}`)));
+    }
   }
   context.push(`- عند توليد جدول إحصائي: أرقام صحيحة متناسقة من الواقع الجغرافي الموثق، مع عنوان ورقم وأعمدة واضحة`);
   context.push(`- عند توليد وثيقة تاريخية أو نص قانوني: صياغة رسمية بأسلوب الوثيقة مع إشارة مصادرية موجزة، دون نسخ حرفي لمحتوى محمي`);
