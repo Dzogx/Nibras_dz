@@ -37,11 +37,13 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const { data: lessons } = trpc.lessons.list.useQuery();
-  const { data: classes } = trpc.classes.list.useQuery();
-  const { data: annualPlans } = trpc.annualPlans.list.useQuery();
-  const { data: resources } = trpc.aiResources.list.useQuery();
+  const { data: lessons, isLoading: lessonsLoading } = trpc.lessons.list.useQuery();
+  const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery();
+  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery();
+  const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: profile } = trpc.profile.get.useQuery();
+
+  const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
   const completedLessons = useMemo(() => lessons?.filter(l => l.isCompleted).length ?? 0, [lessons]);
   const pendingLessons = useMemo(() => lessons?.filter(l => !l.isCompleted).length ?? 0, [lessons]);
@@ -82,11 +84,15 @@ export default function Dashboard() {
               <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${card.color} mb-3`}>
                 <card.icon className="w-5 h-5" />
               </div>
-              <p className="text-2xl font-bold">
-                {card.label === "الأقسام" ? classes?.length ?? 0 :
-                 card.label === "الدروس" ? lessons?.length ?? 0 :
-                 card.label === "الخطط السنوية" ? annualPlans?.length ?? 0 :
-                 resources?.length ?? 0}
+              <p className="text-2xl font-bold min-h-[2rem]">
+                {isLoadingStats ? (
+                  <span className="inline-block w-12 h-3 bg-muted rounded-full animate-pulse" />
+                ) : (
+                  card.label === "الأقسام" ? classes?.length ?? 0 :
+                  card.label === "الدروس" ? lessons?.length ?? 0 :
+                  card.label === "الخطط السنوية" ? annualPlans?.length ?? 0 :
+                  resources?.length ?? 0
+                )}
               </p>
               <p className="text-sm text-muted-foreground mt-1">{card.label}</p>
             </CardContent>
@@ -164,7 +170,11 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Lessons */}
-      {lessons && lessons.length > 0 && (
+      {lessonsLoading ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground animate-pulse">جارٍ تحميل آخر الدروس…</CardContent>
+        </Card>
+      ) : lessons && lessons.length > 0 ? (
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-base">آخر الدروس</CardTitle>
@@ -197,9 +207,8 @@ export default function Dashboard() {
               ))}
             </div>
           </CardContent>
-        </Card>
-      )}
-
+                </Card>
+      ) : null}
       {/* Teacher OS Progress */}
       <Card className="border-blue-200 bg-blue-50/30">
         <CardHeader className="pb-3">
