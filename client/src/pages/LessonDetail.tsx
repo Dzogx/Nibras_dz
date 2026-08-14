@@ -6,9 +6,11 @@ import { Label } from "@/components/ui/label";
 import { ArrowRight, Save, CheckCircle2, Clock, Plus, FileText, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
+import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
+import { Eye } from "lucide-react";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 
 export default function LessonDetail({ id }: { id: string }) {
@@ -21,6 +23,20 @@ export default function LessonDetail({ id }: { id: string }) {
     { enabled: Boolean(lesson?.classId) }
   );
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const printMeta = useMemo(() => ({
+    title: "مذكرة بيداغوجية",
+    subtitle: lesson?.unitTitle || undefined,
+    teacherName: profile?.displayName || undefined,
+    school: cls?.name || profile?.school || undefined,
+    province: profile?.province || undefined,
+    subject: lesson?.subject || undefined,
+    levelSection: cls ? `${cls.gradeLevel}${cls.section ? ` — القسم ${cls.section}` : ""}` : (lesson?.gradeLevel || undefined),
+    duration: lesson?.duration || undefined,
+    date: lesson?.date ? new Date(lesson.date).toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" }) : undefined,
+    extra: cls?.academicYear ? `الموسم الدراسي ${cls.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined),
+  }), [lesson, cls, profile]);
 
   const [editForm, setEditForm] = useState({
     title: lesson?.title || "",
@@ -120,6 +136,10 @@ export default function LessonDetail({ id }: { id: string }) {
         {lesson.subject && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{lesson.subject}</span>}
         {lesson.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.gradeLevel}</span>}
         {lesson.unitTitle && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.unitTitle}</span>}
+        <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}>
+          <Eye className="w-4 h-4 ml-1" />
+          معاينة
+        </Button>
         <A4PrintButton
           title="مذكرة بيداغوجية"
           subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`}
@@ -127,19 +147,8 @@ export default function LessonDetail({ id }: { id: string }) {
       </div>
 
       {/* المعاينة الاحترافية: ترويسة رسمية عند الطباعة */}
-      <A4PrintContent
-        title="مذكرة بيداغوجية"
-        subtitle={lesson.unitTitle || undefined}
-        teacherName={profile?.displayName || undefined}
-        school={cls?.name || profile?.school || undefined}
-        province={profile?.province || undefined}
-        subject={lesson.subject || undefined}
-        levelSection={cls ? `${cls.gradeLevel}${cls.section ? ` — القسم ${cls.section}` : ""}` : (lesson.gradeLevel || undefined)}
-        duration={lesson.duration || undefined}
-        date={lesson.date ? new Date(lesson.date).toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" }) : undefined}
-        extra={cls?.academicYear ? `الموسم الدراسي ${cls.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined)}
-      >
-        <div className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
+      <A4PrintContent {...printMeta}>
+        <div id="lesson-print-body" className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
           {lesson.plan && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">خطة سير الحصة</h2>
@@ -160,6 +169,34 @@ export default function LessonDetail({ id }: { id: string }) {
           )}
         </div>
       </A4PrintContent>
+
+      {/* نافذة المعاينة قبل الطباعة */}
+      <PrintPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        meta={printMeta}
+      >
+        <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
+          {lesson.plan && (
+            <div className="mb-5">
+              <h2 className="text-base font-bold mb-2">خطة سير الحصة</h2>
+              <div className="whitespace-pre-wrap">{lesson.plan}</div>
+            </div>
+          )}
+          {lesson.objectives && (
+            <div className="mb-5">
+              <h2 className="text-base font-bold mb-2">الأهداف</h2>
+              <div className="whitespace-pre-wrap">{lesson.objectives}</div>
+            </div>
+          )}
+          {lesson.content && (
+            <div className="mb-5">
+              <h2 className="text-base font-bold mb-2">المحتوى</h2>
+              <div className="whitespace-pre-wrap">{lesson.content}</div>
+            </div>
+          )}
+        </div>
+      </PrintPreviewDialog>
 
       {/* Edit Form */}
       <Card className="border-primary/20 bg-primary/5">

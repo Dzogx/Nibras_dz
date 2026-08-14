@@ -171,6 +171,14 @@
 [dir="rtl"] .ml-2 { margin-left: 0; margin-right: 0.5rem; }
 
 /* A4 Print Styles */
+
+/* صفحة A4 المحاكاة داخل نافذة المعاينة (210mm × 297mm بمقياس مصغر للعرض) */
+.print-preview-page {
+  transform: scale(0.68);
+  transform-origin: top center;
+  margin-bottom: calc(-32% * 297mm / 100);
+}
+
 @media print {
   @page {
     size: A4;

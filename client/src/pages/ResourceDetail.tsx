@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { ArrowRight, Save, Pencil, Copy, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
+import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
+import { Eye } from "lucide-react";
 
 const typeLabels: Record<string, string> = {
   lessonPlan: "خطة درس",
@@ -40,10 +42,12 @@ export default function ResourceDetail({ id }: { id: string }) {
   );
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const [isEditing, setIsEditing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const subject = meta?.subject || linkedLesson?.subject || profile?.subject;
   const gradeLevel = meta?.gradeLevel || linkedLesson?.gradeLevel;
   const levelSection = linkedClass ? `${linkedClass.gradeLevel}${linkedClass.section ? ` — القسم ${linkedClass.section}` : ""}` : gradeLevel;
+
   const docTitle =
     resource?.type === "quiz" || resource?.type === "exam"
       ? `اختبار في ${subject || "الاجتماعيات"}`
@@ -52,6 +56,18 @@ export default function ResourceDetail({ id }: { id: string }) {
         : resource?.type === "rubric"
           ? "شبكة التقويم"
           : (resource?.type ? typeLabels[resource?.type] : undefined) || "وثيقة تربوية";
+
+  const resourcePrintMeta = useMemo(() => ({
+    title: docTitle,
+    subtitle: resource?.title || undefined,
+    teacherName: profile?.displayName || undefined,
+    school: linkedClass?.name || profile?.school || undefined,
+    province: profile?.province || undefined,
+    subject,
+    levelSection,
+    duration: meta?.duration || linkedLesson?.duration || undefined,
+    extra: linkedClass?.academicYear ? `الموسم الدراسي ${linkedClass.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined),
+  }), [docTitle, resource, profile, linkedClass, subject, levelSection, meta, linkedLesson]);
 
   const [editForm, setEditForm] = useState({
     title: resource?.title || "",
@@ -109,6 +125,10 @@ export default function ResourceDetail({ id }: { id: string }) {
         <Button variant="outline" size="sm" onClick={copyContent}>
           <Copy className="w-4 h-4 ml-1" />نسخ
         </Button>
+        <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}>
+          <Eye className="w-4 h-4 ml-1" />
+          معاينة
+        </Button>
         <A4PrintButton title={docTitle} subtitle={levelSection || undefined} />
       </div>
 
@@ -128,6 +148,17 @@ export default function ResourceDetail({ id }: { id: string }) {
           <Streamdown>{resource?.content || ""}</Streamdown>
         </div>
       </A4PrintContent>
+
+      {/* نافذة المعاينة قبل الطباعة */}
+      <PrintPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        meta={resourcePrintMeta}
+      >
+        <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
+          <Streamdown>{resource?.content || ""}</Streamdown>
+        </div>
+      </PrintPreviewDialog>
 
       {isEditing ? (
         <Card>

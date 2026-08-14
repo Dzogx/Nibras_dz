@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from '@/components/A4Print';
+import { PrintPreviewDialog } from '@/components/PrintPreviewDialog';
+import { Eye } from "lucide-react";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -44,6 +46,7 @@ export default function Assessment() {
   const [importedLessons, setImportedLessons] = useState<LessonSummary[]>([]);
   const [selectedLessonIds, setSelectedLessonIds] = useState<number[]>([]);
   const [selectedCompetencies, setSelectedCompetencies] = useState<string[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [form, setForm] = useState({
     classId: undefined as number | undefined,
@@ -75,6 +78,19 @@ export default function Assessment() {
     { gradeLevel: form.gradeLevel, subject: form.subject },
     { enabled: form.useNationalRules }
   );
+
+  const assessmentPrintMeta = useMemo(() => ({
+    title: `اختبار في ${form.subject}`,
+    subtitle: form.title || undefined,
+    teacherName: profile?.displayName || undefined,
+    school: selectedClass?.name || profile?.school || undefined,
+    province: profile?.province || undefined,
+    subject: form.subject,
+    levelSection: selectedClass ? `${selectedClass.gradeLevel}${selectedClass.section ? ` — القسم ${selectedClass.section}` : ""}` : form.gradeLevel,
+    duration: rulesInfo?.duration || form.duration || undefined,
+    date: selectedClass?.academicYear ? `الموسم الدراسي ${selectedClass.academicYear}` : undefined,
+    extra: rulesInfo ? `المجموع: ${rulesInfo.totalPoints} نقطة` : undefined,
+  }), [form, selectedClass, profile, rulesInfo]);
 
   // Auto-import completed lessons and competencies when Teacher OS context loads
   useEffect(() => {
@@ -503,25 +519,29 @@ export default function Assessment() {
                   </div>
                 )}
                 <div className="print-container">
+                  <Button variant="outline" size="sm" className="print:hidden ml-2" onClick={() => setPreviewOpen(true)}>
+                    <Eye className="w-4 h-4 ml-1" />
+                    معاينة
+                  </Button>
                   <A4PrintButton title="اختبار" subtitle="" className="ml-2" />
                   {/* الترويسة الرسمية الجزائرية تظهر عند الطباعة فقط */}
-                  <A4PrintContent
-                    title={`اختبار في ${form.subject}`}
-                    subtitle={form.title || undefined}
-                    teacherName={profile?.displayName || undefined}
-                    school={selectedClass?.name || profile?.school || undefined}
-                    province={profile?.province || undefined}
-                    subject={form.subject}
-                    levelSection={selectedClass ? `${selectedClass.gradeLevel}${selectedClass.section ? ` — القسم ${selectedClass.section}` : ""}` : form.gradeLevel}
-                    duration={rulesInfo?.duration || form.duration || undefined}
-                    date={selectedClass?.academicYear ? `الموسم الدراسي ${selectedClass.academicYear}` : undefined}
-                    extra={rulesInfo ? `المجموع: ${rulesInfo.totalPoints} نقطة` : undefined}
-                  >
+                  <A4PrintContent {...assessmentPrintMeta}>
                     <div className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
                       <Streamdown>{generated}</Streamdown>
                     </div>
                   </A4PrintContent>
                 </div>
+
+                {/* نافذة المعاينة قبل الطباعة */}
+                <PrintPreviewDialog
+                  open={previewOpen}
+                  onOpenChange={setPreviewOpen}
+                  meta={assessmentPrintMeta}
+                >
+                  <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
+                    <Streamdown>{generated}</Streamdown>
+                  </div>
+                </PrintPreviewDialog>
               </div>
             ) : (
               <div className="text-center py-12 text-muted-foreground">

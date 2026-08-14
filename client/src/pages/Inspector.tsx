@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,9 +8,17 @@ import { Eye, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
+import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 
 function InspectorResult({ result, rawResult, printMeta }: { result: any; rawResult: string; printMeta?: { subject?: string; gradeLevel?: string } }) {
   const criteria = result?.criteria || {};
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  const inspectorPrintMeta = useMemo(() => ({
+    title: "تقرير التفتيش التربوي",
+    subject: printMeta?.subject || undefined,
+    levelSection: printMeta?.gradeLevel || undefined,
+  }), [printMeta]);
   const criteriaLabels: Record<string, string> = {
     curriculumAlignment: "التوافق مع المنهج",
     learningObjectives: "أهداف التعلم",
@@ -29,14 +37,16 @@ function InspectorResult({ result, rawResult, printMeta }: { result: any; rawRes
     <div className="space-y-4 print-container">
       <div className="flex justify-between items-center print:hidden">
         <span></span>
-        <A4PrintButton title="تقرير التفتيش" subtitle="" />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+            <Eye className="w-4 h-4 ml-1" />
+            معاينة
+          </Button>
+          <A4PrintButton title="تقرير التفتيش" subtitle="" />
+        </div>
       </div>
       {/* الترويسة الرسمية الجزائرية تظهر عند الطباعة فقط */}
-      <A4PrintContent
-        title="تقرير التفتيش التربوي"
-        subject={printMeta?.subject || undefined}
-        levelSection={printMeta?.gradeLevel || undefined}
-      >
+      <A4PrintContent {...inspectorPrintMeta}>
       {/* Overall Score */}
       <div className="text-center py-4">
         <div className={`text-4xl font-bold ${getScoreColor(result?.overallScore || 0)}`}>
@@ -95,6 +105,63 @@ function InspectorResult({ result, rawResult, printMeta }: { result: any; rawRes
         </div>
       )}
       </A4PrintContent>
+
+      {/* نافذة المعاينة قبل الطباعة */}
+      <PrintPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        meta={inspectorPrintMeta}
+      >
+        {/* التقييم العام */}
+        <div className="text-center py-4">
+          <div className={`text-4xl font-bold ${getScoreColor(result?.overallScore || 0)}`}>
+            {result?.overallScore || 0}/100
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">التقييم العام</p>
+        </div>
+        {/* المعايير */}
+        <div className="space-y-3">
+          {Object.entries(criteria).map(([key, value]: [string, any]) => (
+            <div key={key} className="p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-medium text-sm">{criteriaLabels[key] || key}</span>
+                <span className={`text-sm font-bold ${getScoreColor(value?.score || 0)}`}>
+                  {value?.score || 0}/20
+                </span>
+              </div>
+              {value?.findings && (
+                <p className="text-xs text-muted-foreground mt-1">{value.findings}</p>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* الأخطاء الجوهرية */}
+        {result?.criticalErrors?.length > 0 && (
+          <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+            <p className="font-medium text-sm text-red-700 mb-2">أخطاء جوهرية:</p>
+            <ul className="space-y-1">
+              {result.criticalErrors.map((err: string, i: number) => (
+                <li key={i} className="text-sm text-red-600">• {err}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {/* التوصيات */}
+        {result?.recommendations?.length > 0 && (
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+            <p className="font-medium text-sm text-blue-700 mb-2">توصيات:</p>
+            <ul className="space-y-1">
+              {result.recommendations.map((rec: string, i: number) => (
+                <li key={i} className="text-sm text-blue-600">• {rec}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {/* النص الكامل */}
+        <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
+          <Streamdown>{rawResult}</Streamdown>
+        </div>
+      </PrintPreviewDialog>
     </div>
   );
 }
