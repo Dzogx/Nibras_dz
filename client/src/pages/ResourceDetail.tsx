@@ -67,6 +67,8 @@ export default function ResourceDetail({ id }: { id: string }) {
     levelSection,
     duration: meta?.duration || linkedLesson?.duration || undefined,
     extra: linkedClass?.academicYear ? `الموسم الدراسي ${linkedClass.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined),
+    serialNumber: resource?.serialNumber || undefined,
+    examEndsAt: (resource as any)?.examEndsAt ?? null,
   }), [docTitle, resource, profile, linkedClass, subject, levelSection, meta, linkedLesson]);
 
   const [editForm, setEditForm] = useState({

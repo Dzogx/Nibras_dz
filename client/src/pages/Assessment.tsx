@@ -48,6 +48,12 @@ export default function Assessment() {
   const [selectedCompetencies, setSelectedCompetencies] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // المورد المولّد في استوديو التقييم (لتمرير الرقم التسلسلي إلى الترويسة)
+  const { data: currentResource } = trpc.aiResources.getById.useQuery(
+    { id: resourceId ?? 0 },
+    { enabled: Boolean(resourceId) }
+  );
+
   const [form, setForm] = useState({
     classId: undefined as number | undefined,
     title: "",
@@ -60,6 +66,7 @@ export default function Assessment() {
     autoImport: true,
     situationIds: [] as number[],
     useNationalRules: true,
+    examEndsAt: undefined as number | undefined,
   });
 
   const utils = trpc.useUtils();
@@ -90,7 +97,9 @@ export default function Assessment() {
     duration: rulesInfo?.duration || form.duration || undefined,
     date: selectedClass?.academicYear ? `الموسم الدراسي ${selectedClass.academicYear}` : undefined,
     extra: rulesInfo ? `المجموع: ${rulesInfo.totalPoints} نقطة` : undefined,
-  }), [form, selectedClass, profile, rulesInfo]);
+    serialNumber: currentResource?.serialNumber || undefined,
+    examEndsAt: form.examEndsAt || null,
+  }), [form, selectedClass, profile, rulesInfo, currentResource?.serialNumber]);
 
   // Auto-import completed lessons and competencies when Teacher OS context loads
   useEffect(() => {
@@ -300,6 +309,10 @@ export default function Assessment() {
               </div>
               <div><Label>المدة (تلقائي من القواعد)</Label>
                 <Input value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} placeholder="ساعة ونصف" />
+              </div>
+              <div><Label>وقت نهاية الاختبار (اختياري — لرمز QR الإجابات)</Label>
+                <Input type="datetime-local" value={form.examEndsAt ? new Date(form.examEndsAt - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""} onChange={e => setForm({ ...form, examEndsAt: e.target.value ? new Date(e.target.value).getTime() : undefined })} />
+                <p className="text-xs text-muted-foreground mt-1">رمز QR الإجابات لا يكشف المحتوى إلا بعد هذا الموعد</p>
               </div>
             </div>
 

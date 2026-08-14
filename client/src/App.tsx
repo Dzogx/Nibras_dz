@@ -19,6 +19,8 @@ import Profile from "./pages/Profile";
 import LessonDetail from "./pages/LessonDetail";
 import AnnualPlanDetail from "./pages/AnnualPlanDetail";
 import ResourceDetail from "./pages/ResourceDetail";
+import Verify from "./pages/Verify";
+import AnswerPage from "./pages/AnswerPage";
 
 function Router() {
   return (
@@ -65,6 +67,9 @@ function Router() {
       <Route path="/profile">
         {() => <DashboardLayout><Profile /></DashboardLayout>}
       </Route>
+      {/* صفحات عامة (بدون مصادقة) للتحقق من الوثائق عبر QR */}
+      <Route path="/verify" component={Verify} />
+      <Route path="/verify/answer/:serial" component={AnswerPage} />
       <Route path={"/"}>
         {() => { window.location.href = "/dashboard"; return null; }}
       </Route>

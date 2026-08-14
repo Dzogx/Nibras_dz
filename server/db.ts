@@ -332,11 +332,28 @@ export async function getAIResourceById(id: number) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+const SERIAL_PREFIX = "NIBRAS";
+
+/**
+ * يولّد رقماً تسلسلياً فريداً بصيغة NIBRAS-YYYY-XXXXX.
+ * السنة = سنة الإنشاء الفعلية، والأرقام الخمسة = insertId مُصفَّر إلى 5 خانات
+ * (insertId عالمي متسلسل داخل TiDB لذلك لا يمكن أن يتكرر).
+ */
+export function generateSerialNumber(insertId: number, year?: number): string {
+  const y = year ?? new Date().getFullYear();
+  return `${SERIAL_PREFIX}-${y}-${String(insertId).padStart(5, "0")}`;
+}
+
 export async function createAIResource(data: InsertAIResource) {
   const db = await getDb();
   if (!db) return undefined;
-  const [result] = await db.insert(aiResources).values(data);
-  return { id: result.insertId };
+  // إزالة أي قيمة يدوية للرقم التسلسلي؛ يُولَّد تلقائياً لضمان التفرد
+  const { serialNumber: _unused, ...rest } = data as InsertAIResource & { serialNumber?: string | null };
+  const [result] = await db.insert(aiResources).values(rest as any);
+  const insertId = result.insertId;
+  const serialNumber = generateSerialNumber(insertId);
+  await db.update(aiResources).set({ serialNumber } as any).where(eq(aiResources.id, insertId));
+  return { id: insertId, serialNumber };
 }
 
 export async function updateAIResource(id: number, data: Partial<InsertAIResource>) {
@@ -367,7 +384,10 @@ export async function duplicateAIResource(id: number, userId: number) {
     tags: resource.tags,
     sourceDocumentIds: resource.sourceDocumentIds,
   });
-  return { id: result.insertId };
+  const insertId = result.insertId;
+  const serialNumber = generateSerialNumber(insertId);
+  await db.update(aiResources).set({ serialNumber } as any).where(eq(aiResources.id, insertId));
+  return { id: insertId, serialNumber };
 }
 
 // ─── Inspector Reviews ────────────────────────────────────────
@@ -507,4 +527,11 @@ export async function deleteAssessmentResult(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(assessmentResults).where(eq(assessmentResults.id, id));
+}
+
+export async function getAIResourceBySerial(serialNumber: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(aiResources).where(eq(aiResources.serialNumber, serialNumber)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
 }

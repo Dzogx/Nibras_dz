@@ -25,6 +25,8 @@ vi.mock("./db", () => ({
   toggleLessonCompleted: vi.fn(),
   getAIResources: vi.fn(),
   getAIResourceById: vi.fn(),
+  getAIResourceBySerial: vi.fn(),
+  generateSerialNumber: vi.fn(),
   createAIResource: vi.fn(),
   duplicateAIResource: vi.fn(),
   getInspectorReviews: vi.fn(),
@@ -858,5 +860,86 @@ describe("profile auto-create on first sign-in", () => {
     expect(profile.userId).toBe(1);
     expect(profile.displayName).toBe("Test Teacher");
     expect(profile.subject).toBeTruthy();
+  });
+});
+
+// ─── QR & Serial Tests (هوية بصرية وتحقق عام) ────────────────
+describe("aiResources.getBySerial / getAnswer", () => {
+  beforeEach(resetMocks);
+
+  const baseResource = {
+    id: 10,
+    serialNumber: "NIBRAS-2026-00010",
+    title: "امتحان فصلي — التاريخ والجغرافيا",
+    type: "exam",
+    content: "النموذج الإجاباتي السري",
+    examEndsAt: null,
+    createdAt: new Date("2026-08-01T10:00:00Z"),
+  };
+
+  it("getBySerial returns found=true with metadata", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue(baseResource);
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getBySerial({ serialNumber: "NIBRAS-2026-00010" });
+    expect(result.found).toBe(true);
+    expect(result.title).toBe(baseResource.title);
+  });
+
+  it("getBySerial returns found=false for unknown serial", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getBySerial({ serialNumber: "NIBRAS-2026-99999" });
+    expect(result.found).toBe(false);
+  });
+
+  it("getBySerial reports answerVisible when exam ends are past", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue({ ...baseResource, examEndsAt: Date.now() - 3600_000 });
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getBySerial({ serialNumber: baseResource.serialNumber });
+    expect(result.answerVisible).toBe(true);
+    expect(result.answerRevealAt).toBeGreaterThan(0);
+  });
+
+  it("getAnswer returns locked before exam ends", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue({ ...baseResource, examEndsAt: Date.now() + 3600_000 });
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getAnswer({ serialNumber: baseResource.serialNumber });
+    expect(result.status).toBe("locked");
+  });
+
+  it("getAnswer returns revealed with content after exam ends", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue({ ...baseResource, examEndsAt: Date.now() - 3600_000 });
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getAnswer({ serialNumber: baseResource.serialNumber });
+    expect(result.status).toBe("revealed");
+    expect((result as any).content).toBe(baseResource.content);
+  });
+
+  it("getAnswer returns locked when no exam end time is set", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue({ ...baseResource, examEndsAt: null });
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getAnswer({ serialNumber: baseResource.serialNumber });
+    expect(result.status).toBe("locked");
+    expect(result.revealAt).toBeNull();
+  });
+
+  it("getAnswer returns not_found for unknown serial", async () => {
+    (db.getAIResourceBySerial as any).mockResolvedValue(undefined);
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.aiResources.getAnswer({ serialNumber: "NIBRAS-2026-99999" });
+    expect(result.status).toBe("not_found");
+  });
+});
+
+describe("generateSerialNumber", () => {
+  it("builds NIBRAS-YYYY-XXXXX format", async () => {
+    const original = db.generateSerialNumber;
+    (db.generateSerialNumber as any) = await vi.importActual("./db").then(m => (m as any).generateSerialNumber);
+    try {
+      expect((db.generateSerialNumber as any)(7, 2026)).toBe("NIBRAS-2026-00007");
+      expect((db.generateSerialNumber as any)(123456, 2027)).toBe("NIBRAS-2027-123456");
+    } finally {
+      db.generateSerialNumber = original;
+    }
   });
 });

@@ -14,7 +14,8 @@ import {
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan,
   getLessons, getLessonById, createLesson, updateLesson, deleteLesson, toggleLessonCompleted,
   getTeachingNotes, createTeachingNote, updateTeachingNote, deleteTeachingNote,
-  getAIResources, getAIResourceById, createAIResource, updateAIResource, deleteAIResource, duplicateAIResource,
+  getAIResources, getAIResourceById,
+  getAIResourceBySerial, createAIResource, updateAIResource, deleteAIResource, duplicateAIResource,
   getInspectorReviews, createInspectorReview, getInspectorReviewById,
   getAnnualPlanSections, getAnnualPlanSectionById, createAnnualPlanSection, updateAnnualPlanSection, deleteAnnualPlanSection,
   getLearningSituations, getLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
@@ -50,7 +51,16 @@ function getLLMTextContent(response: unknown): string | undefined {
   if (!message || typeof message !== "object") return undefined;
 
   const content = (message as { content?: unknown }).content;
-  return typeof content === "string" && content.trim().length > 0 ? content : undefined;
+  if (typeof content === "string" && content.trim().length > 0) return content;
+  if (Array.isArray(content)) {
+    const textParts = content
+      .filter(part => part && typeof part === "object" && (part as { type?: string }).type === "text")
+      .map(part => (part as { text?: string }).text)
+      .filter(t => typeof t === "string")
+      .join("");
+    if (textParts.trim().length > 0) return textParts;
+  }
+  return undefined;
 }
 
 export const appRouter = router({
@@ -389,6 +399,33 @@ export const appRouter = router({
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await deleteAIResource(input.id);
       return { success: true };
+    }),
+
+    // ─── التحقق العام من صحة الوثيقة (عبر رمز QR) ─────────────
+    getBySerial: publicProcedure.input(z.object({ serialNumber: z.string() })).query(async ({ input }) => {
+      const resource = await getAIResourceBySerial(input.serialNumber.trim());
+      if (!resource) return { found: false } as const;
+      const now = Date.now();
+      const answerVisible = resource.examEndsAt !== null && resource.examEndsAt !== undefined && now >= (resource.examEndsAt as number);
+      return {
+        found: true,
+        title: resource.title,
+        type: resource.type,
+        createdAt: resource.createdAt.getTime(),
+        answerRevealAt: resource.examEndsAt ?? null,
+        answerVisible,
+      };
+    }),
+
+    // ─── كشف نموذج الإجابات (يُفعَّل فقط بعد نهاية الاختبار) ──
+    getAnswer: publicProcedure.input(z.object({ serialNumber: z.string() })).query(async ({ input }) => {
+      const resource = await getAIResourceBySerial(input.serialNumber.trim());
+      if (!resource) return { status: "not_found" as const };
+      const revealAt = resource.examEndsAt;
+      if (revealAt === null || revealAt === undefined || Date.now() < revealAt) {
+        return { status: "locked" as const, revealAt };
+      }
+      return { status: "revealed" as const, content: resource.content, title: resource.title, revealAt };
     }),
     duplicate: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
       return await duplicateAIResource(input.id, ctx.user.id);
@@ -781,6 +818,7 @@ ${diffBlock}
       const response = await invokeLLM({
         messages: [
           { role: "system", content: prompts[input.contentType] },
+          { role: "user", content: "أنشئ المحتوى المطلوب بالتفصيل." },
         ],
       });
 
@@ -848,6 +886,8 @@ ${diffBlock}
       autoImport: z.boolean().optional(),
       useNationalRules: z.boolean().optional().default(true),
       situationIds: z.array(z.number()).optional(),
+      // وقت نهاية الاختبار (بالمللي ثانية) — يُستخدم لرمز QR نموذج الإجابات
+      examEndsAt: z.number().optional(),
     })).mutation(async ({ ctx, input }) => {
       // ─── Get Teacher OS data (completed lessons) ─────────────
       let completedLessons: { title: string; unitTitle?: string; unitNumber?: number; lessonNumber?: number; objectives?: string }[] = [];
@@ -973,6 +1013,7 @@ ${rulesContext}
       const response = await invokeLLM({
         messages: [
           { role: "system", content: prompts[input.assessmentType] },
+          { role: "user", content: "أنشئ التقويم المطلوب بالتفصيل." },
         ],
       });
 
@@ -1032,7 +1073,12 @@ ${rulesContext}
         content,
         metadata,
         tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel, ...(input.useNationalRules ? ["تقويم وطني"] : [])],
-      });
+      } as any);
+
+      // حفظ وقت نهاية الاختبار إذا حُدِّد (لرمز QR نموذج الإجابات المشفّر بالوقت)
+      if (result?.id && input.examEndsAt) {
+        await updateAIResource(result.id, { examEndsAt: input.examEndsAt } as any);
+      }
 
       return { resourceId: result?.id, content, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد", curriculumCitations, curriculumDocsCount: curriculumDocs.length };
     }),

@@ -211,6 +211,9 @@ export const aiResources = mysqlTable("aiResources", {
   metadata: json("metadata"),
   tags: json("tags"),
   sourceDocumentIds: json("sourceDocumentIds"),
+  serialNumber: varchar("serialNumber", { length: 32 }),
+  answerRevealAt: bigint("answerRevealAt", { mode: "number" }),
+  examEndsAt: bigint("examEndsAt", { mode: "number" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

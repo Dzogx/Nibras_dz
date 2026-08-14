@@ -25,6 +25,13 @@ export default function LessonDetail({ id }: { id: string }) {
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // مورد المكتبة المولّد للمذكرة (لتزويد الرقم التسلسلي للترويسة البصرية)
+  const { data: libraryItems } = trpc.aiResources.list.useQuery(undefined);
+  const libraryLessonResource = useMemo(() => {
+    if (!Array.isArray(libraryItems)) return undefined;
+    return libraryItems.find((item) => item.lessonId === lessonId) as { serialNumber?: string } | undefined;
+  }, [libraryItems, lessonId]);
+
   const printMeta = useMemo(() => ({
     title: "مذكرة بيداغوجية",
     subtitle: lesson?.unitTitle || undefined,
@@ -36,9 +43,11 @@ export default function LessonDetail({ id }: { id: string }) {
     duration: lesson?.duration || undefined,
     date: lesson?.date ? new Date(lesson.date).toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" }) : undefined,
     extra: cls?.academicYear ? `الموسم الدراسي ${cls.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined),
-  }), [lesson, cls, profile]);
+    serialNumber: libraryLessonResource?.serialNumber || undefined,
+  }), [lesson, cls, profile, libraryLessonResource?.serialNumber]);
 
   const [editForm, setEditForm] = useState({
+    /** placeholder */
     title: lesson?.title || "",
     subject: lesson?.subject || "",
     gradeLevel: lesson?.gradeLevel || "",

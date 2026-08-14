@@ -13,6 +13,14 @@
 import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePrintQrCodes } from "@/hooks/usePrintQrCodes";
+
+const NIBRAS_BASE_URL = (() => {
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
+})();
+
+export const LOGO_URL = "/manus-storage/nibras-logo_b2fa6fda.svg";
 
 export interface PrintMeta {
   /** عنوان الوثيقة، مثل: "مذكرة بيداغوجية" أو "اختبار فصلي في التاريخ والجغرافيا" */
@@ -35,6 +43,10 @@ export interface PrintMeta {
   date?: string;
   /** معلومات إضافية تظهر في سطر مستقل (مثل: الموسم الدراسي أو رقم الفرض) */
   extra?: string;
+  /** الرقم التسلسلي الرسمي للوثيقة (يُطبَع مع رمز QR للتحقق) */
+  serialNumber?: string;
+  /** وقت نهاية الاختبار (millis) — إن وُجد يُطبع تحته رمز QR لنموذج الإجابات المؤقت */
+  examEndsAt?: number | null;
   /** محتوى الوثيقة القابل للطباعة */
   children?: React.ReactNode;
 }
@@ -71,8 +83,11 @@ export function A4PrintContent({
   duration,
   date,
   extra,
+  serialNumber,
+  examEndsAt,
   children,
 }: PrintMeta) {
+  const qrCodeUrls = usePrintQrCodes(serialNumber, examEndsAt);
   return (
     <div className="print-container" dir="rtl">
       {/* ===== الترويسة الرسمية الجزائرية (تظهر فقط عند الطباعة) ===== */}
@@ -81,6 +96,9 @@ export function A4PrintContent({
           <div className="print-header-right">
             <div className="print-republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
             <div className="print-ministry">وزارة التربية الوطنية</div>
+          </div>
+          <div className="print-header-logo">
+            <img src={LOGO_URL} alt="نبراس" className="print-logo-img" />
           </div>
           <div className="print-header-left">
             <div className="print-office">مديرية التربية لولاية: {province || "..........................."}</div>
@@ -134,9 +152,29 @@ export function A4PrintContent({
       </div>
       {/* ===== محتوى الوثيقة ===== */}
       <div className="print-body">{children}</div>
-      {/* ===== تذييل ===== */}
-      <div className="print-footer">
-        <span>نبراس — مساعد التدريس الذكي لأستاذ الاجتماعيات</span>
+      {/* ===== تذييل: الترويسة البصرية، الرمز التسلسلي، رموز QR للتحقق والإجابات ===== */}
+      <div className="print-footer print-footer-identity">
+        <div className="print-footer-brand">
+          <img src={LOGO_URL} alt="نبراس" className="print-footer-logo" />
+          <span>نبراس — مساعد التدريس الذكي لأستاذ الاجتماعيات</span>
+        </div>
+        {serialNumber && (
+          <div className="print-qr-block">
+            {qrCodeUrls.verification && (
+              <div className="print-qr-item">
+                <img src={qrCodeUrls.verification} alt="QR التحقق" className="print-qr-img" />
+                <span className="print-qr-caption">تحقق من الوثيقة</span>
+              </div>
+            )}
+            {qrCodeUrls.answer && (
+              <div className="print-qr-item">
+                <img src={qrCodeUrls.answer} alt="QR نموذج الإجابات" className="print-qr-img" />
+                <span className="print-qr-caption">نموذج الإجابات (بعد نهاية الاختبار)</span>
+              </div>
+            )}
+            <span className="print-serial" dir="ltr">{serialNumber}</span>
+          </div>
+        )}
         <span className="print-page-num" />
       </div>
     </div>

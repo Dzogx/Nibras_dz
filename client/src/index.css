@@ -319,4 +319,57 @@
   .print-page-num::after {
     content: "صفحة " counter(page);
   }
+
+  /* ===== الترويسة البصرية لنبراس (شعار أعلى الوسط) ===== */
+  .print-header-logo {
+    display: flex;
+    align-items: center;
+  }
+  .print-logo-img {
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+  }
+
+  /* ===== التذييل بالهوية البصرية ورموز QR ===== */
+  .print-footer-identity {
+    align-items: center;
+  }
+  .print-footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .print-footer-logo {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+  }
+  .print-qr-block {
+    display: flex;
+    align-items: flex-end;
+    gap: 14px;
+  }
+  .print-qr-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .print-qr-img {
+    width: 56px;
+    height: 56px;
+  }
+  .print-qr-caption {
+    font-size: 7pt;
+    color: #64748b;
+  }
+  .print-serial {
+    font-family: "Courier New", monospace;
+    font-size: 8pt;
+    color: #334155;
+    border: 1px dashed #94a3b8;
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
 }
