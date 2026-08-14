@@ -88,3 +88,15 @@
 3. Inspector.tsx: serialNumber في inspectorPrintMeta.
 4. اختبار generateSerialNumber في tests.
 5. pnpm test + checkpoint + gh push إلى Dzogx/Nibras_dz main.
+
+## الحالة النهائية (21:05 UTC 14 أغسطس)
+- كل بنود QR مكتملة ومعلّمة [x] في todo.md
+- checkpoint جديد: 92d4a36b (نظام الهوية البصرية ورموز QR)
+- اختبارات 88/88 ناجحة، TypeScript نظيف
+- /assessment يظهر حقل «وقت نهاية الاختبار (اختياري) — لرمز QR الإجابات»
+- الموارد القديمة (ids 1-3) حصلت serialNumber عبر SQL: NIBRAS-2026-00001..00003
+- /verify?serial=NIBRAS-2026-00003 يعرض «وثيقة صادرة عن منصة نبراس» (نوع: تقويم تحصيلي، لا ينطبق على نموذج الإجابات لأن examEndsAt=null)
+- /verify/answer/NIBRAS-2026-00003 يعرض «نموذج الإجابات غير مفعّل» (لأن لا موعد نهاية)
+- المسارات الصحيحة: /assessment، /content-library، /lessons، /verify
+- المطلوب التالي من الأستاذ: إرسال عينات من الوثائق المطبوعة (سيتم إنتاج عينات PDF للمذكرة والتقويم والمكتبة والتفتيش)
+- مزامنة GitHub مع Dzogx/Nibras_dz ما زالت معلقة بعد checkpoint 92d4a36b
