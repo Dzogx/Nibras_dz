@@ -1104,6 +1104,8 @@ ${rulesContext}
       let nextSituation = null;
       let completedSituations = 0;
       let totalSituations = 0;
+      let sectionProgressDetailed: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
+      let annualProgressPercent = 0;
       try {
         if (input.classId) {
           const plans = await getAnnualPlans(ctx.user.id);
@@ -1111,18 +1113,60 @@ ${rulesContext}
           if (classPlan) {
             const sections = await getAnnualPlanSections(classPlan.id);
             totalSituations = sections.length;
+            const sectionProgressList: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
             for (const section of sections) {
               const situations = await getLearningSituations(section.id);
-              completedSituations += situations.filter(s => s.isCompleted).length;
+              const completed = situations.filter(s => s.isCompleted);
+              const completedCount = completed.length;
+              completedSituations += completedCount;
+              const lastCompleted = completed.sort((a, b) =>
+                ((b.completedDate?.getTime() ?? 0) - (a.completedDate?.getTime() ?? 0)))[0];
+              sectionProgressList.push({
+                id: section.id,
+                sectionNumber: section.sectionNumber,
+                title: section.title,
+                total: situations.length,
+                completed: completedCount,
+                percent: situations.length > 0 ? Math.round((completedCount / situations.length) * 100) : 0,
+                lastCompletedDate: lastCompleted?.completedDate?.toISOString(),
+              });
               if (!currentSection) {
                 currentSection = { id: section.id, number: section.sectionNumber, title: section.title, isCompleted: section.isCompleted };
                 const firstIncomplete = situations.find(s => !s.isCompleted);
                 if (firstIncomplete) nextSituation = { id: firstIncomplete.id, title: firstIncomplete.title, sectionNumber: section.sectionNumber };
               }
             }
+            sectionProgressDetailed = sectionProgressList;
+            annualProgressPercent = totalSituations > 0 ? Math.round((completedSituations / totalSituations) * 100) : 0;
           }
         }
       } catch (e) { /* sections not yet configured */ }
+
+      // دفتر المتابعة: مؤشّر الرزنامة — مقارنة التقدم الفعلي بالزمن المنقضي منذ بداية التدريس
+      let schedulePace: { status: 'ahead' | 'on_track' | 'behind'; elapsedWeeks: number; expectedPercent: number; actualPercent: number; note: string } | null = null;
+      try {
+        if (input.classId && totalSituations > 0) {
+          const plans = await getAnnualPlans(ctx.user.id);
+          const classPlan = plans.find(p => p.classId === input.classId);
+          if (classPlan) {
+            // بداية التدريس حسب التدرج السنوي المعتمد (5 أكتوبر 2026) — تُحدَّث عند صدور الرزنامة الرسمية
+            const termStart = new Date('2026-10-05T00:00:00Z');
+            const now = new Date();
+            const elapsedMs = Math.max(0, now.getTime() - termStart.getTime());
+            const elapsedWeeks = Math.floor(elapsedMs / (7 * 24 * 3600 * 1000));
+            // تقدير متحفظ: متوسط أسبوعين لكل وضعية تعليمية (شامل الإدماج الكلي والتقويم)
+            const expectedSituations = Math.min(totalSituations, Math.max(0, elapsedWeeks / 2));
+            const expectedPercent = Math.round((expectedSituations / totalSituations) * 100);
+            const status = annualProgressPercent >= expectedPercent + 15 ? 'ahead'
+              : annualProgressPercent >= expectedPercent - 15 ? 'on_track'
+              : 'behind';
+            const note = status === 'ahead' ? 'التقدم أسرع من الرزنامة التقديرية — يمكن تخصيص وقت للمراجعة أو الإثراء.'
+              : status === 'on_track' ? 'التقدم منتظم مقارنة بالرزنامة التقديرية.'
+              : 'التقدم أبطأ من الرزنامة التقديرية — راجع وتيرة الحصص أو مدد الوضعيات.';
+            schedulePace = { status, elapsedWeeks, expectedPercent, actualPercent: annualProgressPercent, note };
+          }
+        }
+      } catch (e) { /* schedule estimate not available yet */ }
 
       // Collect completed situations with details
       const completedSituationsList: any[] = [];
@@ -1158,6 +1202,9 @@ ${rulesContext}
         currentSection,
         nextSituation,
         sectionProgress: { completed: completedSituations, total: totalSituations },
+        sectionProgressDetailed,
+        annualProgressPercent,
+        schedulePace,
       };
     }),
 

@@ -61,6 +61,11 @@ export default function Assessment() {
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
+  const { data: selectedClass } = trpc.classes.getById.useQuery(
+    { id: form.classId ?? 0 },
+    { enabled: Boolean(form.classId) }
+  );
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     { classId: form.classId, gradeLevel: form.gradeLevel, subject: form.subject },
     { enabled: form.autoImport }
@@ -498,10 +503,24 @@ export default function Assessment() {
                   </div>
                 )}
                 <div className="print-container">
-                  <A4PrintButton title="اختبار" subtitle="" />
-                  <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
-                    <Streamdown>{generated}</Streamdown>
-                  </div>
+                  <A4PrintButton title="اختبار" subtitle="" className="ml-2" />
+                  {/* الترويسة الرسمية الجزائرية تظهر عند الطباعة فقط */}
+                  <A4PrintContent
+                    title={`اختبار في ${form.subject}`}
+                    subtitle={form.title || undefined}
+                    teacherName={profile?.displayName || undefined}
+                    school={selectedClass?.name || profile?.school || undefined}
+                    province={profile?.province || undefined}
+                    subject={form.subject}
+                    levelSection={selectedClass ? `${selectedClass.gradeLevel}${selectedClass.section ? ` — القسم ${selectedClass.section}` : ""}` : form.gradeLevel}
+                    duration={rulesInfo?.duration || form.duration || undefined}
+                    date={selectedClass?.academicYear ? `الموسم الدراسي ${selectedClass.academicYear}` : undefined}
+                    extra={rulesInfo ? `المجموع: ${rulesInfo.totalPoints} نقطة` : undefined}
+                  >
+                    <div className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
+                      <Streamdown>{generated}</Streamdown>
+                    </div>
+                  </A4PrintContent>
                 </div>
               </div>
             ) : (

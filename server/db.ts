@@ -463,10 +463,15 @@ export async function deleteLearningSituation(id: number) {
   await db.delete(learningSituations).where(eq(learningSituations.id, id));
 }
 
-export async function toggleLearningSituationCompleted(id: number, isCompleted: boolean) {
+export async function toggleLearningSituationCompleted(id: number, isCompleted: boolean, notes?: string | null) {
   const db = await getDb();
   if (!db) return;
-  await db.update(learningSituations).set({ isCompleted }).where(eq(learningSituations.id, id));
+  const set: { isCompleted: boolean; completedDate: Date | null; completionNotes: string | null } = {
+    isCompleted,
+    completedDate: isCompleted ? new Date() : null,
+    completionNotes: notes ?? null,
+  };
+  await db.update(learningSituations).set(set).where(eq(learningSituations.id, id));
 }
 
 // ─── Assessment Results ───────────────────────────────────────

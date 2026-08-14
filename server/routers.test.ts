@@ -418,8 +418,9 @@ describe("ai.getTeacherOSContext", () => {
     const caller = appRouter.createCaller(createMockContext());
     const result = await caller.ai.getTeacherOSContext({ classId: 1 });
 
-    // getAnnualPlans is invoked twice inside getTeacherOSContext (progress + completed list)
-    expect(db.getAnnualPlans).toHaveBeenCalledTimes(2);
+    // getAnnualPlans is invoked three times inside getTeacherOSContext: section progress,
+    // calendar-pace estimate, and the completed-situations list
+    expect(db.getAnnualPlans).toHaveBeenCalledTimes(3);
     expect(db.getAnnualPlans).toHaveBeenCalledWith(1);
     expect(result.currentSection).toBeTruthy();
     expect(result.currentSection.title).toBe("الوثائق التاريخية");

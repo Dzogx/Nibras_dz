@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 
-function InspectorResult({ result, rawResult }: { result: any; rawResult: string }) {
+function InspectorResult({ result, rawResult, printMeta }: { result: any; rawResult: string; printMeta?: { subject?: string; gradeLevel?: string } }) {
   const criteria = result?.criteria || {};
   const criteriaLabels: Record<string, string> = {
     curriculumAlignment: "التوافق مع المنهج",
@@ -31,6 +31,12 @@ function InspectorResult({ result, rawResult }: { result: any; rawResult: string
         <span></span>
         <A4PrintButton title="تقرير التفتيش" subtitle="" />
       </div>
+      {/* الترويسة الرسمية الجزائرية تظهر عند الطباعة فقط */}
+      <A4PrintContent
+        title="تقرير التفتيش التربوي"
+        subject={printMeta?.subject || undefined}
+        levelSection={printMeta?.gradeLevel || undefined}
+      >
       {/* Overall Score */}
       <div className="text-center py-4">
         <div className={`text-4xl font-bold ${getScoreColor(result?.overallScore || 0)}`}>
@@ -82,13 +88,13 @@ function InspectorResult({ result, rawResult }: { result: any; rawResult: string
 
       {/* Fallback for raw result */}
       {rawResult && !result?.criteria && (
-        <div className="print-container">
-          <A4PrintButton title="تقرير التفتيش" subtitle="" />
+        <div>
           <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
             <Streamdown>{rawResult}</Streamdown>
           </div>
         </div>
       )}
+      </A4PrintContent>
     </div>
   );
 }
@@ -104,10 +110,13 @@ export default function Inspector() {
   const { data: lessons } = trpc.lessons.list.useQuery();
   const { data: resources } = trpc.aiResources.list.useQuery({ type: "quiz" });
   const { data: reviews } = trpc.inspector.reviews.useQuery();
+  const [printMeta, setPrintMeta] = useState<{ subject?: string; gradeLevel?: string }>({});
+  const [selectedLesson, setSelectedLesson] = useState<{ subject?: string; gradeLevel?: string } | null>(null);
 
   const reviewLessonMutation = trpc.inspector.reviewLesson.useMutation({
     onSuccess: (data: any) => {
       utils.inspector.reviews.invalidate();
+      setPrintMeta({ subject: selectedLesson?.subject, gradeLevel: selectedLesson?.gradeLevel });
       const evalStr = data?.evaluation || "";
       try {
         const parsed = JSON.parse(evalStr);
@@ -124,6 +133,14 @@ export default function Inspector() {
   const reviewAssessmentMutation = trpc.inspector.reviewAssessment.useMutation({
     onSuccess: (data: any) => {
       utils.inspector.reviews.invalidate();
+      // الموارد لا تحمل حقول مادة/مستوى مباشرة؛ نستخرجها من الدرس المرتبط إن وجد
+      const res = resources?.find(r => r.id === selectedResourceId);
+      if (res?.lessonId) {
+        const lesson = lessons?.find(l => l.id === res.lessonId);
+        setPrintMeta({ subject: lesson?.subject ?? undefined, gradeLevel: lesson?.gradeLevel ?? undefined });
+      } else {
+        setPrintMeta({});
+      }
       const evalStr = data?.evaluation || "";
       try {
         const parsed = JSON.parse(evalStr);
@@ -174,7 +191,16 @@ export default function Inspector() {
             {reviewType === "lesson" ? (
               <div>
                 <Label>اختر الدرس</Label>
-                <Select value={selectedLessonId?.toString() || ""} onValueChange={v => setSelectedLessonId(v ? parseInt(v) : null)}>
+                <Select value={selectedLessonId?.toString() || ""} onValueChange={v => {
+                const id = v ? parseInt(v) : null;
+                setSelectedLessonId(id);
+                if (id) {
+                  const lesson = lessons?.find(l => l.id === id);
+                  setSelectedLesson({ subject: lesson?.subject ?? undefined, gradeLevel: lesson?.gradeLevel ?? undefined });
+                } else {
+                  setSelectedLesson(null);
+                }
+              }}>
                   <SelectTrigger><SelectValue placeholder="اختر درساً" /></SelectTrigger>
                   <SelectContent>
                     {lessons?.map(l => (
@@ -214,7 +240,7 @@ export default function Inspector() {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : result ? (
-              <InspectorResult result={result} rawResult={rawResult} />
+              <InspectorResult result={result} rawResult={rawResult} printMeta={printMeta} />
             ) : (
               <div className="text-center py-12 text-muted-foreground">
                 <Eye className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />

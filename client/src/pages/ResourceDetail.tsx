@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import { Streamdown } from 'streamdown';
+import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 
 const typeLabels: Record<string, string> = {
   lessonPlan: "خطة درس",
@@ -28,7 +29,29 @@ export default function ResourceDetail({ id }: { id: string }) {
   const resourceId = parseInt(id);
   const utils = trpc.useUtils();
   const { data: resource, isLoading } = trpc.aiResources.getById.useQuery({ id: resourceId });
+  const meta = (resource?.metadata as any) || {};
+  const { data: linkedLesson } = trpc.lessons.getById.useQuery(
+    { id: resource?.lessonId ?? 0 },
+    { enabled: Boolean(resource?.lessonId) }
+  );
+  const { data: linkedClass } = trpc.classes.getById.useQuery(
+    { id: (resource?.classId ?? linkedLesson?.classId) ?? 0 },
+    { enabled: Boolean(resource?.classId ?? linkedLesson?.classId) }
+  );
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const [isEditing, setIsEditing] = useState(false);
+
+  const subject = meta?.subject || linkedLesson?.subject || profile?.subject;
+  const gradeLevel = meta?.gradeLevel || linkedLesson?.gradeLevel;
+  const levelSection = linkedClass ? `${linkedClass.gradeLevel}${linkedClass.section ? ` — القسم ${linkedClass.section}` : ""}` : gradeLevel;
+  const docTitle =
+    resource?.type === "quiz" || resource?.type === "exam"
+      ? `اختبار في ${subject || "الاجتماعيات"}`
+      : resource?.type === "answerKey"
+        ? "مفتاح الإجابات"
+        : resource?.type === "rubric"
+          ? "شبكة التقويم"
+          : (resource?.type ? typeLabels[resource?.type] : undefined) || "وثيقة تربوية";
 
   const [editForm, setEditForm] = useState({
     title: resource?.title || "",
@@ -59,38 +82,6 @@ export default function ResourceDetail({ id }: { id: string }) {
     }
   };
 
-  const printContent = () => {
-    if (!resource) return;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl" lang="ar">
-      <head>
-        <meta charset="UTF-8">
-        <title>${resource.title}</title>
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-        <style>
-          @page { size: A4; margin: 2cm; }
-          body { font-family: 'Cairo', sans-serif; direction: rtl; font-size: 14px; line-height: 1.8; color: #1a1a2e; }
-          h1 { text-align: center; font-size: 20px; margin-bottom: 20px; border-bottom: 2px solid #2563eb; padding-bottom: 10px; }
-          .info { text-align: center; color: #666; margin-bottom: 20px; font-size: 13px; }
-          pre { white-space: pre-wrap; font-family: 'Cairo', sans-serif; }
-        </style>
-      </head>
-      <body>
-        <h1>${resource.title}</h1>
-        <div class="info">
-          <p>${(resource.metadata as any)?.subject || resource.type} | ${(resource.metadata as any)?.gradeLevel || ""}</p>
-        </div>
-        <pre>${resource.content}</pre>
-      </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
-  };
-
   if (isLoading) return <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>;
   if (!resource) return <div className="text-center py-12">المورد غير موجود</div>;
 
@@ -118,10 +109,25 @@ export default function ResourceDetail({ id }: { id: string }) {
         <Button variant="outline" size="sm" onClick={copyContent}>
           <Copy className="w-4 h-4 ml-1" />نسخ
         </Button>
-        <Button variant="outline" size="sm" onClick={printContent}>
-          <Printer className="w-4 h-4 ml-1" />طباعة A4
-        </Button>
+        <A4PrintButton title={docTitle} subtitle={levelSection || undefined} />
       </div>
+
+      {/* المعاينة الاحترافية: ترويسة رسمية جزائرية عند الطباعة */}
+      <A4PrintContent
+        title={docTitle}
+        subtitle={resource?.title || undefined}
+        teacherName={profile?.displayName || undefined}
+        school={linkedClass?.name || profile?.school || undefined}
+        province={profile?.province || undefined}
+        subject={subject}
+        levelSection={levelSection}
+        duration={meta?.duration || linkedLesson?.duration || undefined}
+        extra={linkedClass?.academicYear ? `الموسم الدراسي ${linkedClass.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined)}
+      >
+        <div className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
+          <Streamdown>{resource?.content || ""}</Streamdown>
+        </div>
+      </A4PrintContent>
 
       {isEditing ? (
         <Card>

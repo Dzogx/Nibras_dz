@@ -1,18 +1,53 @@
-import { Button } from "@/components/ui/button";
-import { Printer } from "lucide-react";
-
 /**
- * A4 Print component - wraps content in an A4-optimized container
- * and provides a print button that triggers the browser's print dialog.
- * Uses @media print CSS for A4 formatting.
+ * A4 Print — طباعة احترافية A4 باللغة العربية (RTL) مع الترويسة الرسمية الجزائرية.
+ *
+ * الترويسة الرسمية تتضمن:
+ * - الجمهورية الجزائرية الديمقراطية الشعبية + وزارة التربية الوطنية (يمين)
+ * - المديرية: الولاية / المؤسسة التعليمية (يسار)
+ * - الأستاذ(ة) / المادة / المستوى والقسم / المدة / التاريخ
+ * - عنوان الوثيقة في الوسط
+ *
+ * عند الطباعة (@media print): تخفي CSS كل عناصر الصفحة ويُظهر فقط
+ * العنصر الذي يحمل الفئة .print-container مع ترويسته الرسمية وتذييله.
  */
-export function A4PrintButton({ title, subtitle }: { title: string; subtitle?: string }) {
+import { Printer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
+export interface PrintMeta {
+  /** عنوان الوثيقة، مثل: "مذكرة بيداغوجية" أو "اختبار فصلي في التاريخ والجغرافيا" */
+  title: string;
+  /** سطر فرعي تحت العنوان */
+  subtitle?: string;
+  /** اسم الأستاذ من الملف الشخصي */
+  teacherName?: string;
+  /** اسم المؤسسة التعليمية (المدرسة المتوسطة) */
+  school?: string;
+  /** الولاية أو المديرية */
+  province?: string;
+  /** المادة، مثل: التاريخ والجغرافيا / التربية المدنية */
+  subject?: string;
+  /** المستوى والقسم، مثل: السنة الرابعة متوسط - القسم 2 */
+  levelSection?: string;
+  /** المدة الزمنية، مثل: ساعة ونصف */
+  duration?: string;
+  /** تاريخ الحصة أو الاختبار بصيغة نصية عربية */
+  date?: string;
+  /** معلومات إضافية تظهر في سطر مستقل (مثل: الموسم الدراسي أو رقم الفرض) */
+  extra?: string;
+  /** محتوى الوثيقة القابل للطباعة */
+  children?: React.ReactNode;
+}
+
+/** زر الطباعة: يستدعي window.print() مع إخفاء نفسه أثناء الطباعة */
+export function A4PrintButton(props: Omit<PrintMeta, "children"> & { className?: string }) {
+  const { className } = props;
   return (
     <Button
       variant="outline"
       size="sm"
+      className={cn("print:hidden", className)}
       onClick={() => window.print()}
-      className="print:hidden"
     >
       <Printer className="w-4 h-4 ml-1" />
       طباعة A4
@@ -20,25 +55,89 @@ export function A4PrintButton({ title, subtitle }: { title: string; subtitle?: s
   );
 }
 
-export function A4PrintContent({ children, title, subtitle, className = "" }: {
-  children: React.ReactNode;
-  title?: string;
-  subtitle?: string;
-  className?: string;
-}) {
+/**
+ * غلاف الطباعة الاحترافية.
+ * - على الشاشة: يعرض عنوان الوثيقة فقط (الترويسة الرسمية تُخفى بـ print:hidden).
+ * - عند الطباعة (@media print): تظهر الترويسة الرسمية كاملة والتذييل ورقم الصفحة.
+ */
+export function A4PrintContent({
+  title,
+  subtitle,
+  teacherName,
+  school,
+  province,
+  subject,
+  levelSection,
+  duration,
+  date,
+  extra,
+  children,
+}: PrintMeta) {
   return (
-    <div className={`${className} print-container`} dir="rtl">
-      {title && (
-        <div className="print-header text-center mb-6 pb-4 border-b-2 border-primary">
-          <h1 className="text-xl font-bold mb-1">{title}</h1>
-          {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
-          <div className="mt-2 text-xs text-muted-foreground">
-            الجمهورية الجزائرية الديمقراطية الشعبية - وزارة التربية الوطنية
+    <div className="print-container" dir="rtl">
+      {/* ===== الترويسة الرسمية الجزائرية (تظهر فقط عند الطباعة) ===== */}
+      <div className="print-header-official print-hidden-screen">
+        <div className="print-header-row print-header-top">
+          <div className="print-header-right">
+            <div className="print-republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+            <div className="print-ministry">وزارة التربية الوطنية</div>
+          </div>
+          <div className="print-header-left">
+            <div className="print-office">مديرية التربية لولاية: {province || "..........................."}</div>
+            <div className="print-office">المؤسسة التعليمية: {school || "..............................."}</div>
           </div>
         </div>
-      )}
-      <div className="print-body">
-        {children}
+        <div className="print-header-divider" />
+        {/* السطر الثاني: بيانات الوثيقة */}
+        <div className="print-header-fields">
+          <div className="print-field">
+            <span className="print-field-label">الأستاذ(ة):</span>
+            <span className="print-field-value">{teacherName || "................................"}</span>
+          </div>
+          {subject && (
+            <div className="print-field">
+              <span className="print-field-label">المادة:</span>
+              <span className="print-field-value">{subject}</span>
+            </div>
+          )}
+          {levelSection && (
+            <div className="print-field">
+              <span className="print-field-label">المستوى/القسم:</span>
+              <span className="print-field-value">{levelSection}</span>
+            </div>
+          )}
+          {duration && (
+            <div className="print-field">
+              <span className="print-field-label">المدة:</span>
+              <span className="print-field-value">{duration}</span>
+            </div>
+          )}
+          {date && (
+            <div className="print-field">
+              <span className="print-field-label">التاريخ:</span>
+              <span className="print-field-value">{date}</span>
+            </div>
+          )}
+        </div>
+        <div className="print-header-divider" />
+        {/* عنوان الوثيقة */}
+        <div className="print-doc-title">
+          {title}
+          {subtitle ? <span className="print-doc-subtitle">{subtitle}</span> : null}
+          {extra ? <span className="print-doc-extra">{extra}</span> : null}
+        </div>
+      </div>
+      {/* عنوان مبسط للمعاينة على الشاشة فقط */}
+      <div className="screen-only print-container-preview-title">
+        <h1 className="text-xl font-bold mb-1">{title}</h1>
+        {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
+      </div>
+      {/* ===== محتوى الوثيقة ===== */}
+      <div className="print-body">{children}</div>
+      {/* ===== تذييل ===== */}
+      <div className="print-footer">
+        <span>نبراس — مساعد التدريس الذكي لأستاذ الاجتماعيات</span>
+        <span className="print-page-num" />
       </div>
     </div>
   );

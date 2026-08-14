@@ -273,10 +273,11 @@ export const learningSituations = mysqlTable("learningSituations", {
   objectives: text("objectives"),
   content: text("content"),
   isCompleted: boolean("isCompleted").default(false).notNull(),
+  completedDate: timestamp("completedDate"),
+  completionNotes: text("completionNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
-
 export type LearningSituation = typeof learningSituations.$inferSelect;
 export type InsertLearningSituation = typeof learningSituations.$inferInsert;
 

@@ -253,6 +253,60 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+
+              {/* دفتر المتابعة: نسبة إنجاز المخطط السنوي */}
+              {(teacherOSContext.annualProgressPercent !== undefined || teacherOSContext.schedulePace) && (
+                <div className="border-t border-blue-200/70 pt-3 space-y-2">
+                  <p className="text-xs font-medium text-blue-700">دفتر متابعة التدريس</p>
+                  {typeof teacherOSContext.annualProgressPercent === 'number' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">إنجاز المخطط السنوي</span>
+                      <span className="text-xs font-bold">{teacherOSContext.annualProgressPercent}%</span>
+                      <div className="flex-1 bg-muted rounded-full h-1.5">
+                        <div
+                          className="bg-emerald-500 h-1.5 rounded-full"
+                          style={{ width: `${teacherOSContext.annualProgressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {teacherOSContext.schedulePace && (
+                    <div className={`rounded-lg p-2 text-xs ${teacherOSContext.schedulePace.status === 'behind' ? 'bg-amber-100/70 text-amber-800' : teacherOSContext.schedulePace.status === 'ahead' ? 'bg-emerald-100/70 text-emerald-800' : 'bg-blue-100/70 text-blue-800'}`}>
+                      {teacherOSContext.schedulePace.note}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* بطاقات تقدم المقاطع */}
+              {teacherOSContext.sectionProgressDetailed && teacherOSContext.sectionProgressDetailed.length > 0 && (
+                <div className="border-t border-blue-200/70 pt-3 space-y-2">
+                  <p className="text-xs font-medium text-blue-700">تقدم المقاطع</p>
+                  {teacherOSContext.sectionProgressDetailed.map((sec) => (
+                    <div key={sec.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium truncate">{sec.title}</span>
+                        <span className="text-muted-foreground">{sec.completed}/{sec.total}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-muted rounded-full h-1.5">
+                          <div
+                            className="h-1.5 rounded-full bg-blue-500"
+                            style={{ width: `${sec.percent}%` }}
+                          />
+                        </div>
+                        {sec.lastCompletedDate ? (
+                          <span className="text-[10px] text-muted-foreground" title={`آخر إنجاز: ${new Date(sec.lastCompletedDate).toLocaleDateString('ar-DZ', { day: '2-digit', month: 'short', year: 'numeric' })}`}>
+                            آخر إنجاز: {new Date(sec.lastCompletedDate).toLocaleDateString('ar-DZ', { day: '2-digit', month: 'short' })}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">لم يبدأ</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-4">
