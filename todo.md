@@ -373,14 +373,14 @@
 
 ## الهوية البصرية الكاملة لنبراس (طلب الأستاذ 15 أغسطس)
 
-- [ ] تصميم شعار هندسي أصلي لنبراس (نور + معرفة + مسار تربوي) يصلح كـ App Icon وFavicon، بألوان Navy/Teal/Gold ونسخة أسود-أبيض
-- [ ] نمط جرافيكي خفيف مستوحى من الضوء للاستخدام في الخلفيات والعناوين
-- [ ] نظام ألوان احترافي: Navy عميق + Teal + Gold + Neutral، مع درجات متدرجة
-- [ ] Typography عربية ولاتينية واضحة حديثة (واجهة + وثائق + طباعة)
-- [ ] Design Tokens وCSS variables مركزية معتمدة في كامل المشروع
-- [ ] توحيد الأزرار والبطاقات والنماذج والجداول والتنبيهات وحالات التحميل والخطأ
-- [ ] هوية بصرية للمخرجات التربوية (مذكرات/تقويمات/نماذج إجابة/تقارير/طباعة A4) بوضوح المحتوى
-- [ ] تطبيق الهوية على Dashboard والصفحات الرئيسية مع الحفاظ على RTL
-- [ ] صفحة /brand تعرض الشعار والألوان والخطوط والمكونات وأمثلة المخرجات
-- [ ] اختبارات البناء وTypeScript والاختبارات الحالية بعد التنفيذ
-- [ ] ملخص تنفيذي بالملفات المتغيرة
+- [x] تصميم شعار هندسي أصلي لنبراس (نجمة النور الثمانية + المسار التربوي) — SVG + PNG (512/192/180/96/64/48/32) + نسخة monochrome + favicon متعدد الأحجام (نور + معرفة + مسار تربوي) يصلح كـ App Icon وFavicon، بألوان Navy/Teal/Gold ونسخة أسود-أبيض
+- [x] نمط جرافيكي خفيف مستوحى من الضوء (نمط إشعاع نجمي + فئات brand-glow في index.css) وخلفية متدرجة في Home وDashboardLayout
+- [x] نظام ألوان Navy/Teal/Gold + Neutral بـ 10 درجات، CSS variables و@theme inline (bg/text/border/from/via/to)
+- [x] Typography: Noto Kufi Arabic للعناوين + Cairo للنصوص + Inter لللاتينية — index.html وfont-family في @theme
+- [x] Design Tokens مركزية: --brand-navy/teal/gold + semantic (primary/secondary/accent/success/warning) في index.css
+- [x] توحيد UI: ألوان الهوية في Assessment/ContentLibrary/Inspector/LessonGenerator/Results وDashboardLayout (sidebar navy + لمسة ذهبية)
+- [x] هوية المخرجات: شعار v2 في A4Print/PrintPreview + شريط هوية علوي + QR + serial — وضوح المحتوى محفوظ
+- [x] تطبيق الهوية على Dashboard (بطاقات بوسوم ألوان/إجراءات سريعة بتدرجات) وHome (hero رسمي) مع RTL محفوظ
+- [x] صفحة /brand: الشعار بأحجامه وmonochrome، الألوان، الخطوط، المفهوم، مكونات UI
+- [x] vitest 88/88 + tsc نظيف + فحص بصري (/ و/dashboard و/brand)
+- [x] ملخص تنفيذي: index.css / index.html / DashboardLayout / Dashboard / Home / Brand / A4Print + 5 صفحات ألوان (checkpoint 8384dccb)
