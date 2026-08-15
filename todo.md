@@ -403,3 +403,12 @@
 - [x] تصميم tokens في index.css و@theme + استبدال كل utilities القديمة
 - [x] تطبيق على المشروع: favicon + DashboardLayout + Home + Brand (/brand أفقي+ألوان+نظام) + A4Print
 - [x] اختبارات + TypeScript (88/88) + checkpoint + مزامنة GitHub
+
+## تطوير هوية v3 بروح لوحة الأستاذ الجديدة (نون + نقطة نور علوية + المسار الصاعد) — 15 أغسطس
+- [ ] مراجعة SVG المونوغرام الحالي (نون Kufi + فانوس معلق) وتصميم إضافة «نقطة النور العلوية المضيئة» فوق ذروة الفم ضمن لوحة Ink/Copper/Wax/Sand
+- [ ] إعادة توليد PNGs المونوغرام (512/192/96/32) + نسخ mono/white
+- [ ] تحديث النسخ الأفقية (نبراس/NIBRAS) light/mono/white باللمعة الجديدة
+- [ ] تحديث Favicon في client/index.html بأحجام متعددة
+- [ ] تحديث مراجع الأصول في الواجهات (DashboardLayout/Home/Brand/A4Print/const.ts) وUSAGE_GUIDELINES.md
+- [ ] تشغيل الاختبارات الكاملة + TypeScript وتحديث Brand.tsx إن لزم
+- [ ] معاينة بصرية وتسليم المقارنة قبل/بعد

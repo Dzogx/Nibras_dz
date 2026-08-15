@@ -84,7 +84,7 @@ export default function DashboardLayout({
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="text-center space-y-3">
             <img
-              src="/manus-storage/nibras-monogram-192_37a89801.png"
+              src="/manus-storage/nibras-monogram-192_8769c116.png"
               alt="شعار نبراس"
               className="w-20 h-20 rounded-2xl mb-4 shadow-lg"
             />
@@ -196,7 +196,7 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <img
-                    src="/manus-storage/nibras-monogram-192_37a89801.png"
+                    src="/manus-storage/nibras-monogram-192_8769c116.png"
                     alt="شعار نبراس"
                     className="h-8 w-8 rounded-lg shrink-0"
                   />

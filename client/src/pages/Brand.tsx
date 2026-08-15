@@ -15,11 +15,11 @@ import {
 import { toast } from "sonner";
 
 const LOGO = {
-  svg: "/manus-storage/nibras-monogram_d4bfe5a9.svg",
-  png512: "/manus-storage/nibras-monogram-512_47321ae0.png",
-  png192: "/manus-storage/nibras-monogram-192_37a89801.png",
-  png96: "/manus-storage/nibras-monogram-96_44fab3e5.png",
-  mono512: "/manus-storage/nibras-monogram-mono_6e9d1db3.svg",
+  svg: "/manus-storage/nibras-monogram_793cba79.svg",
+  png512: "/manus-storage/nibras-monogram-512_5c8e2bcd.png",
+  png192: "/manus-storage/nibras-monogram-192_8769c116.png",
+  png96: "/manus-storage/nibras-monogram-96_b470af5b.png",
+  mono512: "/manus-storage/nibras-monogram-mono_89bba2d4.svg",
 };
 
 const colors = [
@@ -30,9 +30,9 @@ const colors = [
 ];
 
 const HORIZONTAL = {
-  light: "/manus-storage/nibras-horizontal-light_35dcf41f.svg",
-  mono: "/manus-storage/nibras-horizontal-mono_2d8435be.svg",
-  white: "/manus-storage/nibras-horizontal-white_0bc6fd5f.svg",
+  light: "/manus-storage/nibras-horizontal-light_3bf07d22.svg",
+  mono: "/manus-storage/nibras-horizontal-mono_aef085dd.svg",
+  white: "/manus-storage/nibras-horizontal-white_8b116e51.svg",
 };
 
 const pipeline = [

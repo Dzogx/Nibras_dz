@@ -60,7 +60,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <img
-              src="/manus-storage/nibras-monogram-192_9c2a7efa.png"
+              src="/manus-storage/nibras-monogram-192_8769c116.png"
               alt="شعار نبراس"
               className="w-14 h-14 rounded-xl bg-white/95 p-1 shrink-0"
             />
