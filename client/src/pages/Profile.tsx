@@ -90,12 +90,14 @@ export default function Profile() {
             </Select>
           </div>
           <div>
-            <Label>المدرسة</Label>
-            <Input value={form.school} onChange={e => setForm({ ...form, school: e.target.value })} placeholder="اسم المدرسة" />
+            <Label>اسم المتوسطة</Label>
+            <p className="text-xs text-muted-foreground mb-1">يظهر في ترويسة الوثائق المطبوعة</p>
+            <Input value={form.school} onChange={e => setForm({ ...form, school: e.target.value })} placeholder="مثال: متوسطة الشهيد العربي بن مهيدي – المحادمة" />
           </div>
           <div>
             <Label>الولاية</Label>
-            <Input value={form.province} onChange={e => setForm({ ...form, province: e.target.value })} placeholder="الولاية" />
+            <p className="text-xs text-muted-foreground mb-1">يظهر في ترويسة الوثائق: «مديرية التربية لولاية ...»</p>
+            <Input value={form.province} onChange={e => setForm({ ...form, province: e.target.value })} placeholder="مثال: ورقلة" />
           </div>
           <Button onClick={() => updateMutation.mutate(form as any)} disabled={updateMutation.isPending}>
             <Save className="w-4 h-4 ml-2" />
