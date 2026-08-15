@@ -58,7 +58,7 @@ export default function Verify() {
               onChange={(e) => setSerial(e.target.value)}
               placeholder="NIBRAS-YYYY-XXXXX"
               dir="ltr"
-              className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-center font-mono text-base focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-center font-mono text-base focus:outline-none focus:ring-2 focus:ring-copper-500"
             />
             <button
               type="submit"

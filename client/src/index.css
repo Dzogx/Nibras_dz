@@ -5,37 +5,47 @@
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
-  --color-brand-navy-50: var(--brand-navy-50);
-  --color-brand-navy-100: var(--brand-navy-100);
-  --color-brand-navy-200: var(--brand-navy-200);
-  --color-brand-navy-300: var(--brand-navy-300);
-  --color-brand-navy-400: var(--brand-navy-400);
-  --color-brand-navy-500: var(--brand-navy-500);
-  --color-brand-navy-600: var(--brand-navy-600);
-  --color-brand-navy-700: var(--brand-navy-700);
-  --color-brand-navy-800: var(--brand-navy-800);
-  --color-brand-navy-900: var(--brand-navy-900);
-  --color-brand-navy-950: var(--brand-navy-950);
-  --color-brand-teal-50: var(--brand-teal-50);
-  --color-brand-teal-100: var(--brand-teal-100);
-  --color-brand-teal-200: var(--brand-teal-200);
-  --color-brand-teal-300: var(--brand-teal-300);
-  --color-brand-teal-400: var(--brand-teal-400);
-  --color-brand-teal-500: var(--brand-teal-500);
-  --color-brand-teal-600: var(--brand-teal-600);
-  --color-brand-teal-700: var(--brand-teal-700);
-  --color-brand-teal-800: var(--brand-teal-800);
-  --color-brand-teal-900: var(--brand-teal-900);
-  --color-brand-gold-50: var(--brand-gold-50);
-  --color-brand-gold-100: var(--brand-gold-100);
-  --color-brand-gold-200: var(--brand-gold-200);
-  --color-brand-gold-300: var(--brand-gold-300);
-  --color-brand-gold-400: var(--brand-gold-400);
-  --color-brand-gold-500: var(--brand-gold-500);
-  --color-brand-gold-600: var(--brand-gold-600);
-  --color-brand-gold-700: var(--brand-gold-700);
-  --color-brand-gold-800: var(--brand-gold-800);
-  --color-brand-gold-900: var(--brand-gold-900);
+  --color-brand-ink-50: var(--brand-ink-50);
+  --color-brand-ink-100: var(--brand-ink-100);
+  --color-brand-ink-200: var(--brand-ink-200);
+  --color-brand-ink-300: var(--brand-ink-300);
+  --color-brand-ink-400: var(--brand-ink-400);
+  --color-brand-ink-500: var(--brand-ink-500);
+  --color-brand-ink-600: var(--brand-ink-600);
+  --color-brand-ink-700: var(--brand-ink-700);
+  --color-brand-ink-800: var(--brand-ink-800);
+  --color-brand-ink-900: var(--brand-ink-900);
+  --color-brand-ink-950: var(--brand-ink-950);
+  --color-brand-copper-50: var(--brand-copper-50);
+  --color-brand-copper-100: var(--brand-copper-100);
+  --color-brand-copper-200: var(--brand-copper-200);
+  --color-brand-copper-300: var(--brand-copper-300);
+  --color-brand-copper-400: var(--brand-copper-400);
+  --color-brand-copper-500: var(--brand-copper-500);
+  --color-brand-copper-600: var(--brand-copper-600);
+  --color-brand-copper-700: var(--brand-copper-700);
+  --color-brand-copper-800: var(--brand-copper-800);
+  --color-brand-copper-900: var(--brand-copper-900);
+  --color-brand-wax-50: var(--brand-wax-50);
+  --color-brand-wax-100: var(--brand-wax-100);
+  --color-brand-wax-200: var(--brand-wax-200);
+  --color-brand-wax-300: var(--brand-wax-300);
+  --color-brand-wax-400: var(--brand-wax-400);
+  --color-brand-wax-500: var(--brand-wax-500);
+  --color-brand-wax-600: var(--brand-wax-600);
+  --color-brand-wax-700: var(--brand-wax-700);
+  --color-brand-wax-800: var(--brand-wax-800);
+  --color-brand-wax-900: var(--brand-wax-900);
+  --color-brand-sand-50: var(--brand-sand-50);
+  --color-brand-sand-100: var(--brand-sand-100);
+  --color-brand-sand-200: var(--brand-sand-200);
+  --color-brand-sand-300: var(--brand-sand-300);
+  --color-brand-sand-400: var(--brand-sand-400);
+  --color-brand-sand-500: var(--brand-sand-500);
+  --color-brand-sand-600: var(--brand-sand-600);
+  --color-brand-sand-700: var(--brand-sand-700);
+  --color-brand-sand-800: var(--brand-sand-800);
+  --color-brand-sand-900: var(--brand-sand-900);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
@@ -84,120 +94,131 @@
   --radius: 0.75rem;
 
   /* --- Brand swatches (Nibras palette) --- */
-  --brand-navy-950: oklch(0.21 0.05 250);   /* #0e2a47 */
-  --brand-navy-900: oklch(0.26 0.06 250);   /* #123355 */
-  --brand-navy-800: oklch(0.32 0.07 252);   /* #1a406b */
-  --brand-navy-700: oklch(0.40 0.07 254);   /* #25517f */
-  --brand-navy-600: oklch(0.48 0.07 255);   /* #34629a */
-  --brand-navy-500: oklch(0.56 0.07 256);   /* #4774ad */
-  --brand-navy-400: oklch(0.66 0.06 256);   /* #6d92c4 */
-  --brand-navy-300: oklch(0.77 0.05 255);   /* #99b3d9 */
-  --brand-navy-200: oklch(0.87 0.03 252);   /* #c5d5ea */
-  --brand-navy-100: oklch(0.94 0.015 250);  /* #e4ecf6 */
-  --brand-navy-50:  oklch(0.97 0.008 250);  /* #f2f6fb */
+  --brand-ink-950: oklch(0.20 0.035 328);   /* #15090f deep ink */
+  --brand-ink-900: oklch(0.25 0.042 330);   /* #261421 */
+  --brand-ink-800: oklch(0.31 0.048 331);   /* #3a1f33 */
+  --brand-ink-700: oklch(0.38 0.052 333);   /* #4e2a45 */
+  --brand-ink-600: oklch(0.46 0.055 334);   /* #66375c */
+  --brand-ink-500: oklch(0.55 0.052 335);   /* #824978 */
+  --brand-ink-400: oklch(0.66 0.045 337);   /* #a26a98 */
+  --brand-ink-300: oklch(0.77 0.035 339);   /* #c393b7 */
+  --brand-ink-200: oklch(0.87 0.022 341);   /* #dfbfda */
+  --brand-ink-100: oklch(0.94 0.012 342);   /* #efe3ec */
+  --brand-ink-50:  oklch(0.97 0.006 343);   /* #f8f2f7 */
 
-  --brand-teal-900: oklch(0.30 0.07 195);   /* #0b4d50 */
-  --brand-teal-800: oklch(0.38 0.08 198);   /* #0d666b */
-  --brand-teal-700: oklch(0.48 0.09 197);   /* #0d7377 */
-  --brand-teal-600: oklch(0.56 0.09 194);   /* #148f93 */
-  --brand-teal-500: oklch(0.64 0.09 190);   /* #1dadaa */
-  --brand-teal-400: oklch(0.74 0.09 185);   /* #4dcac3 */
-  --brand-teal-300: oklch(0.83 0.07 180);   /* #8fe2d9 */
-  --brand-teal-200: oklch(0.91 0.04 178);   /* #c3efe8 */
-  --brand-teal-100: oklch(0.955 0.02 178);  /* #e2f8f4 */
-  --brand-teal-50:  oklch(0.975 0.01 178);  /* #f1fcfa */
+  --brand-copper-900: oklch(0.34 0.065 55);   /* #5d351c */
+  --brand-copper-800: oklch(0.42 0.072 57);   /* #7a4625 */
+  --brand-copper-700: oklch(0.52 0.080 58);   /* #9e5c32 */
+  --brand-copper-600: oklch(0.62 0.082 59);   /* #b8733f */
+  --brand-copper-500: oklch(0.70 0.080 60);   /* #c97b4a */
+  --brand-copper-400: oklch(0.78 0.070 62);   /* #d79a6d */
+  --brand-copper-300: oklch(0.86 0.055 64);   /* #e6b992 */
+  --brand-copper-200: oklch(0.92 0.035 66);   /* #f1d5b7 */
+  --brand-copper-100: oklch(0.96 0.020 67);   /* #f9e9d8 */
+  --brand-copper-50:  oklch(0.98 0.010 68);   /* #fdf4e9 */
 
-  --brand-gold-900: oklch(0.45 0.11 80);    /* #9a7114 */
-  --brand-gold-800: oklch(0.55 0.13 82);    /* #c4901d */
-  --brand-gold-700: oklch(0.65 0.14 84);    /* #e3a92a */
-  --brand-gold-600: oklch(0.74 0.14 86);    /* #f0b429 */
-  --brand-gold-500: oklch(0.82 0.12 88);    /* #f6c85e */
-  --brand-gold-400: oklch(0.88 0.10 90);    /* #fad98a */
-  --brand-gold-300: oklch(0.93 0.06 92);    /* #fde9b8 */
-  --brand-gold-200: oklch(0.96 0.035 92);   /* #fdf2d5 */
-  --brand-gold-100: oklch(0.98 0.02 92);    /* #fef8e8 */
-  --brand-gold-50:  oklch(0.99 0.01 92);    /* #fffcee */
+  --brand-wax-900: oklch(0.44 0.085 88);    /* #8a6a20 */
+  --brand-wax-800: oklch(0.55 0.100 88);    /* #a98526 */
+  --brand-wax-700: oklch(0.65 0.110 89);    /* #c99f2e */
+  --brand-wax-600: oklch(0.74 0.115 90);    /* #ddaf35 */
+  --brand-wax-500: oklch(0.83 0.105 91);    /* #e8b84b */
+  --brand-wax-400: oklch(0.89 0.085 92);    /* #f0ca74 */
+  --brand-wax-300: oklch(0.94 0.055 93);    /* #f7dda3 */
+  --brand-wax-200: oklch(0.965 0.035 93);   /* #faecd1 */
+  --brand-wax-100: oklch(0.982 0.018 93);   /* #fdf5e6 */
+  --brand-wax-50:  oklch(0.992 0.008 93);   /* #fefbf2 */
 
-  --neutral-50:  oklch(0.98 0.003 240);
-  --neutral-100: oklch(0.96 0.004 240);
-  --neutral-200: oklch(0.93 0.006 240);
-  --neutral-300: oklch(0.88 0.008 240);
-  --neutral-400: oklch(0.75 0.01 240);
-  --neutral-500: oklch(0.62 0.012 240);
-  --neutral-600: oklch(0.50 0.014 240);
-  --neutral-700: oklch(0.42 0.015 240);
-  --neutral-800: oklch(0.33 0.015 240);
-  --neutral-900: oklch(0.25 0.015 240);
+  --brand-sand-900: oklch(0.55 0.025 80);   /* #b6a98c */
+  --brand-sand-800: oklch(0.65 0.022 82);   /* #cdbfa5 */
+  --brand-sand-700: oklch(0.75 0.018 82);   /* #e0d5bd */
+  --brand-sand-600: oklch(0.84 0.014 83);   /* #eadfc9 */
+  --brand-sand-500: oklch(0.91 0.010 83);   /* #f2ead6 */
+  --brand-sand-400: oklch(0.95 0.007 83);   /* #f7f2e4 */
+  --brand-sand-300: oklch(0.97 0.005 83);   /* #faf6ec */
+  --brand-sand-200: oklch(0.983 0.003 83);  /* #fcfaf4 */
+  --brand-sand-100: oklch(0.992 0.002 84);  /* #fdfdf9 */
+  --brand-sand-50:  oklch(0.997 0.001 85);  /* #fefdfb */
+
+  --neutral-50:  oklch(0.992 0.002 84);
+  --neutral-100: oklch(0.97 0.004 84);
+  --neutral-200: oklch(0.94 0.007 84);
+  --neutral-300: oklch(0.89 0.010 83);
+  --neutral-400: oklch(0.76 0.014 82);
+  --neutral-500: oklch(0.62 0.018 80);
+  --neutral-600: oklch(0.50 0.022 78);
+  --neutral-700: oklch(0.42 0.026 76);
+  --neutral-800: oklch(0.33 0.030 74);
+  --neutral-900: oklch(0.25 0.032 72);
 
   /* --- Semantic tokens (derived from brand) --- */
-  --background: var(--brand-navy-50);
-  --foreground: var(--brand-navy-900);
+  --background: var(--brand-sand-100);
+  --foreground: var(--brand-ink-900);
   --card: oklch(1 0 0);
-  --card-foreground: var(--brand-navy-900);
+  --card-foreground: var(--brand-ink-900);
   --popover: oklch(1 0 0);
-  --popover-foreground: var(--brand-navy-900);
-  --primary: var(--brand-navy-800);
-  --primary-foreground: oklch(0.98 0.005 250);
-  --secondary: var(--brand-teal-100);
-  --secondary-foreground: var(--brand-teal-900);
-  --muted: var(--brand-navy-100);
-  --muted-foreground: var(--brand-navy-600);
-  --accent: var(--brand-teal-100);
-  --accent-foreground: var(--brand-teal-900);
+  --popover-foreground: var(--brand-ink-900);
+  --primary: var(--brand-ink-800);
+  --primary-foreground: oklch(0.97 0.006 342);
+  --secondary: var(--brand-wax-100);
+  --secondary-foreground: var(--brand-ink-700);
+  --muted: var(--brand-ink-100);
+  --muted-foreground: var(--brand-ink-600);
+  --accent: var(--brand-copper-100);
+  --accent-foreground: var(--brand-copper-900);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: var(--brand-navy-200);
-  --input: var(--brand-navy-200);
-  --ring: var(--brand-teal-600);
-  --chart-1: var(--brand-navy-600);
-  --chart-2: var(--brand-teal-600);
-  --chart-3: var(--brand-gold-600);
-  --chart-4: var(--brand-navy-400);
-  --chart-5: var(--brand-teal-400);
-  --sidebar: var(--brand-navy-950);
-  --sidebar-foreground: oklch(0.94 0.01 250);
-  --sidebar-accent: oklch(0.28 0.055 250);
+  --border: var(--brand-ink-200);
+  --input: var(--brand-ink-200);
+  --ring: var(--brand-copper-500);
+  --chart-1: var(--brand-ink-600);
+  --chart-2: var(--brand-copper-500);
+  --chart-3: var(--brand-wax-600);
+  --chart-4: var(--brand-ink-400);
+  --chart-5: var(--brand-copper-300);
+  --sidebar: var(--brand-ink-950);
+  --sidebar-foreground: oklch(0.94 0.01 342);
+  --sidebar-accent: oklch(0.28 0.045 332);
   --sidebar-accent-foreground: oklch(0.97 0.01 90);
-  --sidebar-border: oklch(0.32 0.05 250);
-  --sidebar-ring: var(--brand-gold-500);
-  --sidebar-primary: var(--brand-gold-600);
-  --sidebar-primary-foreground: var(--brand-navy-950);
+  --sidebar-border: oklch(0.32 0.04 330);
+  --sidebar-ring: var(--brand-wax-400);
+  --sidebar-primary: var(--brand-wax-500);
+  --sidebar-primary-foreground: var(--brand-ink-950);
 }
 
 /* Dark mode — Nibras deep-navy field with teal/gold accents */
 .dark {
-  --background: oklch(0.17 0.035 250);
-  --foreground: oklch(0.94 0.01 250);
-  --card: oklch(0.21 0.04 250);
-  --card-foreground: oklch(0.94 0.01 250);
-  --popover: oklch(0.21 0.04 250);
-  --popover-foreground: oklch(0.94 0.01 250);
-  --primary: var(--brand-gold-500);
-  --primary-foreground: var(--brand-navy-950);
-  --secondary: oklch(0.27 0.045 250);
-  --secondary-foreground: oklch(0.90 0.01 250);
-  --muted: oklch(0.25 0.035 250);
-  --muted-foreground: oklch(0.70 0.02 250);
-  --accent: oklch(0.28 0.05 195);
-  --accent-foreground: oklch(0.93 0.02 180);
+  --background: oklch(0.18 0.03 328);
+  --foreground: oklch(0.94 0.01 342);
+  --card: oklch(0.22 0.032 330);
+  --card-foreground: oklch(0.94 0.01 342);
+  --popover: oklch(0.22 0.032 330);
+  --popover-foreground: oklch(0.94 0.01 342);
+  --primary: var(--brand-wax-400);
+  --primary-foreground: var(--brand-ink-950);
+  --secondary: oklch(0.28 0.04 332);
+  --secondary-foreground: oklch(0.92 0.015 342);
+  --muted: oklch(0.26 0.032 330);
+  --muted-foreground: oklch(0.70 0.02 338);
+  --accent: oklch(0.30 0.055 58);
+  --accent-foreground: oklch(0.93 0.02 62);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(1 0 0 / 12%);
   --input: oklch(1 0 0 / 16%);
-  --ring: var(--brand-gold-400);
-  --chart-1: var(--brand-teal-400);
-  --chart-2: var(--brand-gold-500);
-  --chart-3: var(--brand-navy-300);
-  --chart-4: var(--brand-teal-300);
-  --chart-5: var(--brand-gold-300);
-  --sidebar: oklch(0.14 0.035 250);
-  --sidebar-foreground: oklch(0.94 0.01 250);
-  --sidebar-accent: oklch(0.24 0.045 250);
+  --ring: var(--brand-wax-400);
+  --chart-1: var(--brand-wax-400);
+  --chart-2: var(--brand-copper-300);
+  --chart-3: var(--brand-ink-300);
+  --chart-4: var(--brand-wax-300);
+  --chart-5: var(--brand-copper-200);
+  --sidebar: oklch(0.14 0.03 326);
+  --sidebar-foreground: oklch(0.94 0.01 342);
+  --sidebar-accent: oklch(0.24 0.038 330);
   --sidebar-accent-foreground: oklch(0.97 0.01 90);
   --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: var(--brand-gold-400);
-  --sidebar-primary: var(--brand-gold-500);
-  --sidebar-primary-foreground: var(--brand-navy-950);
+  --sidebar-ring: var(--brand-wax-400);
+  --sidebar-primary: var(--brand-wax-400);
+  --sidebar-primary-foreground: var(--brand-ink-950);
 }
 
 @layer base {
@@ -218,16 +239,16 @@
   }
 
   /* ===== Nibras brand utilities ===== */
-  .text-brand-navy-950 { color: var(--brand-navy-950); }
-  .bg-brand-navy-950 { background-color: var(--brand-navy-950); }
-  .text-brand-teal-700 { color: var(--brand-teal-700); }
-  .bg-brand-teal-100 { background-color: var(--brand-teal-100); }
-  .text-brand-gold-700 { color: var(--brand-gold-700); }
-  .text-brand-gold-600 { color: var(--brand-gold-600); }
-  .bg-brand-gold-600 { background-color: var(--brand-gold-600); }
-  .text-brand-gold-800 { color: var(--brand-gold-800); }
-  .bg-brand-gold-50 { background-color: var(--brand-gold-50); }
-  .bg-brand-navy-50 { background-color: var(--brand-navy-50); }
+  .text-brand-ink-950 { color: var(--brand-ink-950); }
+  .bg-brand-ink-950 { background-color: var(--brand-ink-950); }
+  .text-brand-copper-700 { color: var(--brand-copper-700); }
+  .bg-brand-copper-100 { background-color: var(--brand-copper-100); }
+  .text-brand-wax-700 { color: var(--brand-wax-700); }
+  .text-brand-wax-600 { color: var(--brand-wax-600); }
+  .bg-brand-wax-600 { background-color: var(--brand-wax-600); }
+  .text-brand-wax-800 { color: var(--brand-wax-800); }
+  .bg-brand-wax-50 { background-color: var(--brand-wax-50); }
+  .bg-brand-sand-50 { background-color: var(--brand-sand-50); }
 
   /* نمط النبراس الجرافيكي: توهج ضوء خفيف مستوحى من النجمة الثمانية — للاستخدام في الخلفيات والعناوين */
   .nibras-glow-pattern {
@@ -239,9 +260,9 @@
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(600px circle at 85% -10%, oklch(0.74 0.14 86 / 0.14), transparent 55%),
-      radial-gradient(480px circle at 10% 110%, oklch(0.56 0.09 194 / 0.10), transparent 55%),
-      radial-gradient(220px circle at 50% 50%, oklch(0.74 0.14 86 / 0.05), transparent 60%);
+      radial-gradient(600px circle at 85% -10%, oklch(0.89 0.085 92 / 0.14), transparent 55%),
+      radial-gradient(480px circle at 10% 110%, oklch(0.70 0.080 60 / 0.10), transparent 55%),
+      radial-gradient(220px circle at 50% 50%, oklch(0.89 0.085 92 / 0.05), transparent 60%);
   }
   .nibras-glow-pattern > * {
     position: relative;
@@ -250,22 +271,22 @@
   /* نمط خطوط المسار التربوي الخفيف */
   .nibras-path-pattern {
     background-image:
-      linear-gradient(115deg, transparent 48%, oklch(0.56 0.09 194 / 0.06) 48%, oklch(0.56 0.09 194 / 0.06) 49%, transparent 49%, transparent 52%, oklch(0.74 0.14 86 / 0.08) 52%, oklch(0.74 0.14 86 / 0.08) 53%, transparent 53%),
-      linear-gradient(115deg, transparent 74%, oklch(0.4 0.07 254 / 0.05) 74%, oklch(0.4 0.07 254 / 0.05) 75%, transparent 75%);
+      linear-gradient(115deg, transparent 48%, oklch(0.70 0.080 60 / 0.06) 48%, oklch(0.70 0.080 60 / 0.06) 49%, transparent 49%, transparent 52%, oklch(0.89 0.085 92 / 0.08) 52%, oklch(0.89 0.085 92 / 0.08) 53%, transparent 53%),
+      linear-gradient(115deg, transparent 74%, oklch(0.31 0.048 331 / 0.05) 74%, oklch(0.31 0.048 331 / 0.05) 75%, transparent 75%);
     background-size: 56px 56px;
   }
 
   /* شريط هوية علوي (ترويسة ملونة رفيع) */
   .nibras-identity-bar {
     height: 4px;
-    background: linear-gradient(90deg, var(--brand-navy-950) 0%, var(--brand-navy-950) 40%, var(--brand-teal-700) 70%, var(--brand-gold-600) 100%);
+    background: linear-gradient(90deg, var(--brand-ink-950) 0%, var(--brand-ink-950) 40%, var(--brand-copper-500) 70%, var(--brand-wax-600) 100%);
     flex-shrink: 0;
   }
 
   /* بطاقة مميزة (للإجراءات الرئيسية) */
   .nibras-card-hero {
-    background: linear-gradient(135deg, var(--brand-navy-950), var(--brand-navy-800) 70%, var(--brand-teal-800));
-    color: oklch(0.95 0.01 250);
+    background: linear-gradient(135deg, var(--brand-ink-950), var(--brand-ink-900) 70%, var(--brand-ink-800));
+    color: oklch(0.95 0.01 342);
     position: relative;
     overflow: hidden;
   }
@@ -276,14 +297,14 @@
     left: -10%;
     width: 70%;
     height: 180%;
-    background: radial-gradient(closest-side, oklch(0.74 0.14 86 / 0.18), transparent);
+    background: radial-gradient(closest-side, oklch(0.89 0.085 92 / 0.18), transparent);
     pointer-events: none;
   }
 
   /* وسوم المواد بألوان الهوية */
-  .nibras-tag-history { color: var(--brand-navy-700); background: var(--brand-navy-100); }
-  .nibras-tag-geography { color: var(--brand-teal-800); background: var(--brand-teal-100); }
-  .nibras-tag-civics { color: var(--brand-gold-800); background: var(--brand-gold-100); }
+  .nibras-tag-history { color: var(--brand-ink-700); background: var(--brand-ink-100); }
+  .nibras-tag-geography { color: var(--brand-copper-800); background: var(--brand-copper-100); }
+  .nibras-tag-civics { color: var(--brand-wax-800); background: var(--brand-wax-100); }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),

@@ -20,17 +20,17 @@ import { useLocation } from "wouter";
 import { useMemo } from "react";
 
 const statCards = [
-  { icon: GraduationCap, label: "الأقسام", path: "/classes", color: "bg-brand-navy-100 text-brand-navy-700" },
-  { icon: ClipboardList, label: "الدروس", path: "/lessons", color: "bg-brand-teal-100 text-brand-teal-700" },
-  { icon: FileText, label: "الخطط السنوية", path: "/annual-plans", color: "bg-brand-gold-100 text-brand-gold-800" },
-  { icon: Library, label: "الموارد المُولّدة", path: "/content-library", color: "bg-brand-teal-100 text-brand-teal-800" },
+  { icon: GraduationCap, label: "الأقسام", path: "/classes", color: "bg-brand-ink-100 text-brand-ink-700" },
+  { icon: ClipboardList, label: "الدروس", path: "/lessons", color: "bg-brand-copper-100 text-brand-copper-700" },
+  { icon: FileText, label: "الخطط السنوية", path: "/annual-plans", color: "bg-brand-wax-100 text-brand-wax-800" },
+  { icon: Library, label: "الموارد المُولّدة", path: "/content-library", color: "bg-brand-copper-100 text-brand-copper-800" },
 ];
 
 const quickActions = [
-  { icon: Sparkles, label: "توليد درس جديد", path: "/lesson-generator", color: "bg-brand-navy-800", iconColor: "text-brand-navy-50" },
-  { icon: Library, label: "إنشاء تقييم", path: "/assessment", color: "bg-brand-teal-700", iconColor: "text-teal-50" },
-  { icon: Eye, label: "مراجعة كمفتش", path: "/inspector", color: "bg-brand-navy-700", iconColor: "text-brand-gold-300" },
-  { icon: BookOpen, label: "بحث في المنهج", path: "/curriculum", color: "bg-brand-gold-500", iconColor: "text-brand-navy-950" },
+  { icon: Sparkles, label: "توليد درس جديد", path: "/lesson-generator", color: "bg-brand-ink-800", iconColor: "text-brand-ink-50" },
+  { icon: Library, label: "إنشاء تقييم", path: "/assessment", color: "bg-brand-copper-700", iconColor: "text-copper-50" },
+  { icon: Eye, label: "مراجعة كمفتش", path: "/inspector", color: "bg-brand-ink-700", iconColor: "text-brand-wax-300" },
+  { icon: BookOpen, label: "بحث في المنهج", path: "/curriculum", color: "bg-brand-wax-500", iconColor: "text-brand-ink-950" },
 ];
 
 export default function Dashboard() {
@@ -60,7 +60,7 @@ export default function Dashboard() {
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <img
-              src="/manus-storage/nibras-logo-192_e2165043.png"
+              src="/manus-storage/nibras-monogram-192_9c2a7efa.png"
               alt="شعار نبراس"
               className="w-14 h-14 rounded-xl bg-white/95 p-1 shrink-0"
             />
@@ -134,20 +134,20 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-brand-teal-700" />
+              <CheckCircle2 className="w-4 h-4 text-brand-copper-700" />
               الدروس المنجزة
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4 mb-3">
-              <div className="text-3xl font-bold text-brand-teal-700">{completedLessons}</div>
+              <div className="text-3xl font-bold text-brand-copper-700">{completedLessons}</div>
               <div className="text-sm text-muted-foreground">
                 من أصل {lessons?.length ?? 0} درس
               </div>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
-                className="bg-brand-teal-600 h-2 rounded-full transition-all"
+                className="bg-brand-copper-600 h-2 rounded-full transition-all"
                 style={{ width: `${lessons?.length ? (completedLessons / lessons.length) * 100 : 0}%` }}
               />
             </div>
@@ -157,20 +157,20 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Clock className="w-4 h-4 text-brand-gold-700" />
+              <Clock className="w-4 h-4 text-brand-wax-700" />
               الدروس المعلقة
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4 mb-3">
-              <div className="text-3xl font-bold text-brand-gold-700">{pendingLessons}</div>
+              <div className="text-3xl font-bold text-brand-wax-700">{pendingLessons}</div>
               <div className="text-sm text-muted-foreground">
                 درس بحاجة إلى إنجاز
               </div>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
-                className="bg-brand-gold-600 h-2 rounded-full transition-all"
+                className="bg-brand-wax-600 h-2 rounded-full transition-all"
                 style={{ width: `${lessons?.length ? (pendingLessons / lessons.length) * 100 : 0}%` }}
               />
             </div>
@@ -201,7 +201,7 @@ export default function Dashboard() {
                   onClick={() => setLocation(`/lessons/${lesson.id}`)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${lesson.isCompleted ? 'bg-brand-teal-600' : 'bg-brand-gold-600'}`} />
+                    <div className={`w-2 h-2 rounded-full ${lesson.isCompleted ? 'bg-brand-copper-600' : 'bg-brand-wax-600'}`} />
                     <span className="font-medium text-sm">{lesson.title}</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -219,10 +219,10 @@ export default function Dashboard() {
                 </Card>
       ) : null}
       {/* Teacher OS Progress — بطاقة بتدرج هوية نبراس */}
-      <Card className="border-brand-teal-200 bg-brand-teal-50/40">
+      <Card className="border-brand-copper-200 bg-brand-copper-50/40">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Target className="w-4 h-4 text-brand-navy-700" />
+            <Target className="w-4 h-4 text-brand-ink-700" />
             تقدم Teacher OS
           </CardTitle>
         </CardHeader>
@@ -232,14 +232,14 @@ export default function Dashboard() {
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <p className="text-sm font-medium">المقطع الحالي</p>
-                  <p className="text-lg font-bold text-brand-navy-800">
+                  <p className="text-lg font-bold text-brand-ink-800">
                     {teacherOSContext.currentSection.title} (المقطع {teacherOSContext.currentSection.number})
                   </p>
                 </div>
               </div>
               {teacherOSContext.nextSituation ? (
-                <div className="bg-brand-teal-100/70 rounded-lg p-3">
-                  <p className="text-xs text-brand-teal-800 font-medium mb-1">الوضعية التالية</p>
+                <div className="bg-brand-copper-100/70 rounded-lg p-3">
+                  <p className="text-xs text-brand-copper-800 font-medium mb-1">الوضعية التالية</p>
                   <p className="text-sm font-medium">{teacherOSContext.nextSituation.title}</p>
                   <p className="text-xs text-muted-foreground mb-2">المقطع {teacherOSContext.nextSituation.sectionNumber}</p>
                   <Button size="sm" variant="secondary" className="w-full gap-1" onClick={() => setLocation(`/lesson-generator?situationId=${teacherOSContext.nextSituation!.id}`)}>
@@ -256,7 +256,7 @@ export default function Dashboard() {
                 </span>
                 <div className="flex-1 bg-muted rounded-full h-1.5">
                   <div
-                    className="bg-brand-navy-600 h-1.5 rounded-full"
+                    className="bg-brand-ink-600 h-1.5 rounded-full"
                     style={{ width: `${teacherOSContext.sectionProgress.total ? (teacherOSContext.sectionProgress.completed / teacherOSContext.sectionProgress.total) * 100 : 0}%` }}
                   />
                 </div>
@@ -266,7 +266,7 @@ export default function Dashboard() {
                   <p className="text-xs text-muted-foreground mb-1">الكفاءات المغطاة</p>
                   <div className="flex flex-wrap gap-1">
                     {teacherOSContext.competencies.slice(0, 5).map((c, i) => (
-                      <span key={i} className="text-xs bg-brand-navy-100 text-brand-navy-700 px-2 py-0.5 rounded">{c}</span>
+                      <span key={i} className="text-xs bg-brand-ink-100 text-brand-ink-700 px-2 py-0.5 rounded">{c}</span>
                     ))}
                   </div>
                 </div>
@@ -274,15 +274,15 @@ export default function Dashboard() {
 
               {/* دفتر المتابعة: نسبة إنجاز المخطط السنوي */}
               {(teacherOSContext.annualProgressPercent !== undefined || teacherOSContext.schedulePace) && (
-                <div className="border-t border-brand-teal-200/70 pt-3 space-y-2">
-                  <p className="text-xs font-medium text-brand-navy-700">دفتر متابعة التدريس</p>
+                <div className="border-t border-brand-copper-200/70 pt-3 space-y-2">
+                  <p className="text-xs font-medium text-brand-ink-700">دفتر متابعة التدريس</p>
                   {typeof teacherOSContext.annualProgressPercent === 'number' && (
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">إنجاز المخطط السنوي</span>
                       <span className="text-xs font-bold">{teacherOSContext.annualProgressPercent}%</span>
                       <div className="flex-1 bg-muted rounded-full h-1.5">
                         <div
-                          className="bg-brand-teal-600 h-1.5 rounded-full"
+                          className="bg-brand-copper-600 h-1.5 rounded-full"
                           style={{ width: `${teacherOSContext.annualProgressPercent}%` }}
                         />
                       </div>
@@ -298,8 +298,8 @@ export default function Dashboard() {
 
               {/* بطاقات تقدم المقاطع */}
               {teacherOSContext.sectionProgressDetailed && teacherOSContext.sectionProgressDetailed.length > 0 && (
-                <div className="border-t border-brand-teal-200/70 pt-3 space-y-2">
-                  <p className="text-xs font-medium text-brand-navy-700">تقدم المقاطع</p>
+                <div className="border-t border-brand-copper-200/70 pt-3 space-y-2">
+                  <p className="text-xs font-medium text-brand-ink-700">تقدم المقاطع</p>
                   {teacherOSContext.sectionProgressDetailed.map((sec) => (
                     <div key={sec.id} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
@@ -309,7 +309,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <div className="flex-1 bg-muted rounded-full h-1.5">
                           <div
-                            className="h-1.5 rounded-full bg-brand-navy-600"
+                            className="h-1.5 rounded-full bg-brand-ink-600"
                             style={{ width: `${sec.percent}%` }}
                           />
                         </div>

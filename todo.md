@@ -391,3 +391,15 @@
 - [x] الاعتماد على نظام الألوان الحالي (Navy/Teal/Gold) + Typography (Noto Kufi Arabic للعناوين / Cairo للجسم / Inter للاتيني)
 - [x] تطبيق الشعار الجديد في كل الواجهات: index.html (favicon)، DashboardLayout (sidebar + avatar)، Home (hero)، Dashboard، Brand (/brand بأحجامه)، A4Print (LOGO_URL في الترويسة الرسمية)
 - [x] اختبار البناء وTypeScript والاختبارات (88/88) + مزامنة GitHub + تسليم الملخص والهوية
+
+## تطوير Concept 01 (نون + فانوس) إلى هوية كاملة قابلة للاستخدام
+- [x] إعادة بناء النون على خط Noto Kufi Arabic الرسمي (uni0646 composite كامل — ذروة + عمود + فم صاعد + نقطة) مع فانوس معلق من حبل الذروة في فراغ التجويف
+- [x] دمج المصباح عضوياً في بنية الحرف: حبل معلق من ذروة الفم الصاعدة وقنديل عربي داخل تجويف النون
+- [x] نظام ألوان أصلي جديد: Ink (حبر) / Copper (نحاس) / Wax (شمع النبراس) / Sand (رمل) — OKLCH + درجات كاملة + semantic tokens
+- [x] نسخة Monogram بدون نص (SVG + PNG 512/192/96/32 + mono + white)
+- [x] نسخة أفقية: نبراس عربي (Noto Kufi) + NIBRAS لاتيني (Cairo) + الرمز — light/mono/white
+- [x] نسخ أبيض/أسود + داكنة/فاتحة + اختبار بأحجام صغيرة (32px) — ورقة اختبار مرئية
+- [x] ملف قواعد الاستخدام USAGE_GUIDELINES.md (مسافات، حجم أدنى، استخدام صحيح/خاطئ)
+- [x] تصميم tokens في index.css و@theme + استبدال كل utilities القديمة
+- [x] تطبيق على المشروع: favicon + DashboardLayout + Home + Brand (/brand أفقي+ألوان+نظام) + A4Print
+- [x] اختبارات + TypeScript (88/88) + checkpoint + مزامنة GitHub

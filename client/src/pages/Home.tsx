@@ -27,7 +27,7 @@ export default function Home() {
       <div className="nibras-glow-pattern min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <img
-            src="/manus-storage/nibras-logo-192_e2165043.png"
+            src="/manus-storage/nibras-monogram-192_37a89801.png"
             alt="شعار نبراس"
             className="w-16 h-16 rounded-xl mx-auto mb-4 animate-pulse"
           />
@@ -42,11 +42,11 @@ export default function Home() {
       <section className="nibras-glow-pattern">
         <div className="max-w-4xl mx-auto px-6 py-16 md:py-24 text-center">
           <img
-            src="/manus-storage/nibras-nun-lamp_cd81d0aa.svg"
+            src="/manus-storage/nibras-monogram_d4bfe5a9.svg"
             alt="شعار نبراس"
             className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6"
           />
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-brand-navy-950" style={{ fontFamily: "var(--font-display)" }}>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-brand-ink-950" style={{ fontFamily: "var(--font-display)" }}>
             نبراس
           </h1>
           <p className="mt-4 text-lg md:text-xl text-muted-foreground leading-relaxed">
@@ -68,7 +68,7 @@ export default function Home() {
 
       {/* المسار */}
       <section className="max-w-5xl mx-auto px-6 py-12">
-        <h2 className="text-2xl font-bold text-brand-navy-900 text-center mb-8" style={{ fontFamily: "var(--font-display)" }}>
+        <h2 className="text-2xl font-bold text-brand-ink-900 text-center mb-8" style={{ fontFamily: "var(--font-display)" }}>
           الحلقة التربوية الكاملة
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -82,8 +82,8 @@ export default function Home() {
           ].map((item) => (
             <Card key={item.label}>
               <CardContent className="p-5 text-center">
-                <item.icon className="w-7 h-7 text-brand-teal-700 mx-auto mb-2" />
-                <h3 className="font-bold text-brand-navy-900 mb-1">{item.label}</h3>
+                <item.icon className="w-7 h-7 text-brand-copper-700 mx-auto mb-2" />
+                <h3 className="font-bold text-brand-ink-900 mb-1">{item.label}</h3>
                 <p className="text-xs text-muted-foreground">{item.desc}</p>
               </CardContent>
             </Card>
@@ -94,7 +94,7 @@ export default function Home() {
       {/* هوية الوثائق */}
       <section className="border-t border-border bg-muted/30">
         <div className="max-w-5xl mx-auto px-6 py-12">
-          <h2 className="text-2xl font-bold text-brand-navy-900 text-center mb-8" style={{ fontFamily: "var(--font-display)" }}>
+          <h2 className="text-2xl font-bold text-brand-ink-900 text-center mb-8" style={{ fontFamily: "var(--font-display)" }}>
             وثائق رسمية بهوية موثوقة
           </h2>
           <div className="grid md:grid-cols-3 gap-4">
@@ -105,8 +105,8 @@ export default function Home() {
             ].map((item) => (
               <Card key={item.label}>
                 <CardContent className="p-5 text-center">
-                  <item.icon className="w-7 h-7 text-brand-gold-700 mx-auto mb-2" />
-                  <h3 className="font-bold text-brand-navy-900 mb-1">{item.label}</h3>
+                  <item.icon className="w-7 h-7 text-brand-wax-700 mx-auto mb-2" />
+                  <h3 className="font-bold text-brand-ink-900 mb-1">{item.label}</h3>
                   <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </CardContent>
               </Card>

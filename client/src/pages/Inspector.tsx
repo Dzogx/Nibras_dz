@@ -86,11 +86,11 @@ function InspectorResult({ result, rawResult, printMeta }: { result: any; rawRes
 
       {/* Recommendations */}
       {result?.recommendations?.length > 0 && (
-        <div className="p-3 rounded-lg bg-brand-teal-50 border border-brand-teal-200">
-          <p className="font-medium text-sm text-brand-navy-700 mb-2">توصيات:</p>
+        <div className="p-3 rounded-lg bg-brand-copper-50 border border-brand-copper-200">
+          <p className="font-medium text-sm text-brand-ink-700 mb-2">توصيات:</p>
           <ul className="space-y-1">
             {result.recommendations.map((rec: string, i: number) => (
-              <li key={i} className="text-sm text-brand-teal-700">• {rec}</li>
+              <li key={i} className="text-sm text-brand-copper-700">• {rec}</li>
             ))}
           </ul>
         </div>
@@ -148,11 +148,11 @@ function InspectorResult({ result, rawResult, printMeta }: { result: any; rawRes
         )}
         {/* التوصيات */}
         {result?.recommendations?.length > 0 && (
-          <div className="p-3 rounded-lg bg-brand-teal-50 border border-brand-teal-200">
-            <p className="font-medium text-sm text-brand-navy-700 mb-2">توصيات:</p>
+          <div className="p-3 rounded-lg bg-brand-copper-50 border border-brand-copper-200">
+            <p className="font-medium text-sm text-brand-ink-700 mb-2">توصيات:</p>
             <ul className="space-y-1">
               {result.recommendations.map((rec: string, i: number) => (
-                <li key={i} className="text-sm text-brand-teal-700">• {rec}</li>
+                <li key={i} className="text-sm text-brand-copper-700">• {rec}</li>
               ))}
             </ul>
           </div>

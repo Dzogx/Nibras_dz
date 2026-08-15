@@ -171,8 +171,8 @@ export default function LessonGenerator() {
       </div>
 
       {linkedSituation && linkedSection && linkedPlan && (
-        <Alert className="border-brand-teal-300 bg-brand-teal-50">
-          <BookOpenCheck className="w-4 h-4 text-brand-teal-700" />
+        <Alert className="border-brand-copper-300 bg-brand-copper-50">
+          <BookOpenCheck className="w-4 h-4 text-brand-copper-700" />
           <AlertDescription>
             <span className="font-medium">حصة مقترحة من المخطط السنوي:</span> المقطع {linkedSection.sectionNumber} «{linkedSection.title}» — الوضعية {linkedSituation.situationNumber}: «{linkedSituation.title}» — {linkedPlan.subject} / {linkedPlan.gradeLevel}
           </AlertDescription>
