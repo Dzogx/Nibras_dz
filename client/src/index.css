@@ -5,6 +5,37 @@
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
+  --color-brand-navy-50: var(--brand-navy-50);
+  --color-brand-navy-100: var(--brand-navy-100);
+  --color-brand-navy-200: var(--brand-navy-200);
+  --color-brand-navy-300: var(--brand-navy-300);
+  --color-brand-navy-400: var(--brand-navy-400);
+  --color-brand-navy-500: var(--brand-navy-500);
+  --color-brand-navy-600: var(--brand-navy-600);
+  --color-brand-navy-700: var(--brand-navy-700);
+  --color-brand-navy-800: var(--brand-navy-800);
+  --color-brand-navy-900: var(--brand-navy-900);
+  --color-brand-navy-950: var(--brand-navy-950);
+  --color-brand-teal-50: var(--brand-teal-50);
+  --color-brand-teal-100: var(--brand-teal-100);
+  --color-brand-teal-200: var(--brand-teal-200);
+  --color-brand-teal-300: var(--brand-teal-300);
+  --color-brand-teal-400: var(--brand-teal-400);
+  --color-brand-teal-500: var(--brand-teal-500);
+  --color-brand-teal-600: var(--brand-teal-600);
+  --color-brand-teal-700: var(--brand-teal-700);
+  --color-brand-teal-800: var(--brand-teal-800);
+  --color-brand-teal-900: var(--brand-teal-900);
+  --color-brand-gold-50: var(--brand-gold-50);
+  --color-brand-gold-100: var(--brand-gold-100);
+  --color-brand-gold-200: var(--brand-gold-200);
+  --color-brand-gold-300: var(--brand-gold-300);
+  --color-brand-gold-400: var(--brand-gold-400);
+  --color-brand-gold-500: var(--brand-gold-500);
+  --color-brand-gold-600: var(--brand-gold-600);
+  --color-brand-gold-700: var(--brand-gold-700);
+  --color-brand-gold-800: var(--brand-gold-800);
+  --color-brand-gold-900: var(--brand-gold-900);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
@@ -40,78 +71,133 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --font-sans: 'Cairo', 'Noto Naskh Arabic', system-ui, sans-serif;
+  --font-sans: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif;
+  --font-display: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif;
+  --font-doc: 'Noto Naskh Arabic', 'Cairo', system-ui, sans-serif;
 }
 
+/* ============================================================
+   Nibras Design Tokens — النبراس: النور والهداية
+   Brand palette: Deep Navy (#0e2a47) / Teal (#0d7377) / Gold (#f0b429)
+   ============================================================ */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(0.985 0.005 250);
-  --foreground: oklch(0.2 0.02 260);
+  --radius: 0.75rem;
+
+  /* --- Brand swatches (Nibras palette) --- */
+  --brand-navy-950: oklch(0.21 0.05 250);   /* #0e2a47 */
+  --brand-navy-900: oklch(0.26 0.06 250);   /* #123355 */
+  --brand-navy-800: oklch(0.32 0.07 252);   /* #1a406b */
+  --brand-navy-700: oklch(0.40 0.07 254);   /* #25517f */
+  --brand-navy-600: oklch(0.48 0.07 255);   /* #34629a */
+  --brand-navy-500: oklch(0.56 0.07 256);   /* #4774ad */
+  --brand-navy-400: oklch(0.66 0.06 256);   /* #6d92c4 */
+  --brand-navy-300: oklch(0.77 0.05 255);   /* #99b3d9 */
+  --brand-navy-200: oklch(0.87 0.03 252);   /* #c5d5ea */
+  --brand-navy-100: oklch(0.94 0.015 250);  /* #e4ecf6 */
+  --brand-navy-50:  oklch(0.97 0.008 250);  /* #f2f6fb */
+
+  --brand-teal-900: oklch(0.30 0.07 195);   /* #0b4d50 */
+  --brand-teal-800: oklch(0.38 0.08 198);   /* #0d666b */
+  --brand-teal-700: oklch(0.48 0.09 197);   /* #0d7377 */
+  --brand-teal-600: oklch(0.56 0.09 194);   /* #148f93 */
+  --brand-teal-500: oklch(0.64 0.09 190);   /* #1dadaa */
+  --brand-teal-400: oklch(0.74 0.09 185);   /* #4dcac3 */
+  --brand-teal-300: oklch(0.83 0.07 180);   /* #8fe2d9 */
+  --brand-teal-200: oklch(0.91 0.04 178);   /* #c3efe8 */
+  --brand-teal-100: oklch(0.955 0.02 178);  /* #e2f8f4 */
+  --brand-teal-50:  oklch(0.975 0.01 178);  /* #f1fcfa */
+
+  --brand-gold-900: oklch(0.45 0.11 80);    /* #9a7114 */
+  --brand-gold-800: oklch(0.55 0.13 82);    /* #c4901d */
+  --brand-gold-700: oklch(0.65 0.14 84);    /* #e3a92a */
+  --brand-gold-600: oklch(0.74 0.14 86);    /* #f0b429 */
+  --brand-gold-500: oklch(0.82 0.12 88);    /* #f6c85e */
+  --brand-gold-400: oklch(0.88 0.10 90);    /* #fad98a */
+  --brand-gold-300: oklch(0.93 0.06 92);    /* #fde9b8 */
+  --brand-gold-200: oklch(0.96 0.035 92);   /* #fdf2d5 */
+  --brand-gold-100: oklch(0.98 0.02 92);    /* #fef8e8 */
+  --brand-gold-50:  oklch(0.99 0.01 92);    /* #fffcee */
+
+  --neutral-50:  oklch(0.98 0.003 240);
+  --neutral-100: oklch(0.96 0.004 240);
+  --neutral-200: oklch(0.93 0.006 240);
+  --neutral-300: oklch(0.88 0.008 240);
+  --neutral-400: oklch(0.75 0.01 240);
+  --neutral-500: oklch(0.62 0.012 240);
+  --neutral-600: oklch(0.50 0.014 240);
+  --neutral-700: oklch(0.42 0.015 240);
+  --neutral-800: oklch(0.33 0.015 240);
+  --neutral-900: oklch(0.25 0.015 240);
+
+  /* --- Semantic tokens (derived from brand) --- */
+  --background: var(--brand-navy-50);
+  --foreground: var(--brand-navy-900);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 260);
+  --card-foreground: var(--brand-navy-900);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 260);
-  --primary: oklch(0.45 0.12 260);
-  --primary-foreground: oklch(0.98 0.005 260);
-  --secondary: oklch(0.96 0.008 250);
-  --secondary-foreground: oklch(0.35 0.02 260);
-  --muted: oklch(0.96 0.005 250);
-  --muted-foreground: oklch(0.5 0.02 260);
-  --accent: oklch(0.96 0.01 250);
-  --accent-foreground: oklch(0.2 0.02 260);
+  --popover-foreground: var(--brand-navy-900);
+  --primary: var(--brand-navy-800);
+  --primary-foreground: oklch(0.98 0.005 250);
+  --secondary: var(--brand-teal-100);
+  --secondary-foreground: var(--brand-teal-900);
+  --muted: var(--brand-navy-100);
+  --muted-foreground: var(--brand-navy-600);
+  --accent: var(--brand-teal-100);
+  --accent-foreground: var(--brand-teal-900);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.92 0.008 250);
-  --input: oklch(0.92 0.008 250);
-  --ring: oklch(0.55 0.15 260);
-  --chart-1: oklch(0.55 0.15 260);
-  --chart-2: oklch(0.6 0.12 180);
-  --chart-3: oklch(0.7 0.1 140);
-  --chart-4: oklch(0.65 0.15 80);
-  --chart-5: oklch(0.55 0.15 30);
-  --sidebar: oklch(0.975 0.005 250);
-  --sidebar-foreground: oklch(0.2 0.02 260);
-  --sidebar-accent: oklch(0.95 0.01 250);
-  --sidebar-accent-foreground: oklch(0.2 0.02 260);
-  --sidebar-border: oklch(0.92 0.008 250);
-  --sidebar-ring: oklch(0.55 0.15 260);
-  --sidebar-primary: oklch(0.45 0.12 260);
-  --sidebar-primary-foreground: oklch(0.98 0.005 260);
+  --border: var(--brand-navy-200);
+  --input: var(--brand-navy-200);
+  --ring: var(--brand-teal-600);
+  --chart-1: var(--brand-navy-600);
+  --chart-2: var(--brand-teal-600);
+  --chart-3: var(--brand-gold-600);
+  --chart-4: var(--brand-navy-400);
+  --chart-5: var(--brand-teal-400);
+  --sidebar: var(--brand-navy-950);
+  --sidebar-foreground: oklch(0.94 0.01 250);
+  --sidebar-accent: oklch(0.28 0.055 250);
+  --sidebar-accent-foreground: oklch(0.97 0.01 90);
+  --sidebar-border: oklch(0.32 0.05 250);
+  --sidebar-ring: var(--brand-gold-500);
+  --sidebar-primary: var(--brand-gold-600);
+  --sidebar-primary-foreground: var(--brand-navy-950);
 }
 
+/* Dark mode — Nibras deep-navy field with teal/gold accents */
 .dark {
-  --background: oklch(0.15 0.015 260);
-  --foreground: oklch(0.93 0.01 260);
-  --card: oklch(0.18 0.015 260);
-  --card-foreground: oklch(0.93 0.01 260);
-  --popover: oklch(0.18 0.015 260);
-  --popover-foreground: oklch(0.93 0.01 260);
-  --primary: oklch(0.65 0.12 260);
-  --primary-foreground: oklch(0.15 0.015 260);
-  --secondary: oklch(0.22 0.015 260);
-  --secondary-foreground: oklch(0.85 0.01 260);
-  --muted: oklch(0.22 0.01 260);
-  --muted-foreground: oklch(0.65 0.015 260);
-  --accent: oklch(0.22 0.015 260);
-  --accent-foreground: oklch(0.93 0.01 260);
+  --background: oklch(0.17 0.035 250);
+  --foreground: oklch(0.94 0.01 250);
+  --card: oklch(0.21 0.04 250);
+  --card-foreground: oklch(0.94 0.01 250);
+  --popover: oklch(0.21 0.04 250);
+  --popover-foreground: oklch(0.94 0.01 250);
+  --primary: var(--brand-gold-500);
+  --primary-foreground: var(--brand-navy-950);
+  --secondary: oklch(0.27 0.045 250);
+  --secondary-foreground: oklch(0.90 0.01 250);
+  --muted: oklch(0.25 0.035 250);
+  --muted-foreground: oklch(0.70 0.02 250);
+  --accent: oklch(0.28 0.05 195);
+  --accent-foreground: oklch(0.93 0.02 180);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.55 0.15 260);
-  --chart-1: oklch(0.65 0.12 260);
-  --chart-2: oklch(0.65 0.1 180);
-  --chart-3: oklch(0.7 0.08 140);
-  --chart-4: oklch(0.65 0.12 80);
-  --chart-5: oklch(0.6 0.12 30);
-  --sidebar: oklch(0.18 0.015 260);
-  --sidebar-foreground: oklch(0.93 0.01 260);
-  --sidebar-accent: oklch(0.22 0.015 260);
-  --sidebar-accent-foreground: oklch(0.93 0.01 260);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.55 0.15 260);
-  --sidebar-primary: oklch(0.65 0.12 260);
-  --sidebar-primary-foreground: oklch(0.15 0.015 260);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --ring: var(--brand-gold-400);
+  --chart-1: var(--brand-teal-400);
+  --chart-2: var(--brand-gold-500);
+  --chart-3: var(--brand-navy-300);
+  --chart-4: var(--brand-teal-300);
+  --chart-5: var(--brand-gold-300);
+  --sidebar: oklch(0.14 0.035 250);
+  --sidebar-foreground: oklch(0.94 0.01 250);
+  --sidebar-accent: oklch(0.24 0.045 250);
+  --sidebar-accent-foreground: oklch(0.97 0.01 90);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: var(--brand-gold-400);
+  --sidebar-primary: var(--brand-gold-500);
+  --sidebar-primary-foreground: var(--brand-navy-950);
 }
 
 @layer base {
@@ -120,9 +206,84 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Cairo', 'Noto Naskh Arabic', system-ui, sans-serif;
+    font-family: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif;
     direction: rtl;
   }
+  .font-display {
+    font-family: 'Cairo', 'Noto Kufi Arabic', system-ui, sans-serif;
+    font-weight: 700;
+  }
+  .font-doc {
+    font-family: 'Noto Naskh Arabic', 'Cairo', system-ui, sans-serif;
+  }
+
+  /* ===== Nibras brand utilities ===== */
+  .text-brand-navy-950 { color: var(--brand-navy-950); }
+  .bg-brand-navy-950 { background-color: var(--brand-navy-950); }
+  .text-brand-teal-700 { color: var(--brand-teal-700); }
+  .bg-brand-teal-100 { background-color: var(--brand-teal-100); }
+  .text-brand-gold-700 { color: var(--brand-gold-700); }
+  .text-brand-gold-600 { color: var(--brand-gold-600); }
+  .bg-brand-gold-600 { background-color: var(--brand-gold-600); }
+  .text-brand-gold-800 { color: var(--brand-gold-800); }
+  .bg-brand-gold-50 { background-color: var(--brand-gold-50); }
+  .bg-brand-navy-50 { background-color: var(--brand-navy-50); }
+
+  /* نمط النبراس الجرافيكي: توهج ضوء خفيف مستوحى من النجمة الثمانية — للاستخدام في الخلفيات والعناوين */
+  .nibras-glow-pattern {
+    position: relative;
+  }
+  .nibras-glow-pattern::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(600px circle at 85% -10%, oklch(0.74 0.14 86 / 0.14), transparent 55%),
+      radial-gradient(480px circle at 10% 110%, oklch(0.56 0.09 194 / 0.10), transparent 55%),
+      radial-gradient(220px circle at 50% 50%, oklch(0.74 0.14 86 / 0.05), transparent 60%);
+  }
+  .nibras-glow-pattern > * {
+    position: relative;
+  }
+
+  /* نمط خطوط المسار التربوي الخفيف */
+  .nibras-path-pattern {
+    background-image:
+      linear-gradient(115deg, transparent 48%, oklch(0.56 0.09 194 / 0.06) 48%, oklch(0.56 0.09 194 / 0.06) 49%, transparent 49%, transparent 52%, oklch(0.74 0.14 86 / 0.08) 52%, oklch(0.74 0.14 86 / 0.08) 53%, transparent 53%),
+      linear-gradient(115deg, transparent 74%, oklch(0.4 0.07 254 / 0.05) 74%, oklch(0.4 0.07 254 / 0.05) 75%, transparent 75%);
+    background-size: 56px 56px;
+  }
+
+  /* شريط هوية علوي (ترويسة ملونة رفيع) */
+  .nibras-identity-bar {
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand-navy-950) 0%, var(--brand-navy-950) 40%, var(--brand-teal-700) 70%, var(--brand-gold-600) 100%);
+    flex-shrink: 0;
+  }
+
+  /* بطاقة مميزة (للإجراءات الرئيسية) */
+  .nibras-card-hero {
+    background: linear-gradient(135deg, var(--brand-navy-950), var(--brand-navy-800) 70%, var(--brand-teal-800));
+    color: oklch(0.95 0.01 250);
+    position: relative;
+    overflow: hidden;
+  }
+  .nibras-card-hero::after {
+    content: "";
+    position: absolute;
+    top: -40%;
+    left: -10%;
+    width: 70%;
+    height: 180%;
+    background: radial-gradient(closest-side, oklch(0.74 0.14 86 / 0.18), transparent);
+    pointer-events: none;
+  }
+
+  /* وسوم المواد بألوان الهوية */
+  .nibras-tag-history { color: var(--brand-navy-700); background: var(--brand-navy-100); }
+  .nibras-tag-geography { color: var(--brand-teal-800); background: var(--brand-teal-100); }
+  .nibras-tag-civics { color: var(--brand-gold-800); background: var(--brand-gold-100); }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
   [type="button"]:not(:disabled),
@@ -207,9 +368,20 @@
   }
   
     .print-header {
-    border-bottom: 2px solid #1e40af;
+    border-bottom: 2px solid #0e2a47;
     padding-bottom: 8px;
     margin-bottom: 16px;
+    position: relative;
+  }
+  /* شريط هوية ملون رفيع أعلى الترويسة المطبوعة */
+  .print-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #0e2a47 0%, #0e2a47 40%, #0d7377 70%, #f0b429 100%);
   }
   .print-body {
     white-space: pre-wrap;

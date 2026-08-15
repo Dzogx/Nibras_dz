@@ -214,7 +214,7 @@ export default function Results() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Card>
                         <CardContent className="p-4 text-center">
-                          <p className="text-2xl font-bold text-blue-600">{analysis.totalAssessments}</p>
+                          <p className="text-2xl font-bold text-brand-navy-700">{analysis.totalAssessments}</p>
                           <p className="text-sm text-muted-foreground">تقويمات</p>
                         </CardContent>
                       </Card>
@@ -226,7 +226,7 @@ export default function Results() {
                       </Card>
                       <Card>
                         <CardContent className="p-4 text-center">
-                          <p className="text-2xl font-bold text-blue-600">{analysis.avgHistory?.toFixed(1)}</p>
+                          <p className="text-2xl font-bold text-brand-navy-700">{analysis.avgHistory?.toFixed(1)}</p>
                           <p className="text-sm text-muted-foreground">متوسط التاريخ</p>
                         </CardContent>
                       </Card>

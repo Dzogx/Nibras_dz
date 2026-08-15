@@ -511,14 +511,14 @@ export default function Assessment() {
 
                 {/* Curriculum Citations */}
                 {curriculumCitations.length > 0 && (
-                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                  <div className="mb-4 p-3 bg-brand-teal-50 border border-brand-teal-200 rounded-lg text-sm">
                     <div className="flex items-center gap-2 mb-2">
-                      <BookOpen className="w-4 h-4 text-blue-600" />
-                      <span className="font-semibold text-blue-800">الاستشهادات من وثائق المنهاج الرسمية ({curriculumCitations.length} وثيقة)</span>
+                      <BookOpen className="w-4 h-4 text-brand-teal-700" />
+                      <span className="font-semibold text-brand-navy-800">الاستشهادات من وثائق المنهاج الرسمية ({curriculumCitations.length} وثيقة)</span>
                     </div>
                     <div className="space-y-1">
                       {curriculumCitations.map(c => (
-                        <div key={c.referenceNumber} className="flex items-start gap-2 text-blue-700">
+                        <div key={c.referenceNumber} className="flex items-start gap-2 text-brand-navy-700">
                           <Badge variant="outline" className="text-xs shrink-0">[مرجع: {c.referenceNumber}]</Badge>
                           <span>
                             {c.title} — {c.sourceReference}

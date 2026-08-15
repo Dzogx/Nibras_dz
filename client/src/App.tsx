@@ -21,6 +21,7 @@ import AnnualPlanDetail from "./pages/AnnualPlanDetail";
 import ResourceDetail from "./pages/ResourceDetail";
 import Verify from "./pages/Verify";
 import AnswerPage from "./pages/AnswerPage";
+import Brand from "./pages/Brand";
 
 function Router() {
   return (
@@ -67,7 +68,8 @@ function Router() {
       <Route path="/profile">
         {() => <DashboardLayout><Profile /></DashboardLayout>}
       </Route>
-      {/* صفحات عامة (بدون مصادقة) للتحقق من الوثائق عبر QR */}
+      {/* صفحات عامة (بدون مصادقة) */}
+      <Route path="/brand" component={Brand} />
       <Route path="/verify" component={Verify} />
       <Route path="/verify/answer/:serial" component={AnswerPage} />
       <Route path={"/"}>

@@ -80,12 +80,14 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="nibras-glow-pattern flex items-center justify-center min-h-screen bg-background">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
-              <Sparkles className="w-8 h-8 text-primary" />
-            </div>
+            <img
+              src="/manus-storage/nibras-logo-v2-192_074bd255.png"
+              alt="شعار نبراس"
+              className="w-20 h-20 rounded-2xl mb-4 shadow-lg"
+            />
             <h1 className="text-2xl font-bold tracking-tight">
               نبراس
             </h1>
@@ -193,7 +195,11 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <Sparkles className="h-5 w-5 text-primary shrink-0" />
+                  <img
+                    src="/manus-storage/nibras-logo-v2-96_4d6cdb49.png"
+                    alt="شعار نبراس"
+                    className="h-8 w-8 rounded-lg shrink-0"
+                  />
                   <span className="font-bold tracking-tight text-lg">
                     نبراس
                   </span>
@@ -215,7 +221,7 @@ function DashboardLayoutContent({
                       className="h-10 transition-all font-normal"
                     >
                       <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
+                        className={`h-4 w-4 ${isActive ? "text-sidebar-primary" : ""}`}
                       />
                       <span className="text-sm">{item.label}</span>
                     </SidebarMenuButton>
