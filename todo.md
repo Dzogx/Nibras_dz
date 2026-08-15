@@ -405,10 +405,10 @@
 - [x] اختبارات + TypeScript (88/88) + checkpoint + مزامنة GitHub
 
 ## تطوير هوية v3 بروح لوحة الأستاذ الجديدة (نون + نقطة نور علوية + المسار الصاعد) — 15 أغسطس
-- [ ] مراجعة SVG المونوغرام الحالي (نون Kufi + فانوس معلق) وتصميم إضافة «نقطة النور العلوية المضيئة» فوق ذروة الفم ضمن لوحة Ink/Copper/Wax/Sand
-- [ ] إعادة توليد PNGs المونوغرام (512/192/96/32) + نسخ mono/white
-- [ ] تحديث النسخ الأفقية (نبراس/NIBRAS) light/mono/white باللمعة الجديدة
-- [ ] تحديث Favicon في client/index.html بأحجام متعددة
-- [ ] تحديث مراجع الأصول في الواجهات (DashboardLayout/Home/Brand/A4Print/const.ts) وUSAGE_GUIDELINES.md
-- [ ] تشغيل الاختبارات الكاملة + TypeScript وتحديث Brand.tsx إن لزم
-- [ ] معاينة بصرية وتسليم المقارنة قبل/بعد
+- [x] مراجعة SVG المونوغرام الحالي (نون Kufi + فانوس معلق) وتصميم إضافة «نقطة النور العلوية المضيئة» فوق ذروة الفم ضمن لوحة Ink/Copper/Wax/Sand
+- [x] إعادة توليد PNGs المونوغرام (512/192/96/32) + نسخ mono/black/white
+- [x] تحديث النسخ الأفقية (نبراس/NIBRAS) light/mono/white باللمعة الجديدة
+- [x] تحديث Favicon في client/index.html بأحجام متعددة + favicon-v4.ico متعدد الأحجام
+- [x] تحديث مراجع الأصول في الواجهات (DashboardLayout/Home/Brand/A4Print/const.ts وUSAGE_GUIDELINES.md)
+- [x] تشغيل الاختبارات الكاملة (88/88) + TypeScript نظيف + تحديث Brand.tsx
+- [x] معاينة بصرية (/brand وDashboard) والتسليم (checkpoint 951f6ccb)
