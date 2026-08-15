@@ -384,3 +384,10 @@
 - [x] صفحة /brand: الشعار بأحجامه وmonochrome، الألوان، الخطوط، المفهوم، مكونات UI
 - [x] vitest 88/88 + tsc نظيف + فحص بصري (/ و/dashboard و/brand)
 - [x] ملخص تنفيذي: index.css / index.html / DashboardLayout / Dashboard / Home / Brand / A4Print + 5 صفحات ألوان (checkpoint 8384dccb)
+
+## الهوية الإبداعية الجديدة (حرف نون + نقطة الضوء)
+- [x] ابتكار 5 اتجاهات شعار جذرية مختلفة حول «ن» + ضوء واختيار الأقوى (الاتجاه المختار: النون الكوفي + الفانوس المعلق من ذروة الفم)
+- [x] بناء الشعار من خط Noto Kufi Arabic الرسمي (uni06BA + نقطة المركب) عبر fontTools/uharfbuzz/cairo + فانوس ذهبي معلق — SVG متجهي + PNG (512/192/96/32) + monochrome + white + favicon.ico متعدد الأحجام
+- [x] الاعتماد على نظام الألوان الحالي (Navy/Teal/Gold) + Typography (Noto Kufi Arabic للعناوين / Cairo للجسم / Inter للاتيني)
+- [x] تطبيق الشعار الجديد في كل الواجهات: index.html (favicon)، DashboardLayout (sidebar + avatar)، Home (hero)، Dashboard، Brand (/brand بأحجامه)، A4Print (LOGO_URL في الترويسة الرسمية)
+- [x] اختبار البناء وTypeScript والاختبارات (88/88) + مزامنة GitHub + تسليم الملخص والهوية

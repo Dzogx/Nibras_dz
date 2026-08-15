@@ -148,3 +148,11 @@ text-brand-*/bg-brand-* (navy-950..50, teal-900..50, gold-900..50)
 ## المتبقي: checkpoint + مزامنة GitHub + تسليم الملخص.
 
 ## خطأ esbuild routers.ts:436 — قديم (14 أغسطس 20:54، أي قبل ~4 ساعات) وليس جديداً. آخر أخطاء devserver.log: 15 أغسطس 00:38 HMR نظيف. تم إصلاحه سابقاً (checkpoint 4a9f8b40 وبعده). لا حاجة لإجراء.
+
+## ملخص الهوية HTML (طلب 15 أغسطس): ملف /home/ubuntu/brand_summary/nibras_brand_summary.html — 6 أقسام: hero، الشعار، الألوان، الخطوط، المكونات، المخرجات التربوية، النمط الجرافيكي. يستخدم مسارات https://nibras.manus.space/manus-storage/ لأصول الشعار.
+
+## ملخص HTML — حالة 00:48
+- الصور تظهر الآن (النطاق المحلي يعمل؛ النطاق المنشور nibras.manus.space يعطي 403 للملفات الجديدة المرفوعة — يحتاج إعادة نشر أو وقت)
+- الفحص البصري: hero + الشعار بجميع النسخ + قسم الألوان كلها سليمة؛ RTL صحيح
+- الملف النهائي: /home/ubuntu/brand_summary/nibras_brand_summary.html (24KB)
+- ملاحظة مهمة للتسليم: عند النشر يجب استبدال النطاق المحلي بـ https://nibras.manus.space/

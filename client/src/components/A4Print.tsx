@@ -20,7 +20,7 @@ const NIBRAS_BASE_URL = (() => {
   return "";
 })();
 
-export const LOGO_URL = "/manus-storage/nibras-logo-v2_e4f78668.svg";
+export const LOGO_URL = "/manus-storage/nibras-nun-lamp_cd81d0aa.svg";
 
 export interface PrintMeta {
   /** عنوان الوثيقة، مثل: "مذكرة بيداغوجية" أو "اختبار فصلي في التاريخ والجغرافيا" */

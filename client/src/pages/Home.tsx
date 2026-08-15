@@ -27,7 +27,7 @@ export default function Home() {
       <div className="nibras-glow-pattern min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <img
-            src="/manus-storage/nibras-logo-v2-96_4d6cdb49.png"
+            src="/manus-storage/nibras-logo-192_e2165043.png"
             alt="شعار نبراس"
             className="w-16 h-16 rounded-xl mx-auto mb-4 animate-pulse"
           />
@@ -42,7 +42,7 @@ export default function Home() {
       <section className="nibras-glow-pattern">
         <div className="max-w-4xl mx-auto px-6 py-16 md:py-24 text-center">
           <img
-            src="/manus-storage/nibras-logo-v2_e4f78668.svg"
+            src="/manus-storage/nibras-nun-lamp_cd81d0aa.svg"
             alt="شعار نبراس"
             className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6"
           />

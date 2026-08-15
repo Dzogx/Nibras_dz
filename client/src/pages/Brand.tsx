@@ -15,11 +15,11 @@ import {
 import { toast } from "sonner";
 
 const LOGO = {
-  svg: "/manus-storage/nibras-logo-v2_e4f78668.svg",
-  png512: "/manus-storage/nibras-logo-v2-512_b49e915a.png",
-  png192: "/manus-storage/nibras-logo-v2-192_074bd255.png",
-  png96: "/manus-storage/nibras-logo-v2-96_4d6cdb49.png",
-  mono512: "/manus-storage/nibras-logo-v2-mono-512_d4b17702.png",
+  svg: "/manus-storage/nibras-nun-lamp_cd81d0aa.svg",
+  png512: "/manus-storage/nibras-logo-512_ea5ca30d.png",
+  png192: "/manus-storage/nibras-logo-192_e2165043.png",
+  png96: "/manus-storage/nibras-logo-192_e2165043.png",
+  mono512: "/manus-storage/nibras-logo-mono-512_3cc2bbcd.png",
 };
 
 const colors = [
