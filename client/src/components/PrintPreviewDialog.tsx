@@ -77,51 +77,46 @@ export function PrintPreviewDialog({ open, onOpenChange, meta, children }: Print
             <div className="print-header-official">
               <div className="print-header-row print-header-top">
                 <div className="print-header-right">
-                  <div className="print-republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
-                  <div className="print-ministry">وزارة التربية الوطنية</div>
+                  <div className="print-office print-office-main">مديرية التربية لولاية {meta.province || "..........................."}</div>
                 </div>
                 <div className="print-header-left">
-                  <div className="print-office">مديرية التربية لولاية: {meta.province || "..........................."}</div>
-                  <div className="print-office">المؤسسة التعليمية: {meta.school || "..............................."}</div>
+                  <div className="print-office print-office-main">متوسطة: {meta.school || "......................................."} – المحادمة</div>
+                </div>
+                <div className="print-header-far-left">
+                  <div className="print-office print-office-main">المستوى: {meta.levelSection || "...................."}</div>
                 </div>
               </div>
               <div className="print-header-divider" />
-              <div className="print-header-fields">
-                <div className="print-field">
-                  <span className="print-field-label">الأستاذ(ة):</span>
-                  <span className="print-field-value">{meta.teacherName || "................................"}</span>
+              <div className="print-header-row">
+                <div className="print-header-right">
+                  <div className="print-office print-office-main">
+                    {meta.title}
+                    {meta.subject ? <> في مادة: {meta.subject}</> : null}
+                    {meta.extra ? <span className="print-doc-extra">{meta.extra}</span> : null}
+                  </div>
                 </div>
-                {meta.subject && (
-                  <div className="print-field">
-                    <span className="print-field-label">المادة:</span>
-                    <span className="print-field-value">{meta.subject}</span>
-                  </div>
-                )}
-                {meta.levelSection && (
-                  <div className="print-field">
-                    <span className="print-field-label">المستوى/القسم:</span>
-                    <span className="print-field-value">{meta.levelSection}</span>
-                  </div>
-                )}
-                {meta.duration && (
-                  <div className="print-field">
-                    <span className="print-field-label">المدة:</span>
-                    <span className="print-field-value">{meta.duration}</span>
-                  </div>
-                )}
-                {meta.date && (
-                  <div className="print-field">
-                    <span className="print-field-label">التاريخ:</span>
-                    <span className="print-field-value">{meta.date}</span>
-                  </div>
-                )}
+                <div className="print-header-left">
+                  <div className="print-office print-office-main">{meta.date ? `التاريخ: ${meta.date}` : "التاريخ: ............../............../.............."}</div>
+                </div>
+                <div className="print-header-far-left">
+                  <div className="print-office print-office-main">{meta.duration ? `المدة: ${meta.duration}` : "المدة: ......................."}</div>
+                </div>
               </div>
               <div className="print-header-divider" />
-              <div className="print-doc-title">
-                {meta.title}
-                {meta.subtitle ? <span className="print-doc-subtitle">{meta.subtitle}</span> : null}
-                {meta.extra ? <span className="print-doc-extra">{meta.extra}</span> : null}
-              </div>
+              {meta.teacherName ? (
+                <>
+                  <div className="print-header-fields">
+                    <div className="print-field">
+                      <span className="print-field-label">الأستاذ(ة):</span>
+                      <span className="print-field-value">{meta.teacherName}</span>
+                    </div>
+                  </div>
+                  <div className="print-header-divider" />
+                </>
+              ) : null}
+              {meta.subtitle ? (
+                <div className="print-doc-title">{meta.subtitle}</div>
+              ) : null}
             </div>
 
             {/* محتوى الوثيقة */}
@@ -135,6 +130,11 @@ export function PrintPreviewDialog({ open, onOpenChange, meta, children }: Print
               )}
             >
               <span>نبراس — مساعد التدريس الذكي لأستاذ الاجتماعيات</span>
+              {meta.serialNumber && (
+                <span className="font-mono text-[8pt] border border-dashed border-slate-400 rounded px-1" dir="ltr">
+                  {meta.serialNumber}
+                </span>
+              )}
               <span>صفحة 1</span>
             </div>
           </div>

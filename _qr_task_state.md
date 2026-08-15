@@ -100,3 +100,18 @@
 - المسارات الصحيحة: /assessment، /content-library، /lessons، /verify
 - المطلوب التالي من الأستاذ: إرسال عينات من الوثائق المطبوعة (سيتم إنتاج عينات PDF للمذكرة والتقويم والمكتبة والتفتيش)
 - مزامنة GitHub مع Dzogx/Nibras_dz ما زالت معلقة بعد checkpoint 92d4a36b
+
+---
+## مهمة مطابقة نموذج الأستاذ (15 أغسطس)
+نموذج الأستاذ محفوظ في /home/ubuntu/upload/IMG_20260815_010849.jpg وتحليله في /home/ubuntu/nibras/teacher_sample_analysis.md
+التقدم الحالي:
+1. [تم] A4Print.tsx: الترويسة أعيدت صياغتها بسطرين: سطر1 = (مديرية التربية لولاية X يمين / شعار نبراس وسط / متوسطة: X – المحادمة يسار / المستوى: أقصى يسار)، سطر2 = (اسم الوثيقة في مادة Y يمين / التاريخ يسار / المدة أقصى يسار)، صف الأستاذ(ة) يظهر فقط عند توفر teacherName. QR الإجابات نصه أصبح «أفحص الرمز للحصول على الإجابة النموذجية».
+2. [تم] PrintPreviewDialog.tsx: طُبّقت الترويسة نفسها + تذييل مع serialNumber.
+3. [تم] index.css: أضيف print-office-main (11.5pt/600) + print-header-far-left + فئات table في .print-body (حدود سوداء + رأس f1f5f9) + عناوين الأجزاء مخطوطة.
+4. [تم] ResourceDetail.tsx: Streamdown مع controls={{ table: true }} لتفعيل جداول markdown (3 مواضع).
+المتبقي:
+- فحص كيف يُولّد محتوى التقويم (هل يحتوي جداول markdown أصلاً؟) — generate_sample_docs.mjs موجود في المشروع
+- تحديث سكربت العينات generate_sample_docs.mjs للترويسة الجديدة وإعادة توليد عينات PDF
+- تشغيل npx vitest run + npx tsc --noEmit
+- حفظ checkpoint + مزامنة GitHub (remote github → Dzogx/Nibras_dz main، remote origin → artifacts)
+- تسجيل أخطاء esbuild القديمة في devserver.log: schema.ts:193 (14 أغسطس 20:51) وrouters.ts:436 (14 أغسطس 20:54) — تبدو قديمة، يجب التأكد أنها غير حالية (tsc يقول 0 errors حالياً)

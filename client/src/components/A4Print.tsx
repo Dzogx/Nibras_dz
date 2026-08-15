@@ -91,63 +91,63 @@ export function A4PrintContent({
   return (
     <div className="print-container" dir="rtl">
       {/* ===== الترويسة الرسمية الجزائرية (تظهر فقط عند الطباعة) ===== */}
+      {/* مطابقة لنموذج الورقة اليدوية الرسمي: سطران محددان بخط واضح بدون شعار وزارة في الأعلى */}
       <div className="print-header-official print-hidden-screen">
         <div className="print-header-row print-header-top">
           <div className="print-header-right">
-            <div className="print-republic">الجمهورية الجزائرية الديمقراطية الشعبية</div>
-            <div className="print-ministry">وزارة التربية الوطنية</div>
+            <div className="print-office print-office-main">مديرية التربية لولاية {province || "..........................."}</div>
           </div>
           <div className="print-header-logo">
             <img src={LOGO_URL} alt="نبراس" className="print-logo-img" />
           </div>
           <div className="print-header-left">
-            <div className="print-office">مديرية التربية لولاية: {province || "..........................."}</div>
-            <div className="print-office">المؤسسة التعليمية: {school || "..............................."}</div>
+            <div className="print-office print-office-main">متوسطة: {school || "......................................."} – المحادمة</div>
+          </div>
+          <div className="print-header-far-left">
+            <div className="print-office print-office-main">المستوى: {levelSection || "...................."}</div>
           </div>
         </div>
         <div className="print-header-divider" />
-        {/* السطر الثاني: بيانات الوثيقة */}
-        <div className="print-header-fields">
-          <div className="print-field">
-            <span className="print-field-label">الأستاذ(ة):</span>
-            <span className="print-field-value">{teacherName || "................................"}</span>
+        <div className="print-header-row">
+          <div className="print-header-right">
+            <div className="print-office print-office-main">
+              {title}
+              {subject ? <> في مادة: {subject}</> : null}
+              {extra ? <span className="print-doc-extra">{extra}</span> : null}
+            </div>
           </div>
-          {subject && (
-            <div className="print-field">
-              <span className="print-field-label">المادة:</span>
-              <span className="print-field-value">{subject}</span>
-            </div>
-          )}
-          {levelSection && (
-            <div className="print-field">
-              <span className="print-field-label">المستوى/القسم:</span>
-              <span className="print-field-value">{levelSection}</span>
-            </div>
-          )}
-          {duration && (
-            <div className="print-field">
-              <span className="print-field-label">المدة:</span>
-              <span className="print-field-value">{duration}</span>
-            </div>
-          )}
-          {date && (
-            <div className="print-field">
-              <span className="print-field-label">التاريخ:</span>
-              <span className="print-field-value">{date}</span>
-            </div>
-          )}
+          <div className="print-header-left">
+            <div className="print-office print-office-main">{date ? `التاريخ: ${date}` : "التاريخ: ............../............../.............."}</div>
+          </div>
+          <div className="print-header-far-left">
+            <div className="print-office print-office-main">{duration ? `المدة: ${duration}` : "المدة: ......................."}</div>
+          </div>
         </div>
         <div className="print-header-divider" />
-        {/* عنوان الوثيقة */}
-        <div className="print-doc-title">
-          {title}
-          {subtitle ? <span className="print-doc-subtitle">{subtitle}</span> : null}
-          {extra ? <span className="print-doc-extra">{extra}</span> : null}
-        </div>
+        {/* صف بيانات الأستاذ (تظهر عند توفر اسم الأستاذ، تُخفى لورقة الاختبار التي توزع على التلاميذ) */}
+        {teacherName ? (
+          <>
+            <div className="print-header-fields">
+              <div className="print-field">
+                <span className="print-field-label">الأستاذ(ة):</span>
+                <span className="print-field-value">{teacherName}</span>
+              </div>
+            </div>
+            <div className="print-header-divider" />
+          </>
+        ) : null}
+        {subtitle ? (
+          <div className="print-doc-title">
+            {subtitle}
+          </div>
+        ) : null}
       </div>
       {/* عنوان مبسط للمعاينة على الشاشة فقط */}
       <div className="screen-only print-container-preview-title">
-        <h1 className="text-xl font-bold mb-1">{title}</h1>
+        <h1 className="text-xl font-bold mb-1">
+          {title}
+          {subject ? <> — {subject}</> : null}
+        </h1>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       </div>
       {/* ===== محتوى الوثيقة ===== */}
@@ -169,7 +169,7 @@ export function A4PrintContent({
             {qrCodeUrls.answer && (
               <div className="print-qr-item">
                 <img src={qrCodeUrls.answer} alt="QR نموذج الإجابات" className="print-qr-img" />
-                <span className="print-qr-caption">نموذج الإجابات (بعد نهاية الاختبار)</span>
+                <span className="print-qr-caption">أفحص الرمز للحصول على الإجابة النموذجية</span>
               </div>
             )}
             <span className="print-serial" dir="ltr">{serialNumber}</span>

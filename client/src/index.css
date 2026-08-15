@@ -256,6 +256,38 @@
   .print-office {
     font-size: 10.5pt;
   }
+  /* سطر الترويسة الرئيسي (توزيع: يمين / وسط / أقصى يسار) وفق نموذج الورقة اليدوية */
+  .print-office-main {
+    font-size: 11.5pt;
+    font-weight: 600;
+  }
+  .print-header-far-left {
+    text-align: left;
+  }
+  .print-header-left {
+    text-align: left;
+  }
+  .print-header-right {
+    text-align: right;
+  }
+  /* عناوين الأجزاء مظللة/مخطوطة مثل ورقة الاختبار الرسمية */
+  .print-body table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+    font-size: 11pt;
+  }
+  .print-body table th,
+  .print-body table td {
+    border: 1px solid #0f172a;
+    padding: 5px 8px;
+    text-align: right;
+    vertical-align: top;
+  }
+  .print-body table th {
+    background: #f1f5f9;
+    font-weight: 700;
+  }
   .print-header-divider {
     border-bottom: 1.5px solid #0f172a;
     margin: 6px 0 8px 0;
