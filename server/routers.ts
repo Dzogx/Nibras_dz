@@ -640,6 +640,7 @@ ${curriculumContext}`
       difficultyLevel: z.enum(["easy", "medium", "hard", "progressive"]).optional(),
       supportStrategy: z.enum(["scaffolding", "extension", "simplification", "enrichment", "none"]).optional(),
       teachingTemplateKey: z.enum(TEACHING_TEMPLATES.map(template => template.key) as [string, ...string[]]).optional(),
+      llmModel: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
       // Build differentiation context
       const diffContext: string[] = [];
@@ -820,6 +821,7 @@ ${diffBlock}
           { role: "system", content: prompts[input.contentType] },
           { role: "user", content: "أنشئ المحتوى المطلوب بالتفصيل." },
         ],
+        ...(input.llmModel ? { model: input.llmModel } : {}),
       });
 
       const content = getLLMTextContent(response);

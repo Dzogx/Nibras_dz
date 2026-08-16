@@ -61,6 +61,7 @@ const input = {
   lessonNumber: 1,
   duration: "ساعة واحدة",
   contentType: "lessonPlan",
+  llmModel: "qwen/qwen3-32b",
 };
 console.log("إدخال التوليد:", JSON.stringify(input, null, 1));
 

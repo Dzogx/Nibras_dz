@@ -1,12 +1,11 @@
 import { describe, it, expect } from "vitest";
 
-// Validates the external LLM provider integration (AgentRouter) at runtime:
+// Validates the external LLM provider integration (OpenRouter) at runtime:
 // the routing code reaches the external /v1/models endpoint with the
 // configured Bearer key. If the key is valid we receive a model list; if it is
-// invalid/expired the gateway replies 401 with an unauthorized_client_error.
-// Either outcome proves the plumbing works; only a routing/network failure
-// would make this test fail.
-describe("external LLM provider (AgentRouter)", () => {
+// invalid/expired the gateway replies 401. Either outcome proves the plumbing
+// works; only a routing/network failure would make this test fail.
+describe("external LLM provider (OpenRouter)", () => {
   it(
     "reaches the external endpoint with the configured key (valid key → model list; invalid key → 401)",
     async () => {
