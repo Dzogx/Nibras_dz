@@ -1351,6 +1351,11 @@ ${rulesContext}
     list: protectedProcedure.input(z.object({ sectionId: z.number() })).query(async ({ input }) => {
       return await getLearningSituations(input.sectionId);
     }),
+    // كل الوضعيات المعلقة للمستخدم (لبطاقة «الدروس المعلقة» في لوحة التحكم)
+    listPending: protectedProcedure.query(async ({ ctx }) => {
+      const all = await getLearningSituationsByUserId(ctx.user.id);
+      return all.filter((s) => !s.isCompleted);
+    }),
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return await getLearningSituationById(input.id);
     }),

@@ -45,6 +45,7 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
 
   const { data: lessons, isLoading: lessonsLoading } = trpc.lessons.list.useQuery();
+  const { data: situations } = trpc.situations.listPending.useQuery();
   const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery();
   const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery();
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
@@ -53,8 +54,11 @@ export default function Dashboard() {
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
   const completedLessons = useMemo(() => lessons?.filter(l => l.isCompleted).length ?? 0, [lessons]);
-  const pendingLessonsList = useMemo(() => (lessons ?? []).filter(l => !l.isCompleted), [lessons]);
-  const pendingLessons = pendingLessonsList.length;
+  // الوضعيات المعلقة هي المرجع الحقيقي للعمل اليومي (Teacher OS)،
+  // فبطاقة «الدروس المعلقة» تعرضها بدل جدول الدروس القديم
+  const pendingSituations = useMemo(() => (situations ?? []).filter((s: any) => !s.isCompleted), [situations]);
+  const pendingLessons = pendingSituations.length;
+  const pendingLessonsList = pendingSituations;
 
   const [selectedClassId, setSelectedClassId] = useState<number | undefined>(undefined);
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
@@ -182,31 +186,31 @@ export default function Dashboard() {
                 درس بحاجة إلى إنجاز
               </div>
             </div>
-            {pendingLessonsList.length > 0 ? (
+            {pendingSituations.length > 0 ? (
               <ul className="space-y-1.5 mb-3">
-                {pendingLessonsList.slice(0, 3).map((lesson) => (
+                {pendingSituations.slice(0, 3).map((situation: any) => (
                   <li
-                    key={lesson.id}
+                    key={situation.id}
                     className="text-sm text-foreground/80 flex items-center gap-2 cursor-pointer hover:text-brand-copper-700 transition-colors"
-                    onClick={() => setLocation(`/lessons/${lesson.id}`)}
+                    onClick={() => setLocation("/teacher-os")}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-wax-600 shrink-0" />
-                    <span className="truncate">{lesson.title}</span>
+                    <span className="truncate">{situation.title}</span>
                   </li>
                 ))}
-                {pendingLessonsList.length > 3 && (
+                {pendingSituations.length > 3 && (
                   <li className="text-xs text-muted-foreground px-3.5">
-                    + {pendingLessonsList.length - 3} درس آخر
+                    + {pendingSituations.length - 3} وضعية أخرى
                   </li>
                 )}
               </ul>
             ) : (
-              <p className="text-sm text-brand-copper-700 mb-3">لا توجد دروس معلقة — أحسنت!</p>
+              <p className="text-sm text-brand-copper-700 mb-3">لا توجد وضعيات معلقة — أحسنت!</p>
             )}
             <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-brand-wax-600 h-2 rounded-full transition-all"
-                style={{ width: `${lessons?.length ? (pendingLessons / lessons.length) * 100 : 0}%` }}
+                style={{ width: `${situations?.length ? (pendingSituations.length / situations.length) * 100 : 0}%` }}
               />
             </div>
           </CardContent>
