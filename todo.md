@@ -475,3 +475,9 @@
 - [x] طباعة الشرائح (صفحة واحدة لكل شريحة عبر print CSS) + ملء الشاشة + إغلاق
 - [x] اختبارات الوحدة: lessonToSlides على سيناريوهات (مذكرة كاملة/ناقص قسم/بدون أهداف) + اختبارات guard db-mock + guard أمان vitest في getDb
 - [x] TypeScript نظيف + اختبارات 103/103 + فحص بصري (غلاف/أهداف/مراحل) + حُذفت صفحة demo المؤقتة + checkpoint + مزامنة + تسليم
+
+## إصلاح خطأ «No models» عند توليد درس (بلاغ الأستاذ 16 أوت 21:48، هاتف)
+
+- [x] تشخيص: invokeLLM بدون model + مزود OpenRouter (LLM_API_URL مفعل) → 400 «No models provided» لأن OpenRouter يتطلب model إجباريًا بينما Manus يقبل الافتراضي
+- [x] إصلاح: نموذج افتراضي (openai/gpt-4.1-mini) عند external دون model + fallback تلقائي إلى Manus عند 401/403/5xx من المزود الخارجي + تحسين رسالة الخطأ (llm.ts)
+- [x] اختباران جديدان (server/llm-fallback.test.ts) يثبتان: النجاح دون model + الرجوع إلى Manus بمفتاح خاطئ + TypeScript نظيف و105/105 اختبار + checkpoint + تسليم

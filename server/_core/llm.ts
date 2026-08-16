@@ -213,23 +213,23 @@ const normalizeToolChoice = (
 };
 
 // Resolve the LLM endpoint + auth key. An optional external OpenAI-compatible
-// provider (e.g. AgentRouter) takes precedence when both LLM_API_URL and
-// LLM_API_KEY are configured; otherwise the Manus gateway is used.
-const resolveLlmTarget = () => {
-  const useExternal =
-    ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0 &&
-    ENV.llmApiKey && ENV.llmApiKey.trim().length > 0;
-  if (useExternal) {
-    const base = ENV.llmApiUrl.replace(/\/$/, "");
-    // The external URL may already end with /v1 (e.g. https://agentrouter.org/v1);
+// provider (e.g. OpenRouter/AgentRouter) takes precedence when both LLM_API_URL
+// and LLM_API_KEY are configured; otherwise the Manus gateway is used.
+const resolveLlmTarget = (target: "external" | "manus") => {
+  if (target === "external") {
+    const base = (ENV.llmApiUrl ?? "").replace(/\/$/, "");
+    if (!base) {
+      throw new Error("External LLM provider URL (LLM_API_URL) is not configured");
+    }
+    // The external URL may already end with /v1 (e.g. https://openrouter.ai/api/v1);
     // avoid producing /v1/v1/... paths.
     const endsWithV1 = base.endsWith("/v1");
     return {
       url: endsWithV1
         ? `${base}/chat/completions`
         : `${base}/v1/chat/completions`,
-      apiKey: ENV.llmApiKey,
-      provider: "external",
+      apiKey: ENV.llmApiKey ?? "",
+      provider: "external" as const,
     };
   }
   return {
@@ -237,10 +237,16 @@ const resolveLlmTarget = () => {
       ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
         ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
         : "https://forge.manus.im/v1/chat/completions",
-    apiKey: ENV.forgeApiKey,
-    provider: "manus",
+    apiKey: ENV.forgeApiKey ?? "",
+    provider: "manus" as const,
   };
 };
+
+// Default model used when the external provider receives no explicit model.
+// OpenRouter REQUIRES a model field (unlike the Manus gateway, which accepts a
+// sensible default) so a request without `model` would otherwise fail with
+// "400 No models provided".
+export const EXTERNAL_LLM_DEFAULT_MODEL = "openai/gpt-4.1-mini";
 
 const assertApiKey = (apiKey: string, provider: string) => {
   if (!apiKey) {
@@ -429,10 +435,18 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const target = resolveLlmTarget();
+  // OpenAI-compatible external gateways (e.g. OpenRouter) require an explicit
+  // `model` field, while the Manus gateway falls back to a default. When no
+  // model was requested and an external provider is configured, apply a known
+  // default so the request does not fail with "400 No models provided".
+  if (!model && process.env.LLM_API_URL) {
+    payload.model = EXTERNAL_LLM_DEFAULT_MODEL;
+  }
+
+  const target = resolveLlmTarget("external");
   assertApiKey(target.apiKey, target.provider);
 
-  const response = await fetchWithBackoff(target.url, {
+  let response = await fetchWithBackoff(target.url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -443,6 +457,37 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   if (!response.ok) {
     const errorText = await response.text();
+    // If the external provider failed (auth/network/configuration), fall back
+    // once to the Manus gateway so generation never stays blocked for the
+    // teacher. 4xx client errors (e.g. invalid model) are NOT retried unless
+    // the root cause is the provider configuration itself — but an empty
+    // API key or a connection problem is worth the automatic retry.
+    const isProviderUnavailable =
+      response.status === 401 ||
+      response.status === 403 ||
+      response.status >= 500;
+    if (isProviderUnavailable) {
+      console.warn(
+        `External LLM provider failed (${response.status}); falling back to Manus gateway`
+      );
+      const fallback = resolveLlmTarget("manus");
+      assertApiKey(fallback.apiKey, fallback.provider);
+      response = await fetchWithBackoff(fallback.url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${fallback.apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const fallbackError = await response.text();
+        throw new Error(
+          `LLM invoke failed on both the external provider (${response.status} ${response.statusText}) and the Manus gateway (${fallbackError})`
+        );
+      }
+      return (await response.json()) as InvokeResult;
+    }
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
     );
@@ -464,7 +509,7 @@ export type ModelsResponse = {
 };
 
 export async function listLLMModels(): Promise<ModelsResponse> {
-  const target = resolveLlmTarget();
+  const target = resolveLlmTarget("external");
   assertApiKey(target.apiKey, target.provider);
 
   const url =
