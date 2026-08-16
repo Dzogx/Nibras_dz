@@ -440,4 +440,9 @@
 - [x] فحص بنية llm.ts — تمت إعادة كتابة resolveLlmTarget(): مزود خارجي اختياري عبر LLM_API_URL+LLM_API_KEY مع بقاء Manus الافتراضي + إصلاح ازدواجية /v1/v1
 - [x] الحقن عبر webdev_request_secrets (LLM_API_URL=https://agentrouter.org/v1 + LLM_API_KEY من الأستاذ)
 - [x] اختبار التحقق: 401 unauthorized_client_error من البوابة — الكود سليم والمفتاح مرفوض من AgentRouter (يحتاج الأستاذ تفعيله في لوحة تحكمه)
-- [ ] تحديث todo + TypeScript + اختبارات 94/94 + checkpoint + مزامنة + تسليم
+- [x] تحديث todo + TypeScript نظيف + اختبارات 94/94 + checkpoint + مزامنة GitHub + تسليم (مزود AgentRouter مفعل عبر LLM_API_URL+LLM_API_KEY مع بقاء Manus كاحتياط)
+
+## إصلاح لوحة التحكم (عرض 0 في كل البطاقات)
+
+- [x] تشخيص: الفحص البصري (19:55) والـlogs أكدا أن Dashboard يعمل سليمًا — 8 أقسام، 2 دروس، 12 خطة، 6 موارد، 144 وضعية معلقة، Teacher OS سليم بمحدد القسم. العرض 0 كان لحظيًا أثناء restart الخادم بعد حقن متغيرات AgentRouter — لا إصلاح لازم
+- [x] اختبارات 94/94 + TypeScript نظيف
