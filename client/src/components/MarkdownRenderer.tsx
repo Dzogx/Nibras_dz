@@ -141,3 +141,38 @@ export function MarkdownRenderer({ source, className, compact }: MarkdownRendere
 function cn(...parts: (string | undefined | false)[]): string {
   return parts.filter(Boolean).join(" ");
 }
+
+/**
+ * تجريد رموز Markdown من نص (للاقتصاص في البطاقات والمعاينات القصيرة).
+ * يحول Markdown إلى نص عادي نظيف بلا نجوم أو هاشتاغات أو فقرات HTML.
+ */
+export function stripMarkdown(md: string): string {
+  return (
+    (md ?? "")
+      // عناوين وجداول فاصلة
+      .replace(/^#{1,6}\s+|^\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*$/gm, "")
+      // سطور الجدول: حذف كل الفواصل الرأسية داخل السطر
+      .replace(/\|/g, "")
+      // قواعد أفقية وbullet/number markers
+      .replace(/^\s*[-*]\s+|^\s*\d+[.)]\s+|^\s*[-*_]{3,}\s*$/gm, "")
+      // تنسيق داخلي
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/\*(.+?)\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      // أسطر فارغة متكررة
+      .replace(/\n{2,}/g, " ")
+      .replace(/\n/g, " ")
+      .trim()
+  );
+}
+
+/**
+ * اقتصاص نص Markdown إلى طول أقصى دون كسر الكلمات، بعد تجريد الرموز.
+ */
+export function truncateMarkdown(md: string, maxLength: number): string {
+  const clean = stripMarkdown(md);
+  if (clean.length <= maxLength) return clean;
+  const trimmed = clean.slice(0, maxLength);
+  const lastSpace = trimmed.lastIndexOf(" ");
+  return (lastSpace > 0 ? trimmed.slice(0, lastSpace) : trimmed) + "…";
+}

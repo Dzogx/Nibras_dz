@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Eye, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { MarkdownRenderer, truncateMarkdown } from "@/components/MarkdownRenderer";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 
@@ -350,7 +350,7 @@ export default function Inspector() {
                       {new Date(review.createdAt).toLocaleDateString("ar-DZ")}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground line-clamp-3">{review.evaluation}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-3">{truncateMarkdown(review.evaluation ?? "", 260)}</p>
                 </div>
               ))}
             </div>

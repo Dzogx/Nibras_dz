@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { truncateMarkdown } from "@/components/MarkdownRenderer";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -112,7 +113,7 @@ export default function AnnualPlans() {
                       <span className="text-xs bg-muted px-2 py-0.5 rounded">{plan.gradeLevel}</span>
                       <span className="text-xs bg-muted px-2 py-0.5 rounded">{plan.academicYear}</span>
                     </div>
-                    {plan.content && <p className="text-sm text-muted-foreground line-clamp-2">{plan.content}</p>}
+                    {plan.content && <p className="text-sm text-muted-foreground line-clamp-2">{truncateMarkdown(plan.content, 200)}</p>}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); deleteMutation.mutate({ id: plan.id }); }}>

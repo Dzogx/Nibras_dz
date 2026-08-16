@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { truncateMarkdown } from "@/components/MarkdownRenderer";
 
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
@@ -194,7 +195,7 @@ export default function Curriculum() {
                       <span className="text-xs bg-muted px-2 py-0.5 rounded">{doc.gradeLevel}</span>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-3 mt-2">
-                      {doc.content}
+                      {truncateMarkdown(doc.content ?? "", 260)}
                     </p>
                     {doc.sourceReference && (
                       <p className="text-xs text-muted-foreground">المرجع: {doc.sourceReference}</p>

@@ -7,6 +7,7 @@ import { Library, Copy, Trash2, Eye, Pencil, FileText, Search } from "lucide-rea
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { truncateMarkdown } from "@/components/MarkdownRenderer";
 
 const typeLabels: Record<string, string> = {
   lessonPlan: "خطة درس",
@@ -99,7 +100,7 @@ export default function ContentLibrary() {
                         <span key={i} className="text-xs bg-muted px-2 py-0.5 rounded">{tag}</span>
                       ))}
                     </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{resource.content}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{truncateMarkdown(resource.content ?? "", 220)}</p>
                     <p className="text-xs text-muted-foreground">
                       {new Date(resource.createdAt).toLocaleDateString("ar-DZ")}
                     </p>
