@@ -2,9 +2,19 @@
  * Tests that the official 2022 curriculum data was properly seeded.
  * Verifies data integrity of annual plans, sections, and situations.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { getDb } from "./db";
 import { sql } from "drizzle-orm";
+
+beforeEach(() => {
+  // هذا الاختبار عمديًا يتحقق من البذر الفعلي في قاعدة البيانات الحقيقية —
+  // أي اختبار آخر يستخدم getDb الحقيقي مباشرة يعتبر فاشلًا تصميميًا (انظر guard في db.ts)
+  (globalThis as any).__NIBRAS_DB_MOCK_ENFORCED = true;
+});
+
+afterEach(() => {
+  (globalThis as any).__NIBRAS_DB_MOCK_ENFORCED = false;
+});
 
 describe("Curriculum Seeding Data Integrity", () => {
   it("should have 12 annual plans (one per level/subject combination)", async () => {

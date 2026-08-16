@@ -648,3 +648,26 @@
 @media print {
   .md-render { font-size: 0.85rem; line-height: 1.7; }
 }
+
+/* ─── شرائح خطة العرض الصفي (Classroom Slides) ─── */
+.print-nibras-slide {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(297mm - 16mm);
+  border: 1px solid oklch(0.87 0.02 85);
+  border-radius: 0.5rem;
+  padding: 1.5rem 2rem;
+  background: oklch(0.98 0.005 85);
+}
+@media print {
+  .print-nibras-slide {
+    page-break-after: always;
+    break-after: page;
+    min-height: calc(297mm - 20mm);
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 0;
+  }
+  .print-nibras-slide:last-child { page-break-after: auto; break-after: auto; }
+}

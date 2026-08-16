@@ -23,6 +23,7 @@ import Verify from "./pages/Verify";
 import AnswerPage from "./pages/AnswerPage";
 import Brand from "./pages/Brand";
 
+
 function Router() {
   return (
     <Switch>

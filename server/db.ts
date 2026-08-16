@@ -23,7 +23,34 @@ import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+/**
+ * فرض db-mock: أي اختبار يحمّل getDb الحقيقي مباشرة من قاعدة بيانات حقيقية
+ * (وليس db-mock.ts) يعتبر فاشلًا تصميميًا. في بيئة vitest نمنع الاتصال الفعلي.
+ */
+function _runningUnderVitest(): boolean {
+  if (typeof process === "undefined") return false;
+  // vitest يشغّل الاختبارات في عمال منفصلين (tinypool fork) حيث لا يظهر «vitest»
+  // في process.argv — نعتمد على علامة بيئية يحددها runner عبر vitest.config
+  const envFlag = process.env.__NIBRAS_TEST_MODE === "1";
+  const argvFlag = Array.isArray(process.argv) && process.argv.some(a => /vitest|vite-node/.test(a));
+  const metaFlag = typeof import.meta !== "undefined" &&
+    typeof (import.meta as any).env?.VITEST === "boolean" &&
+    (import.meta as any).env.VITEST === true;
+  return Boolean(envFlag) || Boolean(argvFlag) || Boolean(metaFlag);
+}
+
+function _mockEnforced(): boolean {
+  return typeof (globalThis as any).__NIBRAS_DB_MOCK_ENFORCED === "boolean"
+    ? Boolean((globalThis as any).__NIBRAS_DB_MOCK_ENFORCED)
+    : false;
+}
+
 export async function getDb() {
+  if (_runningUnderVitest() && !_mockEnforced()) {
+    throw new Error(
+      "[db-mock] استدعاء getDb الحقيقي غير مسموح في الاختبارات — يجب استخدام db-mock.ts",
+    );
+  }
   if (!_db && process.env.DATABASE_URL) {
     try {
       _db = drizzle(process.env.DATABASE_URL);

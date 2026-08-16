@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
-import { Eye } from "lucide-react";
+import { Eye, Presentation } from "lucide-react";
+import { ClassroomSlides } from "@/components/ClassroomSlides";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 
 export default function LessonDetail({ id }: { id: string }) {
@@ -25,6 +26,7 @@ export default function LessonDetail({ id }: { id: string }) {
   );
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [slidesOpen, setSlidesOpen] = useState(false);
 
   // مورد المكتبة المولّد للمذكرة (لتزويد الرقم التسلسلي للترويسة البصرية)
   const { data: libraryItems } = trpc.aiResources.list.useQuery(undefined);
@@ -125,6 +127,25 @@ export default function LessonDetail({ id }: { id: string }) {
   if (isLoading) return <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>;
   if (!lesson) return <div className="text-center py-12">الدرس غير موجود</div>;
 
+  // نافذة خطة العرض الصفي (ملازم كامل فوق الصفحة)
+  if (slidesOpen) {
+    return (
+      <ClassroomSlides
+        source={{
+          title: lesson.title || undefined,
+          unitTitle: lesson.unitTitle || undefined,
+          subject: lesson.subject || undefined,
+          gradeLevel: lesson.gradeLevel || undefined,
+          duration: lesson.duration || undefined,
+          objectives: lesson.objectives || undefined,
+          plan: lesson.plan || undefined,
+          content: lesson.content || undefined,
+        }}
+        onClose={() => setSlidesOpen(false)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3">
@@ -146,6 +167,10 @@ export default function LessonDetail({ id }: { id: string }) {
         {lesson.subject && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{lesson.subject}</span>}
         {lesson.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.gradeLevel}</span>}
         {lesson.unitTitle && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.unitTitle}</span>}
+        <Button variant="outline" size="sm" className="print:hidden" onClick={() => setSlidesOpen(true)}>
+          <Presentation className="w-4 h-4 ml-1" />
+          خطة العرض الصفي
+        </Button>
         <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}>
           <Eye className="w-4 h-4 ml-1" />
           معاينة
