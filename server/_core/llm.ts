@@ -248,6 +248,32 @@ const resolveLlmTarget = (target: "external" | "manus") => {
 // "400 No models provided".
 export const EXTERNAL_LLM_DEFAULT_MODEL = "openai/gpt-4.1-mini";
 
+// Extract a short human-readable error message from a raw gateway JSON
+// response body (e.g. OpenRouter `{"error":{"message":"..."}}`).
+const extractShortErrorMessage = (raw: string): string => {
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: { message?: string; code?: string | number };
+      message?: string;
+    };
+    const message = parsed.error?.message || parsed.message;
+    if (typeof message === "string" && message.trim().length > 0) {
+      // Gateway messages often include a long remedy hint/URL — trim it.
+      const sentence = message.replace(/[\s\S]*To increase.*/, "").trim();
+      return sentence.length > 0 ? sentence : "";
+    }
+    if (parsed.error?.code !== undefined) {
+      return String(parsed.error.code);
+    }
+  } catch {
+    // Non-JSON body: fall through to empty.
+  }
+  return "";
+};
+
+export { LLM_MODEL_OPTIONS } from "../../shared/llm-models";
+export type { LlmModelOption } from "../../shared/llm-models";
+
 const assertApiKey = (apiKey: string, provider: string) => {
   if (!apiKey) {
     throw new Error(
@@ -457,14 +483,17 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    // If the external provider failed (auth/network/configuration), fall back
-    // once to the Manus gateway so generation never stays blocked for the
-    // teacher. 4xx client errors (e.g. invalid model) are NOT retried unless
-    // the root cause is the provider configuration itself — but an empty
-    // API key or a connection problem is worth the automatic retry.
+    // If the external provider failed (auth/network/configuration/rate
+    // limits), fall back once to the Manus gateway so generation never stays
+    // blocked for the teacher. 401/403 cover key problems, 402/429 cover
+    // exhausted credits and rate limits (OpenRouter returns 402 when the free
+    // balance is spent), and 5xx covers server errors. Other 4xx client
+    // errors (e.g. invalid model) are passed through directly.
     const isProviderUnavailable =
       response.status === 401 ||
+      response.status === 402 ||
       response.status === 403 ||
+      response.status === 429 ||
       response.status >= 500;
     if (isProviderUnavailable) {
       console.warn(
@@ -488,8 +517,11 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
       }
       return (await response.json()) as InvokeResult;
     }
+    // For non-retried client errors, return a short human-readable message
+    // instead of the raw gateway JSON blob.
+    const shortMessage = extractShortErrorMessage(errorText);
     throw new Error(
-      `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
+      `LLM invoke failed: ${response.status} ${response.statusText}${shortMessage ? ` – ${shortMessage}` : ""}`
     );
   }
 

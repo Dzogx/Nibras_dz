@@ -481,3 +481,13 @@
 - [x] تشخيص: invokeLLM بدون model + مزود OpenRouter (LLM_API_URL مفعل) → 400 «No models provided» لأن OpenRouter يتطلب model إجباريًا بينما Manus يقبل الافتراضي
 - [x] إصلاح: نموذج افتراضي (openai/gpt-4.1-mini) عند external دون model + fallback تلقائي إلى Manus عند 401/403/5xx من المزود الخارجي + تحسين رسالة الخطأ (llm.ts)
 - [x] اختباران جديدان (server/llm-fallback.test.ts) يثبتان: النجاح دون model + الرجوع إلى Manus بمفتاح خاطئ + TypeScript نظيف و105/105 اختبار + checkpoint + تسليم
+
+## قائمة اختيار النماذج + إصلاح فشل OpenRouter 402 (بلاغ الأستاذ 16 أوت 23:03)
+
+- [x] llm.ts: إضافة 402 إلى حالات fallback إلى Manus (نفاذ رصيد/رصيد غير كافٍ) مع تحسين الرسالة (extractShortErrorMessage)
+- [x] llm.ts: قائمة نماذج مقترحة موثوقة في shared/llm-models.ts (مجانًا ومدفوعًا) مشتركة بين العميل والسيرفر
+- [x] generateLesson: تمرير llmModel من الواجهة + نموذج افتراضي قوي عند external دون model
+- [x] واجهة LessonGenerator: قائمة منسدلة لاختيار النموذج (مجان/مدفوع + توضيح عربي)، والحفظ عبر usePersistedForm (localStorage)
+- [x] تطبيق نفس القائمة في Assessment Studio (توليد التقويم) + توليد مذكرة الدرس يمرر llmModel؛ البطاقات وInspector لا تحتوي توليدًا مباشرًا
+- [x] اختبار 402 fallback (موجود في llm-fallback) + فحص بصري للواجهتين + TypeScript نظيف + 105/105 اختبار
+- [x] checkpoint + مزامنة + تسليم

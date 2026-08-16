@@ -273,6 +273,7 @@ export default function LessonDetail({ id }: { id: string }) {
               duration: lesson.duration || undefined,
               contentType: "lessonPlan",
               teachingTemplateKey: selectedTemplateKey,
+              llmModel: undefined as string | undefined,
             })}
             disabled={generateMemoMutation.isPending}
           >

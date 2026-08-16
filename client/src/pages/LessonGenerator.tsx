@@ -13,8 +13,10 @@ import { Separator } from "@/components/ui/separator";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 import { BookOpenCheck, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef, useState } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
+import { LLM_MODEL_OPTIONS } from "@shared/llm-models";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -118,6 +120,7 @@ export default function LessonGenerator() {
     difficultyLevel: "progressive" as string,
     supportStrategy: "scaffolding" as string,
     teachingTemplateKey: "guided_inquiry" as TeachingTemplateKey,
+    llmModel: "" as string,
   };
   const { form, setForm } = usePersistedForm<typeof DEFAULT_FORM>(
     "nibras.lesson-generator.v1",
@@ -237,6 +240,28 @@ export default function LessonGenerator() {
               <div><Label>المدة</Label>
                 <Input value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} placeholder="1 ساعة" />
               </div>
+            </div>
+            <div>
+              <Label className="flex items-center gap-2">
+                نموذج الذكاء الاصطناعي
+                <span className="text-[11px] font-normal text-muted-foreground">اتركه فارغًا لاستخدام الافتراضي</span>
+              </Label>
+              <Select value={form.llmModel || "__default__"} onValueChange={v => setForm({ ...form, llmModel: v === "__default__" ? "" : v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="النموذج الافتراضي (عبر OpenRouter)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default__">النموذج الافتراضي (افتراضي قوي وموثوق)</SelectItem>
+                  {LLM_MODEL_OPTIONS.map(m => (
+                    <SelectItem key={m.id} value={m.id}>
+                      <span className="flex items-center justify-between w-full gap-2">
+                        <span>{m.label}</span>
+                        {m.free && <Badge variant="secondary" className="text-[10px]">مجاني</Badge>}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div><Label>عنوان الوضعية التعليمية</Label>
               <Input value={form.unitTitle} onChange={e => setForm({ ...form, unitTitle: e.target.value })} placeholder="مثال: وثائق الفترة الاستعمارية (نشاط الوثائق)" />
@@ -406,7 +431,13 @@ export default function LessonGenerator() {
               </div>
             )}
 
-            <Button className="w-full" onClick={() => generateMutation.mutate(form as any)} disabled={generateMutation.isPending || !form.title}>
+            <Button className="w-full" onClick={() => {
+              const payload = {
+                ...form,
+                llmModel: form.llmModel || undefined,
+              } as Parameters<typeof generateMutation.mutate>[0];
+              generateMutation.mutate(payload);
+            }} disabled={generateMutation.isPending || !form.title}>
               {generateMutation.isPending ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري التوليد...</> : <>
                 <Sparkles className="w-4 h-4 ml-2" />توليد
               </>}

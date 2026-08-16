@@ -887,6 +887,7 @@ ${diffBlock}
       competencyIds: z.array(z.string()).optional(),
       autoImport: z.boolean().optional(),
       useNationalRules: z.boolean().optional().default(true),
+      llmModel: z.string().optional(),
       situationIds: z.array(z.number()).optional(),
       // وقت نهاية الاختبار (بالمللي ثانية) — يُستخدم لرمز QR نموذج الإجابات
       examEndsAt: z.number().optional(),
@@ -1013,6 +1014,7 @@ ${rulesContext}
       };
 
       const response = await invokeLLM({
+        ...(input.llmModel ? { model: input.llmModel } : {}),
         messages: [
           { role: "system", content: prompts[input.assessmentType] },
           { role: "user", content: "أنشئ التقويم المطلوب بالتفصيل." },

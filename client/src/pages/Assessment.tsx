@@ -16,6 +16,7 @@ import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from '@/components/A4Print';
 import { PrintPreviewDialog } from '@/components/PrintPreviewDialog';
 import { Eye } from "lucide-react";
+import { LLM_MODEL_OPTIONS } from "@shared/llm-models";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -68,6 +69,7 @@ export default function Assessment() {
     situationIds: [] as number[],
     useNationalRules: true,
     examEndsAt: undefined as number | undefined,
+    llmModel: "" as string,
   };
   const { form, setForm } = usePersistedForm<typeof DEFAULT_ASSESSMENT_FORM>(
     "nibras.assessment-studio.v1",
@@ -172,6 +174,7 @@ export default function Assessment() {
   const handleGenerate = useCallback(() => {
     const payload = {
       ...form,
+      llmModel: form.llmModel || undefined,
       lessonIds: selectedLessonIds.length > 0 ? selectedLessonIds : undefined,
       situationIds: form.situationIds.length > 0 ? form.situationIds : undefined,
       competencyIds: selectedCompetencies.length > 0 ? selectedCompetencies : undefined,
@@ -340,6 +343,29 @@ export default function Assessment() {
                 <Input type="datetime-local" value={form.examEndsAt ? new Date(form.examEndsAt - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""} onChange={e => setForm({ ...form, examEndsAt: e.target.value ? new Date(e.target.value).getTime() : undefined })} />
                 <p className="text-xs text-muted-foreground mt-1">رمز QR الإجابات لا يكشف المحتوى إلا بعد هذا الموعد</p>
               </div>
+            </div>
+
+            <div>
+              <Label className="flex items-center gap-2">
+                نموذج الذكاء الاصطناعي
+                <span className="text-[11px] font-normal text-muted-foreground">الافتراضي قوي وموثوق؛ إذا نفد رصيد OpenRouter يرجع النظام تلقائيًا إلى محرك نبراس</span>
+              </Label>
+              <Select value={form.llmModel || "__default__"} onValueChange={v => setForm({ ...form, llmModel: v === "__default__" ? "" : v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="النموذج الافتراضي" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__default__">النموذج الافتراضي (افتراضي قوي وموثوق)</SelectItem>
+                  {LLM_MODEL_OPTIONS.map(m => (
+                    <SelectItem key={m.id} value={m.id}>
+                      <span className="flex items-center justify-between w-full gap-2">
+                        <span>{m.label}</span>
+                        {m.free && <Badge variant="secondary" className="text-[10px]">مجاني</Badge>}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div><Label>الموضوع *</Label>
