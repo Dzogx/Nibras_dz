@@ -54,6 +54,7 @@ export default function Dashboard() {
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
   const completedLessons = useMemo(() => lessons?.filter(l => l.isCompleted).length ?? 0, [lessons]);
+  const completedSituations = useMemo(() => (situations ?? []).filter((s: any) => s.isCompleted).length ?? 0, [situations]);
   // الوضعيات المعلقة هي المرجع الحقيقي للعمل اليومي (Teacher OS)،
   // فبطاقة «الدروس المعلقة» تعرضها بدل جدول الدروس القديم
   const pendingSituations = useMemo(() => (situations ?? []).filter((s: any) => !s.isCompleted), [situations]);
@@ -158,15 +159,15 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4 mb-3">
-              <div className="text-3xl font-bold text-brand-copper-700">{completedLessons}</div>
+              <div className="text-3xl font-bold text-brand-copper-700">{completedSituations + completedLessons}</div>
               <div className="text-sm text-muted-foreground">
-                من أصل {lessons?.length ?? 0} درس
+                من أصل {(situations?.length ?? 0) + (lessons?.length ?? 0)} وضعية ودرس
               </div>
             </div>
             <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-brand-copper-600 h-2 rounded-full transition-all"
-                style={{ width: `${lessons?.length ? (completedLessons / lessons.length) * 100 : 0}%` }}
+                style={{ width: `${(situations?.length ?? 0) + (lessons?.length ?? 0) ? ((completedSituations + completedLessons) / ((situations?.length ?? 0) + (lessons?.length ?? 0))) * 100 : 0}%` }}
               />
             </div>
           </CardContent>
@@ -181,9 +182,9 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4 mb-3">
-              <div className="text-3xl font-bold text-brand-wax-700">{pendingLessons}</div>
+              <div className="text-3xl font-bold text-brand-wax-700">{pendingSituations.length}</div>
               <div className="text-sm text-muted-foreground">
-                درس بحاجة إلى إنجاز
+                وضعية بحاجة إلى إنجاز
               </div>
             </div>
             {pendingSituations.length > 0 ? (

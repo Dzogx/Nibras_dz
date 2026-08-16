@@ -433,4 +433,4 @@
 - [x] بطاقة «الدروس المعلقة» في Dashboard كانت تعتمد جدول الدروس القديم — أصبحت تعرض الوضعيات المعلقة من Teacher OS (إجراء situations.listPending جديد) مع اختبار سلامة (93/93)
 - [x] فحص بصري شامل لكل المسار اليومي (قسم→خطة→وضعية→مذكرة→تقويم→نتائج→تحليل→علاج→طباعة)
 - [x] إصلاح اقتصاص البطاقات الخام (MarkdownRenderer خام في ContentLibrary/AnnualPlans/Curriculum/Inspector): stripMarkdown + truncateMarkdown + اختبار 93/93
-- [ ] التحقق النهائي: TypeScript + 93/93 اختبارات + checkpoint + مزامنة GitHub + تسليم + توصية النشر
+- [x] التحقق النهائي: TypeScript نظيف + 93/93 اختبارات + بطاقة المعلقة/المنجزة موحدة على الوضعيات من Teacher OS + checkpoint نهائي + مزامنة GitHub + تسليم وتوصية النشر قبل 25 أوت
