@@ -9,7 +9,7 @@ import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, 
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState } from "react";
-import { Streamdown } from 'streamdown';
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export default function AnnualPlanDetail({ id }: { id: string }) {
@@ -143,7 +143,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
         <Card>
           <CardContent className="p-4">
             <div className="prose prose-sm max-w-none text-right" dir="rtl">
-              <Streamdown>{plan.content}</Streamdown>
+              <MarkdownRenderer source={plan.content} />
             </div>
           </CardContent>
         </Card>

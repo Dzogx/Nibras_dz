@@ -8,7 +8,7 @@ import { ArrowRight, Save, Pencil, Copy, Download, Printer } from "lucide-react"
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
-import { Streamdown } from 'streamdown';
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { Eye } from "lucide-react";
@@ -147,7 +147,7 @@ export default function ResourceDetail({ id }: { id: string }) {
         extra={linkedClass?.academicYear ? `الموسم الدراسي ${linkedClass.academicYear}` : (profile?.academicYear ? `الموسم الدراسي ${profile.academicYear}` : undefined)}
       >
         <div className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
-          <Streamdown controls={{ table: true }}>{resource?.content || ""}</Streamdown>
+          <MarkdownRenderer source={resource?.content || ""} />
         </div>
       </A4PrintContent>
 
@@ -158,7 +158,7 @@ export default function ResourceDetail({ id }: { id: string }) {
         meta={resourcePrintMeta}
       >
         <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
-          <Streamdown controls={{ table: true }}>{resource?.content || ""}</Streamdown>
+          <MarkdownRenderer source={resource?.content || ""} />
         </div>
       </PrintPreviewDialog>
 
@@ -181,7 +181,7 @@ export default function ResourceDetail({ id }: { id: string }) {
           <CardContent className="p-4">
             {resource.content ? (
               <div className="prose prose-sm max-w-none text-right" dir="rtl">
-                <Streamdown controls={{ table: true }}>{resource.content}</Streamdown>
+                <MarkdownRenderer source={resource.content} />
               </div>
             ) : (
               <p className="text-muted-foreground text-center py-8">لا يوجد محتوى</p>

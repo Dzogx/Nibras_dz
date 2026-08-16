@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { QrCode, Lock, Clock, BadgeCheck, Loader2, FileKey } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 /**
  * صفحة عامة لكشف نموذج الإجابات المرتبط بالتقويم التحصيلي.
@@ -101,8 +102,8 @@ export default function AnswerPage() {
                     <p className="text-sm text-slate-500">{query.data.status === "revealed" ? query.data.title : undefined}</p>
                   </div>
                 </div>
-                <div className="prose prose-slate max-w-none text-sm leading-7 whitespace-pre-wrap text-right">
-                  {query.data.content}
+                <div className="prose prose-slate max-w-none text-sm text-right">
+                  <MarkdownRenderer source={query.data.content} />
                 </div>
                 <p className="text-xs text-slate-400 text-center mt-6 border-t border-slate-100 pt-4" dir="ltr">
                   NIBRAS Answer Key · {serial}

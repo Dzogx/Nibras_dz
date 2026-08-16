@@ -9,6 +9,7 @@ import { useLocation } from "wouter";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { Eye } from "lucide-react";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
@@ -161,19 +162,19 @@ export default function LessonDetail({ id }: { id: string }) {
           {lesson.plan && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">خطة سير الحصة</h2>
-              <div className="whitespace-pre-wrap">{lesson.plan}</div>
+              <MarkdownRenderer compact source={lesson.plan} />
             </div>
           )}
           {lesson.objectives && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">الأهداف</h2>
-              <div className="whitespace-pre-wrap">{lesson.objectives}</div>
+              <MarkdownRenderer compact source={lesson.objectives} />
             </div>
           )}
           {lesson.content && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">المحتوى</h2>
-              <div className="whitespace-pre-wrap">{lesson.content}</div>
+              <MarkdownRenderer compact source={lesson.content} />
             </div>
           )}
         </div>
@@ -189,19 +190,19 @@ export default function LessonDetail({ id }: { id: string }) {
           {lesson.plan && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">خطة سير الحصة</h2>
-              <div className="whitespace-pre-wrap">{lesson.plan}</div>
+              <MarkdownRenderer compact source={lesson.plan} />
             </div>
           )}
           {lesson.objectives && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">الأهداف</h2>
-              <div className="whitespace-pre-wrap">{lesson.objectives}</div>
+              <MarkdownRenderer compact source={lesson.objectives} />
             </div>
           )}
           {lesson.content && (
             <div className="mb-5">
               <h2 className="text-base font-bold mb-2">المحتوى</h2>
-              <div className="whitespace-pre-wrap">{lesson.content}</div>
+              <MarkdownRenderer compact source={lesson.content} />
             </div>
           )}
         </div>

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Eye, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { Streamdown } from 'streamdown';
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 
@@ -100,7 +100,7 @@ function InspectorResult({ result, rawResult, printMeta }: { result: any; rawRes
       {rawResult && !result?.criteria && (
         <div>
           <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
-            <Streamdown>{rawResult}</Streamdown>
+            <MarkdownRenderer source={rawResult} />
           </div>
         </div>
       )}
@@ -159,7 +159,7 @@ function InspectorResult({ result, rawResult, printMeta }: { result: any; rawRes
         )}
         {/* النص الكامل */}
         <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
-          <Streamdown>{rawResult}</Streamdown>
+          <MarkdownRenderer source={rawResult} />
         </div>
       </PrintPreviewDialog>
     </div>
@@ -270,11 +270,18 @@ export default function Inspector() {
               }}>
                   <SelectTrigger><SelectValue placeholder="اختر درساً" /></SelectTrigger>
                   <SelectContent>
-                    {lessons?.map(l => (
+                    {(lessons && lessons.length > 0) ? lessons.map(l => (
                       <SelectItem key={l.id} value={l.id.toString()}>{l.title}</SelectItem>
-                    ))}
+                    )) : (
+                      <SelectItem value="__none__" disabled>لا توجد دروس مسجلة بعد</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {(!lessons || lessons.length === 0) && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    لم تسجل أي درس بعد — سجّل دروسك من صفحة الدروس أو حضّر الحصة من لوحة التحكم، ثم عُد للمراجعة هنا.
+                  </p>
+                )}
               </div>
             ) : (
               <div>
@@ -282,11 +289,18 @@ export default function Inspector() {
                 <Select value={selectedResourceId?.toString() || ""} onValueChange={v => setSelectedResourceId(v ? parseInt(v) : null)}>
                   <SelectTrigger><SelectValue placeholder="اختر تقييماً" /></SelectTrigger>
                   <SelectContent>
-                    {resources?.map(r => (
+                    {(resources && resources.length > 0) ? resources.map(r => (
                       <SelectItem key={r.id} value={r.id.toString()}>{r.title}</SelectItem>
-                    ))}
+                    )) : (
+                      <SelectItem value="__none__" disabled>لا توجد تقييمات مولدة بعد</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
+                {(!resources || resources.length === 0) && (
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    لم تُولّد أي تقييمات بعد — أنشئ تقييمًا من استوديو التقويمات ثم عُد للمراجعة هنا.
+                  </p>
+                )}
               </div>
             )}
             <Button className="w-full" onClick={handleReview} disabled={!selectedLessonId && !selectedResourceId}>

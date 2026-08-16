@@ -598,3 +598,53 @@
     padding: 1px 5px;
   }
 }
+
+/* ===== MarkdownRenderer — تنسيق النصوص المولدة (مذكرات/تقويمات/موارد) ===== */
+.md-render {
+  font-family: "Cairo", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.9;
+  color: oklch(0.25 0.03 340);
+  text-align: right;
+}
+.md-render h1, .md-render h2, .md-render h3, .md-render h4 {
+  font-family: "Noto Kufi Arabic", "Cairo", sans-serif;
+  font-weight: 700;
+  margin: 1.1em 0 0.5em;
+  line-height: 1.5;
+  color: oklch(0.28 0.05 340);
+}
+.md-render h1 { font-size: 1.35rem; }
+.md-render h2 { font-size: 1.2rem; border-bottom: 2px solid oklch(0.88 0.05 80); padding-bottom: 0.25em; }
+.md-render h3 { font-size: 1.08rem; }
+.md-render h4 { font-size: 1rem; }
+.md-render p { margin: 0.6em 0; }
+.md-render ul, .md-render ol { padding-inline-start: 1.6rem; margin: 0.6em 0; }
+.md-render ul { list-style-type: disc; }
+.md-render ol { list-style-type: decimal; }
+.md-render li { margin: 0.3em 0; }
+.md-render strong { font-weight: 700; color: oklch(0.32 0.06 55); }
+.md-render em { font-style: italic; }
+.md-render code {
+  direction: ltr; unicode-bidi: embed;
+  background: oklch(0.95 0.02 85);
+  border: 1px solid oklch(0.9 0.03 85);
+  border-radius: 0.3em; padding: 0.1em 0.35em;
+  font-size: 0.85em; font-family: "Inter", monospace;
+}
+.md-render hr { border: none; border-top: 1px solid oklch(0.87 0.03 85); margin: 1.2em 0; }
+.md-render table {
+  width: 100%; border-collapse: collapse; margin: 0.9em 0;
+  font-size: 0.88rem;
+}
+.md-render th, .md-render td {
+  border: 1px solid oklch(0.85 0.03 85); padding: 0.4em 0.6em; text-align: right;
+}
+.md-render th { background: oklch(0.95 0.02 85); font-weight: 700; }
+/* وضع مضغوط داخل أوراق الطباعة */
+.md-render--compact h1 { font-size: 1.1rem; }
+.md-render--compact h2 { font-size: 1rem; }
+.md-render--compact h3, .md-render--compact h4 { font-size: 0.95rem; }
+@media print {
+  .md-render { font-size: 0.85rem; line-height: 1.7; }
+}

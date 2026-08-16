@@ -1,5 +1,4 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,12 +8,13 @@ import { Switch } from "@/components/ui/switch";
 import { Sparkles, Loader2, Copy, Download, GraduationCap, Brain, Users, Target, Layers, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { Streamdown } from 'streamdown';
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Separator } from "@/components/ui/separator";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 import { BookOpenCheck, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePersistedForm } from "@/hooks/usePersistedForm";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -99,7 +99,7 @@ export default function LessonGenerator() {
     { enabled: Boolean(linkedSection?.annualPlanId) }
   );
 
-  const [form, setForm] = useState({
+  const DEFAULT_FORM = {
     classId: undefined as number | undefined,
     title: "",
     subject: subjects[0],
@@ -118,7 +118,21 @@ export default function LessonGenerator() {
     difficultyLevel: "progressive" as string,
     supportStrategy: "scaffolding" as string,
     teachingTemplateKey: "guided_inquiry" as TeachingTemplateKey,
-  });
+  };
+  const { form, setForm } = usePersistedForm<typeof DEFAULT_FORM>(
+    "nibras.lesson-generator.v1",
+    DEFAULT_FORM,
+    (defaults, saved) => {
+      // عند الاسترجاع: الحقول النصية الفارغة لا تطغى على الافتراضيات
+      const merged = { ...defaults, ...saved } as typeof defaults;
+      if (!merged.title) merged.title = defaults.title;
+      if (!merged.unitTitle) merged.unitTitle = defaults.unitTitle;
+      if (!merged.duration) merged.duration = defaults.duration;
+      if (!merged.subject) merged.subject = defaults.subject;
+      if (!merged.gradeLevel) merged.gradeLevel = defaults.gradeLevel;
+      return merged;
+    }
+  );
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
@@ -429,7 +443,7 @@ export default function LessonGenerator() {
               </div>
             ) : generated ? (
               <div className="prose prose-sm max-w-none text-right" dir="rtl">
-                <Streamdown>{generated}</Streamdown>
+                <MarkdownRenderer source={generated} />
               </div>
             ) : (
               <div className="text-center py-12 text-muted-foreground">

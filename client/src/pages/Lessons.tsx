@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { useMemo } from "react";
+import { Search } from "lucide-react";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
@@ -18,6 +20,8 @@ export default function Lessons() {
   const [, setLocation] = useLocation();
   const [isAdding, setIsAdding] = useState(false);
   const [filterCompleted, setFilterCompleted] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedClass, setSelectedClass] = useState<string>("all");
   const [newLesson, setNewLesson] = useState({
     classId: undefined as number | undefined,
     title: "",
@@ -37,6 +41,37 @@ export default function Lessons() {
   const { data: lessons, isLoading } = trpc.lessons.list.useQuery(
     filterCompleted === "completed" ? { isCompleted: true } : filterCompleted === "pending" ? { isCompleted: false } : undefined
   );
+
+  // إزالة التكرار (دروس بنفس القسم + العنوان تظهر مرة واحدة — الأحدث تُعرض)
+  const dedupedLessons = useMemo(() => {
+    if (!lessons) return [];
+    const seen = new Map<string, typeof lessons[0]>();
+    for (const l of lessons) {
+      const key = `${l.classId ?? "none"}|${l.title?.trim() ?? ""}`;
+      if (!seen.has(key) || (seen.get(key)!.id < l.id)) seen.set(key, l);
+    }
+    return Array.from(seen.values());
+  }, [lessons]);
+
+  // بحث نصي + فلتر القسم
+  const filteredLessons = useMemo(() => {
+    let list = dedupedLessons;
+    if (selectedClass !== "all") {
+      const id = Number(selectedClass);
+      list = list.filter(l => (l.classId ?? -1) === id);
+    }
+    const term = searchTerm.trim();
+    if (term) {
+      const t = term.toLowerCase();
+      list = list.filter(l =>
+        (l.title ?? "").toLowerCase().includes(t) ||
+        (l.subject ?? "").toLowerCase().includes(t) ||
+        (l.unitTitle ?? "").toLowerCase().includes(t) ||
+        (l.objectives ?? "").toLowerCase().includes(t)
+      );
+    }
+    return list;
+  }, [dedupedLessons, searchTerm, selectedClass]);
   const { data: classesList } = trpc.classes.list.useQuery();
 
   const createMutation = trpc.lessons.create.useMutation({
@@ -114,16 +149,32 @@ export default function Lessons() {
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[200px] max-w-xs">
+          <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="ابحث في الدروس (العنوان، المادة، الوضعية...)"
+            className="pr-8"
+          />
+        </div>
+        <Select value={selectedClass} onValueChange={setSelectedClass}>
+          <SelectTrigger className="w-[180px]"><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الأقسام</SelectItem>
+            {(classesList ?? []).map(cls => <SelectItem key={cls.id} value={String(cls.id)}>{cls.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Button variant={filterCompleted === "all" ? "default" : "outline"} size="sm" onClick={() => setFilterCompleted("all")}>الكل</Button>
         <Button variant={filterCompleted === "pending" ? "default" : "outline"} size="sm" onClick={() => setFilterCompleted("pending")}>معلّقة</Button>
         <Button variant={filterCompleted === "completed" ? "default" : "outline"} size="sm" onClick={() => setFilterCompleted("completed")}>منجزة</Button>
       </div>
 
       {isLoading ? <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>
-      : lessons && lessons.length > 0 ? (
+      : filteredLessons.length > 0 ? (
         <div className="space-y-3">
-          {lessons.map(lesson => (
+          {filteredLessons.map(lesson => (
             <Card key={lesson.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setLocation(`/lessons/${lesson.id}`)}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
@@ -139,7 +190,7 @@ export default function Lessons() {
                       {lesson.subject && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{lesson.subject}</span>}
                       {lesson.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.gradeLevel}</span>}
                       {lesson.unitTitle && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.unitTitle}</span>}
-                      {lesson.duration && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.duration}</span>}
+                      {lesson.duration && <span className="text-xs bg-brand-wax-100 text-brand-wax-800 px-2 py-0.5 rounded font-medium">{lesson.duration}</span>}
                     </div>
                   </div>
                   <div className="flex gap-1">

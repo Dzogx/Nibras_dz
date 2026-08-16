@@ -17,7 +17,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const statCards = [
   { icon: GraduationCap, label: "الأقسام", path: "/classes", color: "bg-brand-ink-100 text-brand-ink-700" },
@@ -46,11 +53,18 @@ export default function Dashboard() {
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
   const completedLessons = useMemo(() => lessons?.filter(l => l.isCompleted).length ?? 0, [lessons]);
-  const pendingLessons = useMemo(() => lessons?.filter(l => !l.isCompleted).length ?? 0, [lessons]);
+  const pendingLessonsList = useMemo(() => (lessons ?? []).filter(l => !l.isCompleted), [lessons]);
+  const pendingLessons = pendingLessonsList.length;
 
-  const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery({
-    classId: classes?.[0]?.id,
-  });
+  const [selectedClassId, setSelectedClassId] = useState<number | undefined>(undefined);
+  const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
+    {
+      classId: selectedClassId ?? classes?.[0]?.id ?? -1,
+    },
+    {
+      enabled: Boolean(selectedClassId ?? classes?.[0]?.id),
+    }
+  );
 
 
   return (
@@ -168,6 +182,27 @@ export default function Dashboard() {
                 درس بحاجة إلى إنجاز
               </div>
             </div>
+            {pendingLessonsList.length > 0 ? (
+              <ul className="space-y-1.5 mb-3">
+                {pendingLessonsList.slice(0, 3).map((lesson) => (
+                  <li
+                    key={lesson.id}
+                    className="text-sm text-foreground/80 flex items-center gap-2 cursor-pointer hover:text-brand-copper-700 transition-colors"
+                    onClick={() => setLocation(`/lessons/${lesson.id}`)}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand-wax-600 shrink-0" />
+                    <span className="truncate">{lesson.title}</span>
+                  </li>
+                ))}
+                {pendingLessonsList.length > 3 && (
+                  <li className="text-xs text-muted-foreground px-3.5">
+                    + {pendingLessonsList.length - 3} درس آخر
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-sm text-brand-copper-700 mb-3">لا توجد دروس معلقة — أحسنت!</p>
+            )}
             <div className="w-full bg-muted rounded-full h-2">
               <div
                 className="bg-brand-wax-600 h-2 rounded-full transition-all"
@@ -226,6 +261,25 @@ export default function Dashboard() {
             تقدم Teacher OS
           </CardTitle>
         </CardHeader>
+        {classes && classes.length > 1 && (
+          <div className="px-6 pb-1">
+            <Select
+              value={String(selectedClassId ?? classes[0]?.id ?? "")}
+              onValueChange={(v) => setSelectedClassId(Number(v))}
+            >
+              <SelectTrigger className="w-full bg-white/70">
+                <SelectValue placeholder="اختر القسم" />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((cls) => (
+                  <SelectItem key={cls.id} value={String(cls.id)}>
+                    {cls.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         <CardContent>
           {teacherOSContext?.currentSection ? (
             <div className="space-y-3">

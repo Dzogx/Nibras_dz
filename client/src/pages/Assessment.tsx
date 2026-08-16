@@ -1,5 +1,6 @@
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { usePersistedForm } from "@/hooks/usePersistedForm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +55,7 @@ export default function Assessment() {
     { enabled: Boolean(resourceId) }
   );
 
-  const [form, setForm] = useState({
+  const DEFAULT_ASSESSMENT_FORM = {
     classId: undefined as number | undefined,
     title: "",
     subject: subjects[0],
@@ -67,7 +68,19 @@ export default function Assessment() {
     situationIds: [] as number[],
     useNationalRules: true,
     examEndsAt: undefined as number | undefined,
-  });
+  };
+  const { form, setForm } = usePersistedForm<typeof DEFAULT_ASSESSMENT_FORM>(
+    "nibras.assessment-studio.v1",
+    DEFAULT_ASSESSMENT_FORM,
+    (defaults, saved) => {
+      // لا نسترعي الحالة/التقييمات المستوردة من Teacher OS، ولا المدة (تُضبط آليًا من القواعد الوطنية)
+      const { situationIds, duration, title, ...rest } = saved;
+      const merged = { ...defaults, ...rest } as typeof defaults;
+      if (!merged.subject) merged.subject = defaults.subject;
+      if (!merged.gradeLevel) merged.gradeLevel = defaults.gradeLevel;
+      return merged;
+    }
+  );
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
@@ -285,7 +298,7 @@ export default function Assessment() {
               <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: اختبار الفصل الأول" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div><Label>المادة</Label>
                 <Select value={form.subject} onValueChange={v => setForm({ ...form, subject: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -297,6 +310,19 @@ export default function Assessment() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{gradeLevels.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
                 </Select>
+              </div>
+              <div><Label>القسم</Label>
+                <Select value={form.classId ? String(form.classId) : ""} onValueChange={v => setForm({ ...form, classId: v ? parseInt(v) : undefined })}>
+                  <SelectTrigger><SelectValue placeholder={classesList && classesList.length > 0 ? "--" : "لا يوجد"} /></SelectTrigger>
+                  <SelectContent>
+                    {classesList && classesList.length > 0 ? classesList.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    )) : (
+                      <div className="px-3 py-2 text-xs text-muted-foreground">أضف قسمًا من Teacher OS أولاً</div>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">القسم هو مفتاح الترويسة الرسمية للطباعة</p>
               </div>
             </div>
 
@@ -437,21 +463,6 @@ export default function Assessment() {
                     </div>
                   </div>
 
-                  {/* Class Selection */}
-                  {classesList && classesList.length > 0 && (
-                    <div>
-                      <Label>الفلترة حسب الفصل</Label>
-                      <Select value={form.classId ? String(form.classId) : "all"} onValueChange={v => setForm({ ...form, classId: v === "all" ? undefined : parseInt(v) })}>
-                        <SelectTrigger><SelectValue placeholder="جميع الأقسام" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">جميع الأقسام</SelectItem>
-                          {classesList.map(c => (
-                            <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
