@@ -434,3 +434,10 @@
 - [x] فحص بصري شامل لكل المسار اليومي (قسم→خطة→وضعية→مذكرة→تقويم→نتائج→تحليل→علاج→طباعة)
 - [x] إصلاح اقتصاص البطاقات الخام (MarkdownRenderer خام في ContentLibrary/AnnualPlans/Curriculum/Inspector): stripMarkdown + truncateMarkdown + اختبار 93/93
 - [x] التحقق النهائي: TypeScript نظيف + 93/93 اختبارات + بطاقة المعلقة/المنجزة موحدة على الوضعيات من Teacher OS + checkpoint نهائي + مزامنة GitHub + تسليم وتوصية النشر قبل 25 أوت
+
+## دمج AgentRouter كخيار LLM
+
+- [x] فحص بنية llm.ts — تمت إعادة كتابة resolveLlmTarget(): مزود خارجي اختياري عبر LLM_API_URL+LLM_API_KEY مع بقاء Manus الافتراضي + إصلاح ازدواجية /v1/v1
+- [x] الحقن عبر webdev_request_secrets (LLM_API_URL=https://agentrouter.org/v1 + LLM_API_KEY من الأستاذ)
+- [x] اختبار التحقق: 401 unauthorized_client_error من البوابة — الكود سليم والمفتاح مرفوض من AgentRouter (يحتاج الأستاذ تفعيله في لوحة تحكمه)
+- [ ] تحديث todo + TypeScript + اختبارات 94/94 + checkpoint + مزامنة + تسليم

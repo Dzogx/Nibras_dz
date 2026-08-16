@@ -212,14 +212,43 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+// Resolve the LLM endpoint + auth key. An optional external OpenAI-compatible
+// provider (e.g. AgentRouter) takes precedence when both LLM_API_URL and
+// LLM_API_KEY are configured; otherwise the Manus gateway is used.
+const resolveLlmTarget = () => {
+  const useExternal =
+    ENV.llmApiUrl && ENV.llmApiUrl.trim().length > 0 &&
+    ENV.llmApiKey && ENV.llmApiKey.trim().length > 0;
+  if (useExternal) {
+    const base = ENV.llmApiUrl.replace(/\/$/, "");
+    // The external URL may already end with /v1 (e.g. https://agentrouter.org/v1);
+    // avoid producing /v1/v1/... paths.
+    const endsWithV1 = base.endsWith("/v1");
+    return {
+      url: endsWithV1
+        ? `${base}/chat/completions`
+        : `${base}/v1/chat/completions`,
+      apiKey: ENV.llmApiKey,
+      provider: "external",
+    };
+  }
+  return {
+    url:
+      ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+        ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
+        : "https://forge.manus.im/v1/chat/completions",
+    apiKey: ENV.forgeApiKey,
+    provider: "manus",
+  };
+};
 
-const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+const assertApiKey = (apiKey: string, provider: string) => {
+  if (!apiKey) {
+    throw new Error(
+      provider === "external"
+        ? "External LLM provider is configured but LLM_API_KEY is empty"
+        : "OPENAI_API_KEY is not configured"
+    );
   }
 };
 
@@ -340,7 +369,6 @@ const fetchWithBackoff = async (
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
-  assertApiKey();
 
   const {
     messages,
@@ -401,11 +429,14 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
-  const response = await fetchWithBackoff(resolveApiUrl(), {
+  const target = resolveLlmTarget();
+  assertApiKey(target.apiKey, target.provider);
+
+  const response = await fetchWithBackoff(target.url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
+      authorization: `Bearer ${target.apiKey}`,
     },
     body: JSON.stringify(payload),
   });
@@ -433,14 +464,20 @@ export type ModelsResponse = {
 };
 
 export async function listLLMModels(): Promise<ModelsResponse> {
-  assertApiKey();
+  const target = resolveLlmTarget();
+  assertApiKey(target.apiKey, target.provider);
 
-  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  const url =
+    target.provider === "external"
+      ? ENV.llmApiUrl.replace(/\/$/, "").endsWith("/v1")
+        ? `${ENV.llmApiUrl.replace(/\/$/, "")}/models`
+        : `${ENV.llmApiUrl.replace(/\/$/, "")}/v1/models`
+      : ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+        ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
+        : "https://forge.manus.im/v1/models";
 
   const response = await fetchWithBackoff(url, {
-    headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
+    headers: { authorization: `Bearer ${target.apiKey}` },
   });
 
   if (!response.ok) {
