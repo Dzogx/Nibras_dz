@@ -84,8 +84,12 @@ export default function Dashboard() {
   );
 
   const scheduledSlot = useMemo(() => getScheduledSlotForNow(weeklySchedule), [weeklySchedule]);
-  const activeClassId = (followSchedule ? scheduledSlot?.classId : undefined) ?? selectedClassId ?? classes?.[0]?.id;
+  const preferredClassId = selectedClassId && classes?.some((classItem) => classItem.id === selectedClassId)
+    ? selectedClassId
+    : undefined;
+  const activeClassId = (followSchedule ? scheduledSlot?.classId : undefined) ?? preferredClassId ?? classes?.[0]?.id;
   const activeClass = classes?.find((item) => item.id === activeClassId);
+  const needsScheduleSetup = Boolean(activeClass && weeklySchedule && weeklySchedule.length === 0);
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
   const dailySection = teacherOSContext?.currentSection;
   const dailySituation = teacherOSContext?.nextSituation;
@@ -170,6 +174,23 @@ export default function Dashboard() {
                 </div>
               </div>
 
+              {needsScheduleSetup && (
+                <div className="mb-4 flex flex-col gap-2 rounded-xl border border-brand-wax-300/40 bg-brand-wax-300/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-start gap-2 text-white/90">
+                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-wax-300" />
+                    <span>لم تُضف جدول خدمتك بعد. أعدّه مرة واحدة ليقترح نبراس حصة اليوم تلقائياً.</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-brand-wax-300/60 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                    onClick={() => setLocation("/season-setup")}
+                  >
+                    إعداد جدولي الأسبوعي
+                  </Button>
+                </div>
+              )}
+
               {hasDailySession ? (
                 <>
                   <p className="text-sm text-white/70 mb-1">
@@ -217,12 +238,23 @@ export default function Dashboard() {
                 <div className="py-3">
                   <h3 className="text-xl font-bold">لا توجد وضعية معلّقة في هذا القسم</h3>
                   <p className="text-sm text-white/75 mt-2">راجِع الخطة أو أنشئ وضعية تعلمية جديدة لتبدأ الحصة التالية.</p>
-                  <Button
-                    className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
-                    onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
-                  >
-                    <ClipboardList className="w-4 h-4 ml-2" />الذهاب إلى الخطة
-                  </Button>
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    <Button
+                      className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
+                      onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
+                    >
+                      <ClipboardList className="w-4 h-4 ml-2" />الذهاب إلى الخطة
+                    </Button>
+                    {needsScheduleSetup && (
+                      <Button
+                        variant="outline"
+                        className="border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+                        onClick={() => setLocation("/season-setup")}
+                      >
+                        <Clock className="w-4 h-4 ml-2" />إعداد جدولي الأسبوعي
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="py-3">

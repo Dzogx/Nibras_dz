@@ -283,6 +283,19 @@ export async function getWeeklyScheduleEntries(userId: number, academicYear: str
     .orderBy(weeklyScheduleEntries.dayOfWeek, weeklyScheduleEntries.periodIndex);
 }
 
+/** يعيد المواسم التي يملك الأستاذ فيها جدول خدمة محفوظاً. */
+export async function listScheduleSeasons(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({ academicYear: weeklyScheduleEntries.academicYear })
+    .from(weeklyScheduleEntries)
+    .where(eq(weeklyScheduleEntries.userId, userId))
+    .groupBy(weeklyScheduleEntries.academicYear)
+    .orderBy(desc(weeklyScheduleEntries.academicYear));
+  return rows.map((row) => row.academicYear);
+}
+
 export async function replaceWeeklyScheduleEntries(
   userId: number,
   academicYear: string,

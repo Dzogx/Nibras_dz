@@ -16,6 +16,9 @@ vi.mock("./db", () => ({
   createClass: vi.fn(),
   updateClass: vi.fn(),
   deleteClass: vi.fn(),
+  getWeeklyScheduleEntries: vi.fn(),
+  replaceWeeklyScheduleEntries: vi.fn(),
+  listScheduleSeasons: vi.fn(),
   getAnnualPlans: vi.fn(),
   getAnnualPlanById: vi.fn(),
   createAnnualPlan: vi.fn(),
@@ -102,6 +105,52 @@ function createMockContext(userOverrides: Partial<AuthenticatedUser> = {}): Trpc
 function resetMocks() {
   vi.clearAllMocks();
 }
+
+describe("weeklySchedule", () => {
+  beforeEach(resetMocks);
+
+  it("lists only the teacher's saved schedule seasons", async () => {
+    (db.listScheduleSeasons as any).mockResolvedValue(["2025-2026", "2024-2025"]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.weeklySchedule.listSeasons()).resolves.toEqual(["2025-2026", "2024-2025"]);
+    expect(db.listScheduleSeasons).toHaveBeenCalledWith(1);
+  });
+
+  it("copies a previous schedule after keeping only the teacher's existing classes", async () => {
+    (db.getClasses as any).mockResolvedValue([{ id: 7 }, { id: 8 }]);
+    (db.getWeeklyScheduleEntries as any).mockResolvedValue([
+      { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, startTime: "08:00", endTime: "09:00", room: "12" },
+      { classId: 99, dayOfWeek: "الاثنين", periodIndex: 2, startTime: "09:00", endTime: "10:00", room: null },
+    ]);
+    (db.replaceWeeklyScheduleEntries as any).mockResolvedValue({ count: 1 });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.weeklySchedule.copyFromSeason({
+      fromAcademicYear: "2025-2026",
+      toAcademicYear: "2026-2027",
+    })).resolves.toEqual({ count: 1 });
+
+    expect(db.replaceWeeklyScheduleEntries).toHaveBeenCalledWith(1, "2026-2027", [{
+      classId: 7,
+      dayOfWeek: "الأحد",
+      periodIndex: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+      room: "12",
+    }]);
+  });
+
+  it("refuses copying a schedule into the same season", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.weeklySchedule.copyFromSeason({
+      fromAcademicYear: "2026-2027",
+      toAcademicYear: "2026-2027",
+    })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "لا يمكن النسخ من الموسم نفسه." });
+    expect(db.getWeeklyScheduleEntries).not.toHaveBeenCalled();
+  });
+});
 
 describe("profile", () => {
   beforeEach(resetMocks);

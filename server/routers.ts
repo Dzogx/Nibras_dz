@@ -11,7 +11,7 @@ import {
   getAcademicYears,
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
-  getWeeklyScheduleEntries, replaceWeeklyScheduleEntries,
+  getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan,
   getLessons, getLessonById, createLesson, updateLesson, deleteLesson, toggleLessonCompleted,
   getTeachingNotes, createTeachingNote, updateTeachingNote, deleteTeachingNote,
@@ -257,6 +257,36 @@ export const appRouter = router({
       }
 
       return await replaceWeeklyScheduleEntries(ctx.user.id, input.academicYear, input.entries);
+    }),
+    listSeasons: protectedProcedure.query(async ({ ctx }) => {
+      return await listScheduleSeasons(ctx.user.id);
+    }),
+    copyFromSeason: protectedProcedure.input(z.object({
+      fromAcademicYear: z.string().min(4).max(16),
+      toAcademicYear: z.string().min(4).max(16),
+    })).mutation(async ({ ctx, input }) => {
+      if (input.fromAcademicYear === input.toAcademicYear) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن النسخ من الموسم نفسه." });
+      }
+
+      const sourceEntries = await getWeeklyScheduleEntries(ctx.user.id, input.fromAcademicYear);
+      if (sourceEntries.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "لا يوجد جدول محفوظ لهذا الموسم." });
+      }
+
+      const ownedClassIds = new Set((await getClasses(ctx.user.id)).map((item) => item.id));
+      const validEntries = sourceEntries
+        .filter((entry) => ownedClassIds.has(entry.classId))
+        .map(({ classId, dayOfWeek, periodIndex, startTime, endTime, room }) => ({
+          classId,
+          dayOfWeek,
+          periodIndex,
+          startTime,
+          endTime,
+          room: room || undefined,
+        }));
+
+      return await replaceWeeklyScheduleEntries(ctx.user.id, input.toAcademicYear, validEntries);
     }),
   }),
 

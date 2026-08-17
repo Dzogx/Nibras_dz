@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, GraduationCap, Plus, Users } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, Copy, GraduationCap, Plus, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +39,7 @@ export default function SeasonSetup() {
   const [periods, setPeriods] = useState<Period[]>(DEFAULT_PERIODS);
   const [schedule, setSchedule] = useState<Record<string, SlotDraft>>({});
   const [scheduleInitialized, setScheduleInitialized] = useState(false);
+  const [previousSeason, setPreviousSeason] = useState<string>("");
   const [classDraft, setClassDraft] = useState<ClassDraft>({
     name: "",
     gradeLevel: GRADE_LEVELS[0],
@@ -53,6 +54,11 @@ export default function SeasonSetup() {
   const { data: classes = [], isLoading: classesLoading } = trpc.classes.list.useQuery();
   const { data: plans = [] } = trpc.annualPlans.list.useQuery({ academicYear });
   const { data: savedSchedule = [], isLoading: scheduleLoading } = trpc.weeklySchedule.get.useQuery({ academicYear });
+  const { data: scheduleSeasons = [] } = trpc.weeklySchedule.listSeasons.useQuery();
+  const previousScheduleSeasons = useMemo(
+    () => scheduleSeasons.filter((season) => season !== academicYear),
+    [scheduleSeasons, academicYear],
+  );
 
   const seasonClasses = useMemo(
     () => classes.filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
@@ -101,6 +107,18 @@ export default function SeasonSetup() {
     onError: (error) => toast.error(error.message || "تعذر حفظ جدول الخدمة."),
   });
 
+  const copyScheduleMutation = trpc.weeklySchedule.copyFromSeason.useMutation({
+    onSuccess: async (result) => {
+      await Promise.all([
+        utils.weeklySchedule.get.invalidate({ academicYear }),
+        utils.weeklySchedule.listSeasons.invalidate(),
+      ]);
+      setScheduleInitialized(false);
+      toast.success(`نُسخ جدول موسم ${previousSeason}: ${result.count} حصة. راجعه ثم احفظ التعديلات إن وجدت.`);
+    },
+    onError: (error) => toast.error(error.message || "تعذر نسخ جدول الموسم السابق."),
+  });
+
   const scheduledCount = Object.values(schedule).filter((entry) => entry.classId).length;
   const updateSlot = (day: string, periodIndex: number, update: Partial<SlotDraft>) => {
     const key = slotKey(day, periodIndex);
@@ -133,6 +151,11 @@ export default function SeasonSetup() {
       }];
     }));
     saveScheduleMutation.mutate({ academicYear, entries });
+  };
+
+  const copyPreviousSchedule = () => {
+    if (!previousSeason) return;
+    copyScheduleMutation.mutate({ fromAcademicYear: previousSeason, toAcademicYear: academicYear });
   };
 
   return (
@@ -194,7 +217,21 @@ export default function SeasonSetup() {
         <Card className="overflow-hidden">
           <CardHeader className="border-b bg-muted/25 pb-4">
             <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">2. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>انقر خلية فارغة، واختر القسم والقاعة. يمكنك تعديل أوقات الفترات عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
-	          </CardHeader>
+            {previousScheduleSeasons.length > 0 && (
+              <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/15 bg-primary/[0.035] p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs leading-5 text-muted-foreground">لديك جدول محفوظ من موسم سابق. انسخه إلى هذا الموسم ثم راجع الأقسام والأوقات قبل المتابعة.</p>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Select value={previousSeason} onValueChange={setPreviousSeason}>
+                    <SelectTrigger className="h-9 min-w-40 bg-background text-xs" aria-label="اختيار موسم لنسخ الجدول"><SelectValue placeholder="اختر الموسم" /></SelectTrigger>
+                    <SelectContent>{previousScheduleSeasons.map((season) => <SelectItem key={season} value={season}>{season}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <Button size="sm" variant="outline" onClick={copyPreviousSchedule} disabled={!previousSeason || copyScheduleMutation.isPending}>
+                    <Copy className="ml-2 h-4 w-4" />{copyScheduleMutation.isPending ? "جارٍ النسخ…" : "نسخ جدول موسم سابق"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardHeader>
 	          <CardContent className="p-0">
 	            <p className="border-b bg-brand-wax-50 px-4 py-2 text-center text-xs font-medium text-brand-ink-800 md:hidden">اسحب الجدول جانبياً لرؤية بقية الأيام، ثم اختر القسم في الخانة المناسبة.</p>
 	            <div className="overflow-x-auto" aria-label="جدول الخدمة الأسبوعي؛ يُمرر أفقياً على الهاتف">
