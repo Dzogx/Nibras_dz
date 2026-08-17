@@ -69,7 +69,8 @@ describe("Full Pedagogical Loop", () => {
     const context = await caller.ai.getTeacherOSContext({ classId: 1 });
     expect(context.currentSection).toBeDefined();
     expect(context.nextSituation).toBeDefined();
-    expect(context.sectionProgress.total).toBe(2);
+    expect(context.sectionProgress).toEqual({ completed: 2, total: 3 });
+    expect(context.currentSectionProgress).toEqual({ completed: 1, total: 2 });
     expect(context.completedLessons.length).toBe(2);
   });
 

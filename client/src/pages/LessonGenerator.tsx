@@ -146,6 +146,7 @@ export default function LessonGenerator() {
       linkedInitialized.current = true;
       setForm(prev => ({
         ...prev,
+        classId: linkedPlan.classId ?? prev.classId,
         title: linkedSituation.title,
         subject: linkedPlan.subject,
         gradeLevel: linkedPlan.gradeLevel,

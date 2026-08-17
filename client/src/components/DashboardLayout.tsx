@@ -54,6 +54,13 @@ const menuItems = [
   { icon: Settings, label: "الملف الشخصي", path: "/profile" },
 ];
 
+const mobileQuickActions = [
+  { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
+  { icon: Sparkles, label: "مذكرة", path: "/lesson-generator" },
+  { icon: Library, label: "تقويم", path: "/assessment" },
+  { icon: BarChart3, label: "نتائج", path: "/results" },
+];
+
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
@@ -299,7 +306,28 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 pb-24 md:p-6">{children}</main>
+        {isMobile && (
+          <nav
+            className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-4 border-t bg-background/95 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(24,34,47,0.08)] backdrop-blur"
+            aria-label="إجراءات الحصة السريعة"
+          >
+            {mobileQuickActions.map((action) => {
+              const isActive = location === action.path;
+              return (
+                <button
+                  key={action.path}
+                  onClick={() => setLocation(action.path)}
+                  className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isActive ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:bg-muted"}`}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <action.icon className="h-5 w-5" />
+                  <span>{action.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        )}
       </SidebarInset>
     </>
   );

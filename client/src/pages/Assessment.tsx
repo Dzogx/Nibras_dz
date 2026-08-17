@@ -27,6 +27,13 @@ const assessmentTypes = [
   { value: "answerKey", label: "مفتاح إجابات" },
 ];
 
+function classIdFromSearch(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const value = new URLSearchParams(window.location.search).get("classId");
+  const parsed = value ? Number(value) : NaN;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 interface LessonSummary {
   id: number;
   title: string;
@@ -83,6 +90,13 @@ export default function Assessment() {
       return merged;
     }
   );
+
+  const linkedClassId = classIdFromSearch();
+  useEffect(() => {
+    if (linkedClassId && form.classId !== linkedClassId) {
+      setForm((previous) => ({ ...previous, classId: linkedClassId }));
+    }
+  }, [linkedClassId, form.classId, setForm]);
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
@@ -301,7 +315,7 @@ export default function Assessment() {
               <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: اختبار الفصل الأول" />
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div><Label>المادة</Label>
                 <Select value={form.subject} onValueChange={v => setForm({ ...form, subject: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

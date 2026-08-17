@@ -246,7 +246,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                     {/* Situations list */}
                     <div className="space-y-2">
                       {section.situations?.map(sit => (
-                        <div key={sit.id} className="flex items-center gap-2 p-2 rounded bg-muted/50">
+                        <div key={sit.id} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 flex-wrap sm:flex-nowrap">
                           {sit.isCompleted ? (
                             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
                           ) : (
@@ -257,25 +257,38 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                             {sit.objectives && <p className="text-xs text-muted-foreground truncate">{sit.objectives}</p>}
                           </div>
                           <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleSituationMutation.mutate({ id: sit.id, isCompleted: !sit.isCompleted })}
-                          >
-                            {sit.isCompleted ? <Circle className="w-3.5 h-3.5 text-green-600" /> : <CheckCircle2 className="w-3.5 h-3.5 text-muted-foreground" />}
-                          </Button>
-                          <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => createLessonFromSituationMutation.mutate({ situationId: sit.id, classId: plan?.classId || undefined })}
                             disabled={createLessonFromSituationMutation.isPending}
-                            title="إنشاء مذكرة من هذه الوضعية"
                           >
-                            <FileText className="w-3.5 h-3.5 text-primary" />
+                            {createLessonFromSituationMutation.isPending ? <Loader2 className="w-3.5 h-3.5 ml-1 animate-spin" /> : <FileText className="w-3.5 h-3.5 ml-1 text-primary" />}
+                            مذكرة
                           </Button>
+                          <Button
+                            variant={sit.isCompleted ? "secondary" : "outline"}
+                            size="sm"
+                            onClick={() => toggleSituationMutation.mutate({ id: sit.id, isCompleted: !sit.isCompleted })}
+                          >
+                            {sit.isCompleted ? <Circle className="w-3.5 h-3.5 ml-1 text-green-600" /> : <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-muted-foreground" />}
+                            {sit.isCompleted ? "إلغاء الإنجاز" : "سجّل منجزة"}
+                          </Button>
+                          {sit.isCompleted && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-primary/30 text-primary"
+                              onClick={() => setLocation(`/assessment?classId=${plan.classId}`)}
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 ml-1" />أنشئ تقويماً
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="mr-auto"
                             onClick={() => deleteSituationMutation.mutate({ id: sit.id })}
+                            aria-label={`حذف ${sit.title}`}
                           >
                             <Trash2 className="w-3.5 h-3.5 text-destructive" />
                           </Button>

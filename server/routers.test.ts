@@ -427,7 +427,8 @@ describe("ai.getTeacherOSContext", () => {
     expect(result.currentSection).toBeTruthy();
     expect(result.currentSection.title).toBe("الوثائق التاريخية");
     expect(result.nextSituation.title).toBe("وضعية 2");
-    expect(result.sectionProgress).toEqual({ completed: 2, total: 2 });
+    expect(result.sectionProgress).toEqual({ completed: 2, total: 3 });
+    expect(result.currentSectionProgress).toEqual({ completed: 1, total: 2 });
   });
 
   it("marks an empty progress as not_started instead of on_track when the calendar expects progress", async () => {

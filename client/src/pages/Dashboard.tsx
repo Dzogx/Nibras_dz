@@ -71,6 +71,14 @@ export default function Dashboard() {
     }
   );
 
+  const activeClassId = selectedClassId ?? classes?.[0]?.id;
+  const activeClass = classes?.find((item) => item.id === activeClassId);
+  const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
+  const dailySection = teacherOSContext?.currentSection;
+  const dailySituation = teacherOSContext?.nextSituation;
+  const currentSectionProgress = teacherOSContext?.currentSectionProgress ?? teacherOSContext?.sectionProgress;
+  const hasDailySession = Boolean(activeClass && dailySituation);
+
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -99,6 +107,119 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* نقطة العمل الأساسية: تجعل الخطوة التالية للأستاذ واضحة من أول شاشة */}
+      <Card className="overflow-hidden border-primary/20 shadow-md">
+        <CardContent className="p-0">
+          <div className="grid lg:grid-cols-[1.45fr_0.85fr]">
+            <div className="p-5 md:p-6 bg-gradient-to-bl from-brand-ink-900 via-brand-ink-800 to-brand-ink-700 text-white">
+              <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-wax-400 text-brand-ink-950 font-bold">1</span>
+                  <div>
+                    <p className="text-xs text-white/70">مساحة العمل اليومية</p>
+                    <h2 className="font-bold text-lg">ابدأ حصتك الآن</h2>
+                  </div>
+                </div>
+                <div className="w-full sm:w-60">
+                  <Select
+                    value={activeClassId?.toString()}
+                    onValueChange={(value) => setSelectedClassId(Number(value))}
+                  >
+                    <SelectTrigger className="h-9 border-white/25 bg-white/10 text-white [&>svg]:text-white" aria-label="اختيار القسم للحصة اليومية">
+                      <SelectValue placeholder="اختر القسم" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes?.map((classItem) => (
+                        <SelectItem key={classItem.id} value={classItem.id.toString()}>
+                          {classItem.name} — {classItem.gradeLevel}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {hasDailySession ? (
+                <>
+                  <p className="text-sm text-white/70 mb-1">
+                    {activeClass?.name} · {activePlan?.subject || activeClass?.gradeLevel}
+                  </p>
+                  <h3 className="text-xl md:text-2xl font-bold leading-relaxed">
+                    {dailySituation?.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-sm text-white/80 mt-3 flex-wrap">
+                    <span className="rounded-md bg-white/10 px-2.5 py-1">
+                      المقطع {dailySection?.number}: {dailySection?.title}
+                    </span>
+                    <span className="rounded-md bg-white/10 px-2.5 py-1">وضعية غير منجزة</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-5">
+                    <Button
+                      className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
+                      onClick={() => setLocation(`/lesson-generator?situationId=${dailySituation?.id}`)}
+                    >
+                      <Sparkles className="w-4 h-4 ml-2" />حضّر المذكرة
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
+                      onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
+                    >
+                      <ClipboardList className="w-4 h-4 ml-2" />افتح مسار التنفيذ
+                    </Button>
+                  </div>
+                </>
+              ) : activeClass ? (
+                <div className="py-3">
+                  <h3 className="text-xl font-bold">لا توجد وضعية معلّقة في هذا القسم</h3>
+                  <p className="text-sm text-white/75 mt-2">راجِع الخطة أو أنشئ وضعية تعلمية جديدة لتبدأ الحصة التالية.</p>
+                  <Button
+                    className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
+                    onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
+                  >
+                    <ClipboardList className="w-4 h-4 ml-2" />الذهاب إلى الخطة
+                  </Button>
+                </div>
+              ) : (
+                <div className="py-3">
+                  <h3 className="text-xl font-bold">ابدأ بتعريف قسمك</h3>
+                  <p className="text-sm text-white/75 mt-2">بعد إضافة القسم والخطة، سيقترح نبراس الحصة التالية تلقائياً.</p>
+                  <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/classes")}>
+                    <Plus className="w-4 h-4 ml-2" />إضافة قسم
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-card p-5 md:p-6">
+              <p className="text-xs font-semibold text-primary mb-1">المسار الموجّه</p>
+              <h3 className="font-bold text-lg mb-4">من الحصة إلى التقويم</h3>
+              <ol className="space-y-3">
+                {[
+                  { label: "حدّد الوضعية", detail: hasDailySession ? "جاهزة في بطاقة اليوم" : "اختر قسمًا وخطة", done: hasDailySession },
+                  { label: "حضّر المذكرة", detail: "مذكرة مرتبطة بالوضعية", done: false },
+                  { label: "نفّذ وسجّل الإنجاز", detail: "من صفحة الخطة السنوية", done: false },
+                  { label: "قوّم ما دُرّس", detail: "التقويم يستورد المنجز فقط", done: false },
+                ].map((step, index) => (
+                  <li key={step.label} className="flex gap-3 items-start">
+                    <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.done ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
+                      {step.done ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold">{step.label}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{step.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-5 rounded-lg bg-muted/70 p-3 text-xs leading-relaxed text-muted-foreground">
+                لا يُنشئ نبراس تقويماً من دروس غير مسجّلة كمنجزة، حتى يبقى التقويم مرتبطاً بما دُرّس فعلياً.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -193,7 +314,7 @@ export default function Dashboard() {
                   <li
                     key={situation.id}
                     className="text-sm text-foreground/80 flex items-center gap-2 cursor-pointer hover:text-brand-copper-700 transition-colors"
-                    onClick={() => setLocation("/teacher-os")}
+                    onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-wax-600 shrink-0" />
                     <span className="truncate">{situation.title}</span>
@@ -258,68 +379,41 @@ export default function Dashboard() {
           </CardContent>
                 </Card>
       ) : null}
-      {/* Teacher OS Progress — بطاقة بتدرج هوية نبراس */}
+      {/* متابعة مختصرة: مكان الأستاذ في المقطع، لا عداد تقني بعيد عن الحصة */}
       <Card className="border-brand-copper-200 bg-brand-copper-50/40">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Target className="w-4 h-4 text-brand-ink-700" />
-            تقدم Teacher OS
+            أين وصلت في الخطة؟
           </CardTitle>
         </CardHeader>
-        {classes && classes.length > 1 && (
-          <div className="px-6 pb-1">
-            <Select
-              value={String(selectedClassId ?? classes[0]?.id ?? "")}
-              onValueChange={(v) => setSelectedClassId(Number(v))}
-            >
-              <SelectTrigger className="w-full bg-white/70">
-                <SelectValue placeholder="اختر القسم" />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((cls) => (
-                  <SelectItem key={cls.id} value={String(cls.id)}>
-                    {cls.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
         <CardContent>
           {teacherOSContext?.currentSection ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                  <p className="text-sm font-medium">المقطع الحالي</p>
+                  <p className="text-xs font-medium text-brand-ink-700">{activeClass?.name || "القسم المختار"} · المقطع الجاري</p>
                   <p className="text-lg font-bold text-brand-ink-800">
                     {teacherOSContext.currentSection.title} (المقطع {teacherOSContext.currentSection.number})
                   </p>
                 </div>
+                <span className="shrink-0 rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-brand-ink-700">
+                  {currentSectionProgress?.completed ?? 0}/{currentSectionProgress?.total ?? 0} داخل المقطع
+                </span>
               </div>
               {teacherOSContext.nextSituation ? (
                 <div className="bg-brand-copper-100/70 rounded-lg p-3">
-                  <p className="text-xs text-brand-copper-800 font-medium mb-1">الوضعية التالية</p>
+                  <p className="text-xs text-brand-copper-800 font-medium mb-1">الخطوة التالية في حصتك</p>
                   <p className="text-sm font-medium">{teacherOSContext.nextSituation.title}</p>
-                  <p className="text-xs text-muted-foreground mb-2">المقطع {teacherOSContext.nextSituation.sectionNumber}</p>
+                  <p className="text-xs text-muted-foreground mb-2">حضّر المذكرة، ثم سجّلها منجزة بعد التنفيذ.</p>
                   <Button size="sm" variant="secondary" className="w-full gap-1" onClick={() => setLocation(`/lesson-generator?situationId=${teacherOSContext.nextSituation!.id}`)}>
                     <BookOpen className="w-3.5 h-3.5" />
-                    حضّر الحصة
+                    افتح مذكرة هذه الحصة
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">لا توجد وضعيات متبقية</p>
+                <p className="text-sm text-brand-copper-700">اكتمل هذا المقطع. انتقل إلى الخطة لمراجعة الخطوة التالية.</p>
               )}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">
-                  {teacherOSContext.sectionProgress.completed}/{teacherOSContext.sectionProgress.total} وضعية منجزة
-                </span>
-                <div className="flex-1 bg-muted rounded-full h-1.5">
-                  <div
-                    className="bg-brand-ink-600 h-1.5 rounded-full"
-                    style={{ width: `${teacherOSContext.sectionProgress.total ? (teacherOSContext.sectionProgress.completed / teacherOSContext.sectionProgress.total) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
               {teacherOSContext.competencies.length > 0 && (
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">الكفاءات المغطاة</p>
@@ -358,7 +452,7 @@ export default function Dashboard() {
               {/* بطاقات تقدم المقاطع */}
               {teacherOSContext.sectionProgressDetailed && teacherOSContext.sectionProgressDetailed.length > 0 && (
                 <div className="border-t border-brand-copper-200/70 pt-3 space-y-2">
-                  <p className="text-xs font-medium text-brand-ink-700">تقدم المقاطع</p>
+                  <p className="text-xs font-medium text-brand-ink-700">خريطة المقاطع</p>
                   {teacherOSContext.sectionProgressDetailed.map((sec) => (
                     <div key={sec.id} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">

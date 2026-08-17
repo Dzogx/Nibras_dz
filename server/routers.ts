@@ -1168,6 +1168,7 @@ ${rulesContext}
       let nextSituation = null;
       let completedSituations = 0;
       let totalSituations = 0;
+      let currentSectionProgress = { completed: 0, total: 0 };
       let sectionProgressDetailed: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
       let annualProgressPercent = 0;
       try {
@@ -1176,12 +1177,12 @@ ${rulesContext}
           const classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
             const sections = await getAnnualPlanSections(classPlan.id);
-            totalSituations = sections.length;
             const sectionProgressList: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
             for (const section of sections) {
               const situations = await getLearningSituations(section.id);
               const completed = situations.filter(s => s.isCompleted);
               const completedCount = completed.length;
+              totalSituations += situations.length;
               completedSituations += completedCount;
               const lastCompleted = completed.sort((a, b) =>
                 ((b.completedDate?.getTime() ?? 0) - (a.completedDate?.getTime() ?? 0)))[0];
@@ -1194,11 +1195,33 @@ ${rulesContext}
                 percent: situations.length > 0 ? Math.round((completedCount / situations.length) * 100) : 0,
                 lastCompletedDate: lastCompleted?.completedDate?.toISOString(),
               });
-              if (!currentSection) {
+              const firstIncomplete = situations.find(s => !s.isCompleted);
+              // الحصة اليومية تُفتح على أول مقطع يحوي وضعية لم تُنجز فعلاً،
+              // لا على أول مقطع في الخطة مهما كان تقدمه.
+              if (!currentSection && firstIncomplete) {
                 currentSection = { id: section.id, number: section.sectionNumber, title: section.title, isCompleted: section.isCompleted };
-                const firstIncomplete = situations.find(s => !s.isCompleted);
-                if (firstIncomplete) nextSituation = { id: firstIncomplete.id, title: firstIncomplete.title, sectionNumber: section.sectionNumber };
+                currentSectionProgress = { completed: completedCount, total: situations.length };
+                nextSituation = {
+                  id: firstIncomplete.id,
+                  title: firstIncomplete.title,
+                  sectionNumber: section.sectionNumber,
+                  situationNumber: firstIncomplete.situationNumber,
+                };
               }
+            }
+            // عند اكتمال الخطة نُبقي آخر مقطع ظاهرًا كملخص، بدل إخفاء سياق الأستاذ بالكامل.
+            if (!currentSection && sections.length > 0) {
+              const lastSection = sections[sections.length - 1];
+              currentSection = {
+                id: lastSection.id,
+                number: lastSection.sectionNumber,
+                title: lastSection.title,
+                isCompleted: lastSection.isCompleted,
+              };
+              const lastProgress = sectionProgressList[sectionProgressList.length - 1];
+              currentSectionProgress = lastProgress
+                ? { completed: lastProgress.completed, total: lastProgress.total }
+                : currentSectionProgress;
             }
             sectionProgressDetailed = sectionProgressList;
             annualProgressPercent = totalSituations > 0 ? Math.round((completedSituations / totalSituations) * 100) : 0;
@@ -1274,6 +1297,7 @@ ${rulesContext}
         currentSection,
         nextSituation,
         sectionProgress: { completed: completedSituations, total: totalSituations },
+        currentSectionProgress,
         sectionProgressDetailed,
         annualProgressPercent,
         schedulePace,
