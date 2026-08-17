@@ -13,6 +13,7 @@ import {
   FileText,
   CheckCircle2,
   Clock,
+  BarChart3,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { useLocation } from "wouter";
 import { useMemo, useState } from "react";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { toast } from "sonner";
+import { buildQuickAssessmentPath, buildQuickLessonPath } from "@shared/quick-click";
 import {
   Select,
   SelectContent,
@@ -38,8 +40,8 @@ const statCards = [
 ];
 
 const quickActions = [
-  { icon: Sparkles, label: "توليد درس جديد", path: "/lesson-generator", color: "bg-brand-ink-800", iconColor: "text-brand-ink-50" },
-  { icon: Library, label: "إنشاء تقييم", path: "/assessment", color: "bg-brand-copper-700", iconColor: "text-copper-50" },
+  { icon: FileText, label: "إدارة الخطط", path: "/annual-plans", color: "bg-brand-ink-800", iconColor: "text-brand-ink-50" },
+  { icon: BarChart3, label: "سجّل النتائج", path: "/results", color: "bg-brand-copper-700", iconColor: "text-copper-50" },
   { icon: Eye, label: "مراجعة كمفتش", path: "/inspector", color: "bg-brand-ink-700", iconColor: "text-brand-wax-300" },
   { icon: BookOpen, label: "بحث في المنهج", path: "/curriculum", color: "bg-brand-wax-500", iconColor: "text-brand-ink-950" },
 ];
@@ -83,6 +85,7 @@ export default function Dashboard() {
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
   const dailySection = teacherOSContext?.currentSection;
   const dailySituation = teacherOSContext?.nextSituation;
+  const lastCompletedSituation = teacherOSContext?.completedSituations?.[0];
   const currentSectionProgress = teacherOSContext?.currentSectionProgress ?? teacherOSContext?.sectionProgress;
   const hasDailySession = Boolean(activeClass && dailySituation);
   const completeSessionMutation = trpc.situations.completeSession.useMutation({
@@ -177,16 +180,9 @@ export default function Dashboard() {
                   <div className="flex flex-wrap gap-2 mt-5">
                     <Button
                       className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
-                      onClick={() => setLocation(`/lesson-generator?situationId=${dailySituation?.id}`)}
+                      onClick={() => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id))}
                     >
                       <Sparkles className="w-4 h-4 ml-2" />حضّر المذكرة
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-white/25 bg-white/5 text-white hover:bg-white/15 hover:text-white"
-                      onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
-                    >
-                      <ClipboardList className="w-4 h-4 ml-2" />افتح مسار التنفيذ
                     </Button>
                     <Button
                       variant="outline"
@@ -220,23 +216,51 @@ export default function Dashboard() {
             </div>
 
             <div className="bg-card p-5 md:p-6">
-              <p className="text-xs font-semibold text-primary mb-1">المسار الموجّه</p>
-              <h3 className="font-bold text-lg mb-4">من الحصة إلى التقويم</h3>
+              <p className="text-xs font-semibold text-primary mb-1">نقرات الحصة السريعة</p>
+              <h3 className="font-bold text-lg mb-4">نفّذ الخطوة التالية فقط</h3>
               <ol className="space-y-3">
                 {[
-                  { label: "حدّد الوضعية", detail: hasDailySession ? "جاهزة في بطاقة اليوم" : "اختر قسمًا وخطة", done: hasDailySession },
-                  { label: "حضّر المذكرة", detail: "مذكرة مرتبطة بالوضعية", done: false },
-                  { label: "نفّذ وسجّل الإنجاز", detail: "من صفحة الخطة السنوية", done: false },
-                  { label: "قوّم ما دُرّس", detail: "التقويم يستورد المنجز فقط", done: false },
+                  {
+                    label: "حضّر المذكرة",
+                    detail: hasDailySession ? "جاهزة بعنوان الوضعية الرسمية" : "اختر قسمًا وخطة أولاً",
+                    ready: hasDailySession,
+                    onClick: () => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id)),
+                  },
+                  {
+                    label: "سجّل الإنجاز",
+                    detail: "نقرة واحدة بعد تنفيذ الحصة",
+                    ready: hasDailySession,
+                    onClick: () => setFinishSessionOpen(true),
+                  },
+                  {
+                    label: "أنشئ التقويم",
+                    detail: lastCompletedSituation ? "يبنى من آخر وضعية منجزة" : "يتاح بعد تسجيل إنجاز وضعية",
+                    ready: Boolean(lastCompletedSituation),
+                    onClick: () => lastCompletedSituation && setLocation(buildQuickAssessmentPath(lastCompletedSituation.id, activeClassId)),
+                  },
+                  {
+                    label: "شخّص النتائج والعلاج",
+                    detail: "سجّل النتائج ثم أنشئ نشاط الدعم",
+                    ready: Boolean(activeClassId),
+                    onClick: () => setLocation("/results"),
+                  },
                 ].map((step, index) => (
                   <li key={step.label} className="flex gap-3 items-start">
-                    <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.done ? "bg-emerald-100 text-emerald-700" : "bg-muted text-muted-foreground"}`}>
-                      {step.done ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold">{step.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{step.detail}</p>
-                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="h-auto w-full justify-start gap-3 whitespace-normal p-0 text-right hover:bg-transparent disabled:opacity-55"
+                      disabled={!step.ready}
+                      onClick={step.onClick}
+                    >
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.ready ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                        {index + 1}
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold">{step.label}</span>
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{step.detail}</span>
+                      </span>
+                    </Button>
                   </li>
                 ))}
               </ol>
@@ -306,7 +330,7 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div>
-        <h2 className="text-lg font-semibold mb-3">إجراءات سريعة</h2>
+        <h2 className="text-lg font-semibold mb-3">أدوات إضافية</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {quickActions.map((action) => (
             <Button

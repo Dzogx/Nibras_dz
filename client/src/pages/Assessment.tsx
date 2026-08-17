@@ -61,6 +61,7 @@ export default function Assessment() {
   const [curriculumCitations, setCurriculumCitations] = useState<{ referenceNumber: number; docId: number; title: string; sourceReference: string; type: string; unitNumber?: number | null; lessonNumber?: number | null }[]>([]);
   type WeightInfo = { subject?: string; points?: number; label?: string };
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showCustomization, setShowCustomization] = useState(false);
   const [importedLessons, setImportedLessons] = useState<LessonSummary[]>([]);
   const [selectedLessonIds, setSelectedLessonIds] = useState<number[]>([]);
   const [selectedCompetencies, setSelectedCompetencies] = useState<string[]>([]);
@@ -372,6 +373,14 @@ export default function Assessment() {
             )}
           </CardHeader>
           <CardContent className="space-y-4">
+            {linkedSituation && !showCustomization ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-medium text-primary">تقويم مرتبط بالوضعية الرسمية</p>
+                <p className="mt-1 font-semibold leading-6">{linkedSituation.title}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">يُنشأ التقويم بعنوان الوضعية وبالقواعد الوطنية المناسبة تلقائياً. يمكنك التخصيص عند الحاجة فقط.</p>
+              </div>
+            ) : (
+              <>
             <div><Label>عنوان التقييم *</Label>
               <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: اختبار الفصل الأول" />
               {form.situationIds.length === 1 && <p className="mt-1 text-xs text-muted-foreground">تمت تعبئته من عنوان الوضعية الرسمية؛ يمكنك تعديله عند الحاجة.</p>}
@@ -572,6 +581,15 @@ export default function Assessment() {
                 </div>
               )}
             </div>
+              </>
+            )}
+
+            {linkedSituation && (
+              <Button type="button" variant="ghost" size="sm" className="h-auto w-full justify-between px-1 text-primary" onClick={() => setShowCustomization(!showCustomization)}>
+                <span>{showCustomization ? "إخفاء التخصيص" : "تعديل الإعدادات"}</span>
+                {showCustomization ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            )}
 
             <Button className="w-full" onClick={handleGenerate} disabled={generateMutation.isPending || !form.title || !form.topic}>
               {generateMutation.isPending ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري التوليد...</> : <>

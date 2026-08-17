@@ -86,6 +86,7 @@ export default function LessonGenerator() {
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showCustomization, setShowCustomization] = useState(false);
 
   // ربط مباشر من لوحة التحكم: /lesson-generator?situationId=X (حضّر الحصة)
   const situationIdParam = parseSearchParam("situationId");
@@ -226,10 +227,25 @@ export default function LessonGenerator() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Basic Fields */}
-            <div><Label>عنوان الدرس *</Label>
-              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: الثورة الجزائرية" />
-            </div>
+            {linkedSituation && !showCustomization ? (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-xs font-medium text-primary">عنوان الوضعية الرسمي</p>
+                <p className="mt-1 font-semibold leading-6">{form.title || linkedSituation.title}</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">المادة والمستوى والمدة تُسترجع تلقائياً من المخطط السنوي المرتبط.</p>
+              </div>
+            ) : (
+              <div><Label>عنوان الدرس *</Label>
+                <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: الثورة الجزائرية" />
+              </div>
+            )}
+            {linkedSituation && (
+              <Button type="button" variant="ghost" size="sm" className="h-auto w-full justify-between px-1 text-primary" onClick={() => setShowCustomization(!showCustomization)}>
+                <span>{showCustomization ? "إخفاء التخصيص" : "تعديل العنوان أو الإعدادات"}</span>
+                {showCustomization ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            )}
+            {(!linkedSituation || showCustomization) && (
+              <>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>المادة</Label>
                 <Select value={form.subject} onValueChange={v => setForm({ ...form, subject: v })}>
@@ -443,6 +459,8 @@ export default function LessonGenerator() {
                   </>
                 )}
               </div>
+            )}
+              </>
             )}
 
             <Button className="w-full" onClick={() => {

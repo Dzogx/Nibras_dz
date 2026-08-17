@@ -41,24 +41,17 @@ import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { Button } from "./ui/button";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "لوحة التحكم", path: "/dashboard" },
-  { icon: BookOpen, label: "قاعدة المنهج", path: "/curriculum" },
-  { icon: GraduationCap, label: "الأقسام", path: "/classes" },
-  { icon: FileText, label: "الخطط السنوية", path: "/annual-plans" },
-  { icon: ClipboardList, label: "الدروس", path: "/lessons" },
-  { icon: Sparkles, label: "مُولّد الدروس", path: "/lesson-generator" },
-  { icon: Library, label: "استوديو التقييم", path: "/assessment" },
-  { icon: Library, label: "مكتبة المحتوى", path: "/content-library" },
-  { icon: BarChart3, label: "النتائج", path: "/results" },
-  { icon: Eye, label: "وضع المفتش", path: "/inspector" },
-  { icon: Settings, label: "الملف الشخصي", path: "/profile" },
+  { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
+  { icon: FileText, label: "التخطيط", path: "/annual-plans" },
+  { icon: Library, label: "التقويم", path: "/assessment" },
+  { icon: Library, label: "المكتبة", path: "/content-library" },
 ];
 
 const mobileQuickActions = [
   { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
-  { icon: Sparkles, label: "مذكرة", path: "/lesson-generator" },
+  { icon: FileText, label: "التخطيط", path: "/annual-plans" },
   { icon: Library, label: "تقويم", path: "/assessment" },
-  { icon: BarChart3, label: "نتائج", path: "/results" },
+  { icon: Library, label: "المكتبة", path: "/content-library" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -270,6 +263,10 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer">
+                  <Settings className="ml-2 h-4 w-4" />
+                  <span>الملف الشخصي</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={logout}
                   className="cursor-pointer text-destructive focus:text-destructive"
