@@ -432,6 +432,32 @@ describe("ai.getTeacherOSContext", () => {
     expect(result.currentSectionProgress).toEqual({ completed: 1, total: 2 });
   });
 
+  it("orders completed official situations by completion date for the remediation activity", async () => {
+    (db.getLessons as any).mockResolvedValue([]);
+    (db.getAnnualPlans as any).mockResolvedValue([
+      { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2026/2027" },
+    ]);
+    (db.getAnnualPlanSections as any).mockResolvedValue([
+      { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: true },
+    ]);
+    (db.getLearningSituations as any).mockResolvedValue([
+      { id: 101, situationNumber: 1, title: "العنوان الرسمي الأقدم", isCompleted: true, completedDate: new Date("2026-10-10T10:00:00Z") },
+      { id: 102, situationNumber: 2, title: "العنوان الرسمي الأحدث", isCompleted: true, completedDate: new Date("2026-10-17T10:00:00Z") },
+    ]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getTeacherOSContext({ classId: 1 });
+
+    expect(result.completedSituations.map((situation) => situation.title)).toEqual([
+      "العنوان الرسمي الأحدث",
+      "العنوان الرسمي الأقدم",
+    ]);
+    expect(result.completedSituations[0]).toMatchObject({
+      id: 102,
+      completedDate: "2026-10-17T10:00:00.000Z",
+    });
+  });
+
   it("marks an empty progress as not_started instead of on_track when the calendar expects progress", async () => {
     // Regression: previously, 0% completion while weeks had elapsed since the term start
     // (2026-10-05) was classified as "on_track" — misleading for the teacher.

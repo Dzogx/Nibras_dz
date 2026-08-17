@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, BarChart3, TrendingDown, Lightbulb, Loader2, Trash2, AlertTriangle, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -17,6 +18,9 @@ export default function Results() {
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [remediationOpen, setRemediationOpen] = useState(false);
+  const [remediationSituationId, setRemediationSituationId] = useState<number | null>(null);
+  const [remediationTitle, setRemediationTitle] = useState("");
+  const [remediationTitleEdited, setRemediationTitleEdited] = useState(false);
   const [newResult, setNewResult] = useState({
     title: "",
     totalStudents: 0,
@@ -40,6 +44,27 @@ export default function Results() {
     { classId: selectedClassId! },
     { enabled: !!selectedClassId }
   );
+
+  const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
+    { classId: selectedClassId! },
+    { enabled: !!selectedClassId }
+  );
+  const completedSituations = teacherOSContext?.completedSituations ?? [];
+  const selectedRemediationSituation = completedSituations.find(
+    (situation) => situation.id === remediationSituationId
+  );
+
+  const openRemediationActivity = () => {
+    const latestOfficialSituation = completedSituations[0];
+    if (!latestOfficialSituation) {
+      toast.error("أكمل وضعية تعليمية من المخطط السنوي أولاً حتى يُربط النشاط بعنوانها الرسمي.");
+      return;
+    }
+    setRemediationSituationId(latestOfficialSituation.id);
+    setRemediationTitle(latestOfficialSituation.title);
+    setRemediationTitleEdited(false);
+    setRemediationOpen(true);
+  };
 
   const createMutation = trpc.results.create.useMutation({
     onSuccess: () => {
@@ -307,7 +332,7 @@ export default function Results() {
                             <p className="text-xs leading-relaxed text-amber-900/75 mb-3">
                               حوّل هذه التوصيات إلى نشاط قصير للحصة القادمة، ثم عدّله أو اطبعه من المكتبة.
                             </p>
-                            <Button size="sm" onClick={() => setRemediationOpen(true)}>
+                            <Button size="sm" onClick={openRemediationActivity}>
                               <NotebookPen className="w-4 h-4 ml-2" />إنشاء نشاط علاجي للحصة القادمة
                             </Button>
                           </div>
@@ -330,7 +355,52 @@ export default function Results() {
               <DialogHeader>
                 <DialogTitle>نشاط علاجي للحصة القادمة</DialogTitle>
               </DialogHeader>
+              <div className="grid gap-3 rounded-lg border border-brand-teal-100 bg-brand-teal-50/40 p-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="remediation-situation">الوضعية المرجعية من المخطط السنوي</Label>
+                  <Select
+                    value={remediationSituationId?.toString() ?? ""}
+                    onValueChange={(value) => {
+                      const situation = completedSituations.find((item) => item.id === Number(value));
+                      if (!situation) return;
+                      setRemediationSituationId(situation.id);
+                      setRemediationTitle(situation.title);
+                      setRemediationTitleEdited(false);
+                    }}
+                  >
+                    <SelectTrigger id="remediation-situation" className="bg-background">
+                      <SelectValue placeholder="اختر وضعية منجزة" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {completedSituations.map((situation) => (
+                        <SelectItem key={situation.id} value={situation.id.toString()}>
+                          {situation.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="remediation-title">عنوان بطاقة النشاط</Label>
+                  <Input
+                    id="remediation-title"
+                    value={remediationTitle}
+                    onChange={(event) => {
+                      const title = event.target.value;
+                      setRemediationTitle(title);
+                      setRemediationTitleEdited(title.trim() !== (selectedRemediationSituation?.title ?? ""));
+                    }}
+                    disabled={!selectedRemediationSituation}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {remediationTitleEdited
+                      ? "سيُحفظ التعديل اليدوي للأستاذ مع بقاء الوضعية الرسمية مرجعاً في بيانات النشاط."
+                      : "يُعبّأ العنوان الرسمي تلقائياً من الوضعية المختارة، ويمكنك تعديله عند الحاجة."}
+                  </p>
+                </div>
+              </div>
               <div className="rounded-lg border bg-muted/40 p-4 text-sm leading-7 max-h-80 overflow-y-auto">
+                <p className="font-semibold">عنوان الوضعية: {remediationTitle || selectedRemediationSituation?.title || "—"}</p>
                 <p className="font-semibold">القسم: {classes?.find((item) => item.id === selectedClassId)?.name || "القسم الحالي"}</p>
                 <p className="mt-2"><strong>المدة المقترحة:</strong> 20 دقيقة</p>
                 <p className="mt-2"><strong>مواطن العلاج:</strong> {analysis?.weakDomains?.join("، ") || "النتائج المسجلة"}</p>
@@ -344,17 +414,30 @@ export default function Results() {
                 <p className="mt-3 text-xs text-muted-foreground">يُحفظ النشاط قابلًا للتعديل؛ أضف السند أو المثال المطابق لما دُرّس فعليًا قبل طباعته.</p>
               </div>
               <Button
-                disabled={remediationActivityMutation.isPending || !selectedClassId || !analysis}
+                disabled={remediationActivityMutation.isPending || !selectedClassId || !analysis || !selectedRemediationSituation}
                 onClick={() => {
                   const className = classes?.find((item) => item.id === selectedClassId)?.name || "القسم";
+                  const officialSituationTitle = selectedRemediationSituation?.title;
+                  const canonicalTitle = remediationTitle.trim() || officialSituationTitle;
+                  if (!selectedRemediationSituation || !canonicalTitle) {
+                    toast.error("اختر وضعية منجزة حتى يُحفظ النشاط بعنوانها الرسمي.");
+                    return;
+                  }
                   const weakDomains = analysis?.weakDomains?.join("، ") || "مواطن الضعف المسجلة";
                   const suggestions = analysis?.suggestions?.map((suggestion, index) => `${index + 1}. ${suggestion}`).join("\n") || "- راجع النتائج المسجلة وحدد الهدف الدقيق للنشاط.";
                   remediationActivityMutation.mutate({
                     classId: selectedClassId,
                     type: "activity",
-                    title: `نشاط علاجي — ${className}`,
-                    content: `# نشاط علاجي صفي\n\n**القسم:** ${className}\n\n**المدة المقترحة:** 20 دقيقة\n\n## مواطن العلاج\n${weakDomains}\n\n## هدف النشاط\nمعالجة مواطن الضعف التي ظهرت في التقويم، مع التحقق من تحسن الأداء بنهاية الحصة.\n\n## خطوات التنفيذ\n1. استرجاع سريع للمعارف السابقة بسؤالين قصيرين.\n2. عمل ثنائي على مثال أو سند يختاره الأستاذ من الدرس المنجز.\n3. عرض الحلول ومناقشة الخطأ الشائع.\n4. بطاقة خروج قصيرة للتحقق من التحسن.\n\n## توصيات التحليل المعتمدة\n${suggestions}\n\n## ملاحظة للأستاذ\nأضف السند أو المثال المطابق لما دُرّس فعليًا قبل التنفيذ أو الطباعة.`,
-                    metadata: { source: "assessment_results", weakDomains: analysis?.weakDomains ?? [], suggestions: analysis?.suggestions ?? [] },
+                    title: canonicalTitle,
+                    content: `# نشاط علاجي صفي\n\n**عنوان الوضعية:** ${canonicalTitle}\n\n**القسم:** ${className}\n\n**المدة المقترحة:** 20 دقيقة\n\n## مواطن العلاج\n${weakDomains}\n\n## هدف النشاط\nمعالجة مواطن الضعف التي ظهرت في التقويم، مع التحقق من تحسن الأداء بنهاية الحصة.\n\n## خطوات التنفيذ\n1. استرجاع سريع للمعارف السابقة بسؤالين قصيرين.\n2. عمل ثنائي على مثال أو سند يختاره الأستاذ من الدرس المنجز.\n3. عرض الحلول ومناقشة الخطأ الشائع.\n4. بطاقة خروج قصيرة للتحقق من التحسن.\n\n## توصيات التحليل المعتمدة\n${suggestions}\n\n## ملاحظة للأستاذ\nأضف السند أو المثال المطابق لما دُرّس فعليًا قبل التنفيذ أو الطباعة.`,
+                    metadata: {
+                      source: "assessment_results",
+                      situationId: selectedRemediationSituation.id,
+                      officialSituationTitle,
+                      titleSource: remediationTitleEdited ? "teacher_edit" : "official_situation",
+                      weakDomains: analysis?.weakDomains ?? [],
+                      suggestions: analysis?.suggestions ?? [],
+                    },
                     tags: ["علاج تربوي", "نشاط صفي", "نتائج التقويم"],
                   });
                 }}

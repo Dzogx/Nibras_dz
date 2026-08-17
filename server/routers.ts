@@ -1326,6 +1326,7 @@ ${rulesContext}
                     situationNumber: s.situationNumber,
                     title: s.title,
                     objectives: s.objectives || undefined,
+                    completedDate: s.completedDate?.toISOString(),
                   });
                 }
               }
@@ -1333,6 +1334,11 @@ ${rulesContext}
           }
         }
       } catch (e) { /* no sections configured */ }
+      // تعرض بطاقة العلاج أحدث وضعية منجزة أولاً حتى يكون عنوانها الافتراضي
+      // هو العنوان الرسمي الأقرب للتقويم الذي حلّله الأستاذ.
+      completedSituationsList.sort((a, b) =>
+        (new Date(b.completedDate || 0).getTime()) - (new Date(a.completedDate || 0).getTime())
+      );
       return {
         completedLessons: lessonSummaries,
         completedSituations: completedSituationsList,
