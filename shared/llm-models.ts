@@ -15,11 +15,17 @@ export type LlmModelOption = {
 };
 
 // Prefix convention: model ids starting with "gemini/" are routed to the
-// Google Gemini API (GEMINI_API_KEY, REST endpoint), while all other ids are
-// sent through the OpenAI-compatible external provider (LLM_API_URL/KEY).
+// Google Gemini API (GEMINI_API_KEY, REST endpoint); ids starting with
+// "openai/" are routed straight to the official OpenAI API (OPENAI_API_KEY,
+// signup credits — no credit card); all other ids go through the
+// OpenAI-compatible external provider (LLM_API_URL/KEY, OpenRouter).
 export const GEMINI_MODEL_PREFIX = "gemini/";
 export const isGeminiModel = (modelId: string): boolean =>
   modelId.startsWith(GEMINI_MODEL_PREFIX);
+
+export const OPENAI_MODEL_PREFIX = "openai/";
+export const isOpenaiDirectModel = (modelId: string): boolean =>
+  modelId.startsWith(OPENAI_MODEL_PREFIX);
 
 export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
   {
@@ -43,8 +49,20 @@ export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
   {
     id: "openai/gpt-4.1-mini",
     label: "GPT-4.1-mini (افتراضي)",
-    description: "توازن ممتاز بين الجودة والسرعة — مناسب للمذكرات والتقويمات الرسمية",
+    description: "توازن ممتاز بين الجودة والسرعة — مناسب للمذكرات والتقويمات الرسمية (أرصدة مجانية بدون بطاقة دفع)",
     free: false,
+  },
+  {
+    id: "openai/gpt-4o-mini",
+    label: "GPT-4o-mini",
+    description: "سريع واقتصادي بجودة عالية (أرصدة مجانية بدون بطاقة دفع)",
+    free: false,
+  },
+  {
+    id: "openai/gpt-4.1-nano",
+    label: "GPT-4.1-nano (مجاني تقريبًا)",
+    description: "أرخص نموذج من OpenAI الرسمية — سريع جدًا لا يستهلك الأرصدة تقريبًا",
+    free: true,
   },
   {
     id: "google/gemini-2.5-flash",
@@ -63,11 +81,5 @@ export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
     label: "DeepSeek V3.1",
     description: "مجاني تقريبًا بجودة عالية جدًا للعربية — بديل قوي",
     free: true,
-  },
-  {
-    id: "openai/gpt-4o-mini",
-    label: "GPT-4o-mini",
-    description: "سريع واقتصادي بجودة عالية",
-    free: false,
   },
 ];

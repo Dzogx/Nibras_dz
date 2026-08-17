@@ -524,3 +524,11 @@
 - [x] دمج النسخ الصوتية: server/_core/tts.ts (تنظيف markdown، تقسيم >600 حرف، quota 429 عربي واضح) + إجراء tts.generate + مكوّن VoicePlayer (توليد/تشغيل/إيقاف/تحميل MP3) في ResourceDetail وLessonDetail
 - [ ] دمج توليد الصور التربوية عند الطلب في محتوى الدروس — موقوف حتى عودة حصة Nano Banana المجانية غدًا (يعمل تلقائيًا، لا يتطلب تعديلًا إضافيًا)
 - [x] اختبارات vitest (112/112 منها 7 جديدة في server/tts.test.ts) + TypeScript نظيف + فحص بصري + checkpoint + تسليم
+
+## دمج OpenAI API المباشر (مفتاح الأستاذ 17 أوت)
+
+- [x] حفظ OPENAI_API_KEY في secrets (بدون بطاقة دفع — أرصدة افتتاحية)
+- [x] إضافة بائع openai المباشر: invokeOpenaiDirect في llm.ts مع buildOpenAiPayload مشتركة + توجيه openai/ في invokeLLM + فولباك Manus عند 401/402/403/429/5xx
+- [x] إضافة نماذج OpenAI إلى shared/llm-models.ts: gpt-4.1-mini وgpt-4o-mini وgpt-4.1-nano (استُبدل gpt-oss-120b لأنه غير متوفر على api.openai.com)
+- [x] اختبار فعلي: المفتاح صالح (/v1/models يعود 118 نموذجًا) لكن الحصة مفتوحة على 429 insufficient_quota — الحماية تعمل والنماذج تعمل عبر فولباك Manus؛ يحتاج الأستاذ تفعيل الأرصدة من dashboard.platform.openai.com
+- [x] اختبار vitest جديد يصادق المفتاح (server/openai-auth.test.ts) + 113/113 اختبار + TypeScript نظيف + checkpoint + تسليم

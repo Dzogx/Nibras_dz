@@ -2,6 +2,8 @@ import { ENV } from "./env";
 import {
   GEMINI_MODEL_PREFIX,
   isGeminiModel,
+  OPENAI_MODEL_PREFIX,
+  isOpenaiDirectModel,
   LLM_MODEL_OPTIONS,
 } from "../../shared/llm-models";
 import type { LlmModelOption } from "../../shared/llm-models";
@@ -742,6 +744,13 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   if (params.model && isGeminiModel(params.model) && ENV.geminiApiKey) {
     return invokeGemini(params);
   }
+  // Official OpenAI API (signup credits, no credit card) routes "openai/"
+  // prefixed model ids directly to api.openai.com — kept distinct from the
+  // OpenRouter gateway so credits are spent on the real GPT models, with the
+  // same Manus-gateway fallback when the provider is unavailable.
+  if (params.model && isOpenaiDirectModel(params.model) && ENV.openaiApiKey) {
+    return invokeOpenaiDirect(params);
+  }
 
   const {
     messages,
@@ -759,56 +768,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     max_tokens,
   } = params;
 
-  const payload: Record<string, unknown> = {
-    messages: messages.map(normalizeMessage),
-  };
-
-  if (model) {
-    payload.model = model;
-  }
-
-  if (tools && tools.length > 0) {
-    payload.tools = tools;
-  }
-
-  const normalizedToolChoice = normalizeToolChoice(
-    toolChoice || tool_choice,
-    tools
-  );
-  if (normalizedToolChoice) {
-    payload.tool_choice = normalizedToolChoice;
-  }
-
-  const resolvedMaxTokens = max_tokens ?? maxTokens;
-  if (typeof resolvedMaxTokens === "number") {
-    payload.max_tokens = resolvedMaxTokens;
-  }
-
-  if (thinking) {
-    payload.thinking = thinking;
-  }
-  if (reasoning) {
-    payload.reasoning = reasoning;
-  }
-
-  const normalizedResponseFormat = normalizeResponseFormat({
-    responseFormat,
-    response_format,
-    outputSchema,
-    output_schema,
-  });
-
-  if (normalizedResponseFormat) {
-    payload.response_format = normalizedResponseFormat;
-  }
-
-  // OpenAI-compatible external gateways (e.g. OpenRouter) require an explicit
-  // `model` field, while the Manus gateway falls back to a default. When no
-  // model was requested and an external provider is configured, apply a known
-  // default so the request does not fail with "400 No models provided".
-  if (!model && process.env.LLM_API_URL) {
-    payload.model = EXTERNAL_LLM_DEFAULT_MODEL;
-  }
+  const payload = buildOpenAiPayload(params);
 
   const target = resolveLlmTarget("external");
   assertApiKey(target.apiKey, target.provider);
@@ -906,4 +866,140 @@ export async function listLLMModels(): Promise<ModelsResponse> {
   }
 
   return (await response.json()) as ModelsResponse;
+}
+
+const OPENAI_API_BASE = "https://api.openai.com/v1/chat/completions";
+
+// Shared payload builder for OpenAI-compatible bodies — used by both the
+// OpenRouter gateway path and the direct OpenAI API path.
+function buildOpenAiPayload(
+  params: Omit<InvokeParams, "model"> & { model?: string | undefined }
+): Record<string, unknown> {
+  const {
+    messages,
+    tools,
+    toolChoice,
+    tool_choice,
+    outputSchema,
+    output_schema,
+    responseFormat,
+    response_format,
+    model,
+    thinking,
+    reasoning,
+    maxTokens,
+    max_tokens,
+  } = params;
+
+  const payload: Record<string, unknown> = {
+    messages: messages.map(normalizeMessage),
+  };
+
+  if (model) {
+    payload.model = model;
+  }
+
+  if (tools && tools.length > 0) {
+    payload.tools = tools;
+  }
+
+  const normalizedToolChoice = normalizeToolChoice(
+    toolChoice || tool_choice,
+    tools
+  );
+  if (normalizedToolChoice) {
+    payload.tool_choice = normalizedToolChoice;
+  }
+
+  const resolvedMaxTokens = max_tokens ?? maxTokens;
+  if (typeof resolvedMaxTokens === "number") {
+    payload.max_tokens = resolvedMaxTokens;
+  }
+
+  if (thinking) {
+    payload.thinking = thinking;
+  }
+  if (reasoning) {
+    payload.reasoning = reasoning;
+  }
+
+  const normalizedResponseFormat = normalizeResponseFormat({
+    responseFormat,
+    response_format,
+    outputSchema,
+    output_schema,
+  });
+
+  if (normalizedResponseFormat) {
+    payload.response_format = normalizedResponseFormat;
+  }
+
+  // OpenAI-compatible external gateways (e.g. OpenRouter) require an explicit
+  // `model` field, while the Manus gateway falls back to a default. When no
+  // model was requested and an external provider is configured, apply a known
+  // default so the request does not fail with "400 No models provided".
+  if (!model && process.env.LLM_API_URL) {
+    payload.model = EXTERNAL_LLM_DEFAULT_MODEL;
+  }
+
+  return payload;
+}
+
+// Direct invocation of the official OpenAI API for "openai/" prefixed models
+// (GPT-4.1-mini, GPT-4o-mini, GPT-OSS-120B) using signup credits. Mirrors the
+// OpenRouter block of invokeLLM so the same Manus-gateway fallback applies.
+async function invokeOpenaiDirect(params: InvokeParams): Promise<InvokeResult> {
+  const { model, ...rest } = params;
+  const openaiModel = (model || "gpt-4.1-mini").replace(OPENAI_MODEL_PREFIX, "");
+  const payload = buildOpenAiPayload({ ...rest, model: openaiModel });
+
+  assertApiKey(ENV.openaiApiKey, "openai");
+  let response = await fetchWithBackoff(OPENAI_API_BASE, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${ENV.openaiApiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    // 401/403 = invalid key, 402/429 = exhausted credits or rate limit, 5xx =
+    // server error — all fall back to the Manus gateway so generation never
+    // stays blocked for the teacher.
+    const isProviderUnavailable =
+      response.status === 401 ||
+      response.status === 402 ||
+      response.status === 403 ||
+      response.status === 429 ||
+      response.status >= 500;
+    if (isProviderUnavailable) {
+      console.warn(
+        `OpenAI provider failed (${response.status}); falling back to Manus gateway`
+      );
+      const fallback = resolveLlmTarget("manus");
+      assertApiKey(fallback.apiKey, fallback.provider);
+      response = await fetchWithBackoff(fallback.url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${fallback.apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const fallbackError = await response.text();
+        throw new Error(
+          `LLM invoke failed on both OpenAI (${response.status} ${response.statusText}) and the Manus gateway (${fallbackError})`
+        );
+      }
+      return (await response.json()) as InvokeResult;
+    }
+    const shortMessage = extractShortErrorMessage(errorText);
+    throw new Error(
+      `LLM invoke failed: ${response.status} ${response.statusText}${shortMessage ? ` – ${shortMessage}` : ""}`
+    );
+  }
+
+  return (await response.json()) as InvokeResult;
 }

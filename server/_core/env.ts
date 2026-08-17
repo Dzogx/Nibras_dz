@@ -14,4 +14,8 @@ export const ENV = {
   // When present, model ids with the "gemini/" prefix are routed to the
   // Gemini REST API instead of the OpenAI-compatible external provider.
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
+  // Optional direct OpenAI API key (signup credits, no credit card). When
+  // present, model ids with the "openai/" prefix are routed straight to the
+  // OpenAI REST API (api.openai.com) instead of the OpenRouter gateway.
+  openaiApiKey: process.env.OPENAI_API_KEY ?? "",
 };
