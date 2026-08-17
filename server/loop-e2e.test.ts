@@ -212,5 +212,51 @@ describe("Full Pedagogical Loop E2E", () => {
 
     const analysis = await caller.results.analyze({ classId: 1 });
     expect(analysis).toBeTruthy();
+
+    // Weak domains must carry readable labels with averages, not raw numbers
+    vi.mocked(db.getAssessmentResults).mockResolvedValue([
+      {
+        id: 2,
+        classId: 1,
+        title: "نتائج اختبار الفصل الثاني",
+        totalStudents: 30,
+        participatedStudents: 28,
+        averageScore: 11,
+        historyAverage: 12,
+        geographyAverage: 12,
+        weakAreas: "الوضعية الثانية نوع تحليل",
+        domainScores: {
+          "2": 5.0,
+          "4": 6.5,
+          "الموارد": 14,
+        },
+      },
+      {
+        id: 1,
+        classId: 1,
+        title: "نتائج اختبار الفصل الأول",
+        totalStudents: 30,
+        participatedStudents: 28,
+        averageScore: 12.5,
+        historyAverage: 7.5,
+        geographyAverage: 5.0,
+        weakAreas: "",
+        domainScores: {
+          "2": 7.0,
+          "المنهجية": 3.2,
+        },
+      },
+    ] as any);
+
+    const analysis2 = await caller.results.analyze({ classId: 1 });
+    // Numeric key "2" → readable label with aggregated average (5+7)/2 = 6
+    expect(analysis2.weakDomains).toContain("المحور 2");
+    const axis2 = analysis2.weakDomainDetails.find(d => d.label === "المحور 2");
+    expect(axis2?.avg).toBeCloseTo(6, 1);
+    // Textual weak areas flow into remediation suggestions
+    expect(analysis2.suggestions.some(s => s.includes("الوضعية الثانية نوع تحليل"))).toBe(true);
+    expect(analysis2.suggestions.some(s => s.includes("بناءً على ملاحظاتك"))).toBe(true);
+    // "الموارد" 14 > 10 must not appear in weak domains
+    expect(analysis2.weakDomains).not.toContain("الموارد");
   });
 });

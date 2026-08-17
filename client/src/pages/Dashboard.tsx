@@ -348,7 +348,7 @@ export default function Dashboard() {
                     </div>
                   )}
                   {teacherOSContext.schedulePace && (
-                    <div className={`rounded-lg p-2 text-xs ${teacherOSContext.schedulePace.status === 'behind' ? 'nibras-tag-civics' : teacherOSContext.schedulePace.status === 'ahead' ? 'nibras-tag-geography' : 'nibras-tag-history'}`}>
+                    <div className={`rounded-lg p-2 text-xs ${teacherOSContext.schedulePace.status === 'behind' ? 'nibras-tag-civics' : teacherOSContext.schedulePace.status === 'ahead' ? 'nibras-tag-geography' : teacherOSContext.schedulePace.status === 'not_started' ? 'bg-brand-wax-100 text-brand-wax-800 border border-brand-wax-300' : 'nibras-tag-history'}`}>
                       {teacherOSContext.schedulePace.note}
                     </div>
                   )}

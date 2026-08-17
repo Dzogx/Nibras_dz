@@ -429,6 +429,67 @@ describe("ai.getTeacherOSContext", () => {
     expect(result.nextSituation.title).toBe("وضعية 2");
     expect(result.sectionProgress).toEqual({ completed: 2, total: 2 });
   });
+
+  it("marks an empty progress as not_started instead of on_track when the calendar expects progress", async () => {
+    // Regression: previously, 0% completion while weeks had elapsed since the term start
+    // (2026-10-05) was classified as "on_track" — misleading for the teacher.
+    const afterTermStart = new Date("2026-12-07T10:00:00Z");
+    vi.setSystemTime(afterTermStart);
+    try {
+      (db.getLessons as any).mockResolvedValue([]);
+      (db.getAnnualPlans as any).mockResolvedValue([
+        { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2022/2023" },
+      ]);
+      (db.getAnnualPlanSections as any).mockResolvedValue([
+        { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
+      ]);
+      (db.getLearningSituations as any).mockResolvedValue([
+        { id: 101, situationNumber: 1, title: "وضعية 1", isCompleted: false },
+        { id: 102, situationNumber: 2, title: "وضعية 2", isCompleted: false },
+      ]);
+
+      const caller = appRouter.createCaller(createMockContext());
+      const result = await caller.ai.getTeacherOSContext({ classId: 1 });
+
+      expect(result.annualProgressPercent).toBe(0);
+      if (result.schedulePace) {
+        // Weeks have elapsed after term start (2026-10-05) → must not claim steady progress
+        expect(result.schedulePace.expectedPercent).toBeGreaterThan(0);
+        expect(result.schedulePace.status).toBe("not_started");
+        expect(result.schedulePace.note).toContain("منجزة");
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("classifies zero progress as on_track only before the term starts", async () => {
+    const beforeTermStart = new Date("2026-09-20T10:00:00Z");
+    vi.setSystemTime(beforeTermStart);
+    try {
+      (db.getLessons as any).mockResolvedValue([]);
+      (db.getAnnualPlans as any).mockResolvedValue([
+        { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2022/2023" },
+      ]);
+      (db.getAnnualPlanSections as any).mockResolvedValue([
+        { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
+      ]);
+      (db.getLearningSituations as any).mockResolvedValue([
+        { id: 101, situationNumber: 1, title: "وضعية 1", isCompleted: false },
+      ]);
+
+      const caller = appRouter.createCaller(createMockContext());
+      const result = await caller.ai.getTeacherOSContext({ classId: 1 });
+
+      // Before the term start (2026-10-05), no expected progress → steady (0% == 0%)
+      if (result.schedulePace) {
+        expect(result.schedulePace.expectedPercent).toBe(0);
+        expect(result.schedulePace.status).toBe("on_track");
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 // ─── generateAssessment with Curriculum RAG Tests ──────────────

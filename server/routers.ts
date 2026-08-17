@@ -1207,7 +1207,7 @@ ${rulesContext}
       } catch (e) { /* sections not yet configured */ }
 
       // دفتر المتابعة: مؤشّر الرزنامة — مقارنة التقدم الفعلي بالزمن المنقضي منذ بداية التدريس
-      let schedulePace: { status: 'ahead' | 'on_track' | 'behind'; elapsedWeeks: number; expectedPercent: number; actualPercent: number; note: string } | null = null;
+      let schedulePace: { status: 'ahead' | 'on_track' | 'behind' | 'not_started'; elapsedWeeks: number; expectedPercent: number; actualPercent: number; note: string } | null = null;
       try {
         if (input.classId && totalSituations > 0) {
           const plans = await getAnnualPlans(ctx.user.id);
@@ -1221,12 +1221,20 @@ ${rulesContext}
             // تقدير متحفظ: متوسط أسبوعين لكل وضعية تعليمية (شامل الإدماج الكلي والتقويم)
             const expectedSituations = Math.min(totalSituations, Math.max(0, elapsedWeeks / 2));
             const expectedPercent = Math.round((expectedSituations / totalSituations) * 100);
-            const status = annualProgressPercent >= expectedPercent + 15 ? 'ahead'
+            // منطق الحالات:
+            // 1) لا إنجاز ولا تقدم متوقع (قبل بداية التدريس أو بدايتها) → «في الانتظار» وليس «منتظم»
+            // 2) لا إنجاز مع تقدم متوقع → «لم يبدأ بعد» (تنبيه مهذب قبل تصنيفه متأخرًا)
+            // 3) بقية الحالات مقارنة بالرزنامة (متقدم/منتظم/متأخر)
+            const hasStarted = annualProgressPercent > 0;
+            const status = !hasStarted && expectedPercent > 0 ? 'not_started'
+              : annualProgressPercent >= expectedPercent + 15 ? 'ahead'
               : annualProgressPercent >= expectedPercent - 15 ? 'on_track'
               : 'behind';
             const note = status === 'ahead' ? 'التقدم أسرع من الرزنامة التقديرية — يمكن تخصيص وقت للمراجعة أو الإثراء.'
               : status === 'on_track' ? 'التقدم منتظم مقارنة بالرزنامة التقديرية.'
-              : 'التقدم أبطأ من الرزنامة التقديرية — راجع وتيرة الحصص أو مدد الوضعيات.';
+              : status === 'behind'
+                ? 'التقدم أبطأ من الرزنامة التقديرية — راجع وتيرة الحصص أو مدد الوضعيات.'
+                : 'لم تُسجَّل بعدُ أي وضعية منجزة بينما الرزنامة التقديرية تنتظر تقدمًا — ابدأ بتسجيل إنجازات الوضعيات المنجزة فعليًا.';
             schedulePace = { status, elapsedWeeks, expectedPercent, actualPercent: annualProgressPercent, note };
           }
         }
@@ -1451,7 +1459,16 @@ ${rulesContext}
     }),
     analyze: protectedProcedure.input(z.object({ classId: z.number() })).query(async ({ ctx, input }) => {
       const results = await getAssessmentResults(ctx.user.id, { classId: input.classId });
-      if (results.length === 0) return { totalAssessments: 0, weakDomains: [], suggestions: [] };
+      if (results.length === 0) return { totalAssessments: 0, weakDomains: [], weakDomainDetails: [], suggestions: [] };
+
+      /** تحويل مفتاح محور خام (رقمي أو عربي) إلى تسمية مقروءة للأستاذ */
+      function normalizeDomainLabel(raw: string): string {
+        const trimmed = raw.trim();
+        if (!trimmed) return raw;
+        const num = Number(trimmed);
+        if (!Number.isNaN(num)) return `المحور ${trimmed}`;
+        return trimmed;
+      }
 
       // Calculate averages across all assessments
       const avgHistory = results.reduce((sum, r) => sum + (r.historyAverage || 0), 0) / results.length;
@@ -1469,17 +1486,27 @@ ${rulesContext}
         const scores = r.domainScores as Record<string, number> | null;
         if (scores) {
           Object.entries(scores).forEach(([domain, score]) => {
-            if (!domainAverages[domain]) domainAverages[domain] = [];
-            domainAverages[domain].push(score);
+            const label = normalizeDomainLabel(domain);
+            if (!domainAverages[label]) domainAverages[label] = [];
+            domainAverages[label].push(score);
           });
         }
       });
 
-      // Find weak domains (< 10)
-      Object.entries(domainAverages).forEach(([domain, scores]) => {
+      // Find weak domains (< 10) — with meaningful labels instead of raw numeric keys
+      Object.entries(domainAverages).forEach(([label, scores]) => {
         const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-        if (avg < 10 && !weakDomains.includes(domain)) weakDomains.push(domain);
+        if (avg < 10 && !weakDomains.includes(label)) weakDomains.push(label);
       });
+
+      // Capture the weakest labeled domains (with averages) for pedagogical reporting
+      const weakDomainDetails = weakDomains
+        .map(label => {
+          const scores = domainAverages[label];
+          if (!scores || scores.length === 0) return { label, avg: 0 };
+          return { label, avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100) / 100 };
+        })
+        .sort((a, b) => a.avg - b.avg);
 
       // Generate suggestions based on weak areas
       const suggestions: string[] = [];
@@ -1489,11 +1516,20 @@ ${rulesContext}
         suggestions.push("تنظيم حصص دعم علاجية مركزة على المجالات الضعيفة");
         suggestions.push("إعادة تدريس الوضعيات التعليمية ذات الصلة بأنشطة تفاعلية");
       }
-      if (overallAvg >= 10) suggestions.push("مواصلة تعزيز المكتسبات مع إثراء للمتعففين");
+      if (overallAvg >= 10) suggestions.push("مواصلة تعزيز المكتسبات مع إثراء للمتفوقين");
+
+      // دمج مواطن الضعف النصية المسجلة يدويًا في تسجيل النتائج (تحليل النوع والوضعيات)
+      const weakAreasTexts = results
+        .map(r => r.weakAreas as string | null)
+        .filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
+      if (weakAreasTexts.length > 0) {
+        suggestions.push("بناءً على ملاحظاتك المسجلة: " + weakAreasTexts.join("؛ "));
+      }
 
       return {
         totalAssessments: results.length,
         overallAverage: Math.round(overallAvg * 100) / 100,
+        weakDomainDetails,
         avgHistory: Math.round(avgHistory * 100) / 100,
         avgGeography: Math.round(avgGeography * 100) / 100,
         weakDomains,

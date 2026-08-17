@@ -22,6 +22,7 @@ export default function Results() {
     passedCount: 0,
     historyAverage: 0,
     geographyAverage: 0,
+    weakAreas: "",
     notes: "",
   });
 
@@ -43,7 +44,7 @@ export default function Results() {
       utils.results.analyze.invalidate({ classId: selectedClassId! });
       toast.success("تم تسجيل النتائج");
       setAddOpen(false);
-      setNewResult({ title: "", totalStudents: 0, participatedStudents: 0, averageScore: 0, passedCount: 0, historyAverage: 0, geographyAverage: 0, notes: "" });
+      setNewResult({ title: "", totalStudents: 0, participatedStudents: 0, averageScore: 0, passedCount: 0, historyAverage: 0, geographyAverage: 0, weakAreas: "", notes: "" });
     },
     onError: () => toast.error("خطأ في تسجيل النتائج"),
   });
@@ -135,6 +136,9 @@ export default function Results() {
                       <Input type="number" step="0.1" value={newResult.geographyAverage || ""} onChange={e => setNewResult({ ...newResult, geographyAverage: parseFloat(e.target.value) || 0 })} />
                     </div>
                   </div>
+                  <div><Label>مواطن الضعف (أسئلة/نوع وضعيات/محاور)</Label>
+                    <Textarea value={newResult.weakAreas || ""} onChange={e => setNewResult({ ...newResult, weakAreas: e.target.value })} rows={2} placeholder="مثال: الوضعية الثانية نوع تحليل، محور الموارد 1/4" />
+                  </div>
                   <div><Label>ملاحظات</Label>
                     <Textarea value={newResult.notes} onChange={e => setNewResult({ ...newResult, notes: e.target.value })} rows={2} />
                   </div>
@@ -149,6 +153,7 @@ export default function Results() {
                         passedCount: newResult.passedCount || undefined,
                         historyAverage: newResult.historyAverage || undefined,
                         geographyAverage: newResult.geographyAverage || undefined,
+                        weakAreas: newResult.weakAreas?.trim() || undefined,
                         notes: newResult.notes || undefined,
                       });
                     }}
@@ -249,12 +254,20 @@ export default function Results() {
                         </CardHeader>
                         <CardContent>
                           <div className="flex flex-wrap gap-2">
-                            {analysis.weakDomains.map((domain, i) => (
-                              <Badge key={i} variant="destructive" className="flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3" />
-                                {domain}
+                            {analysis.weakDomains.slice(0, 6).map((domain, i) => {
+                              const detail = analysis.weakDomainDetails?.find(d => d.label === domain);
+                              return (
+                                <Badge key={i} variant="destructive" className="flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  {domain}{detail ? ` (${detail.avg} نقطة)` : ''}
+                                </Badge>
+                              );
+                            })}
+                            {analysis.weakDomains.length > 6 && (
+                              <Badge variant="outline" className="text-red-700">
+                                +{analysis.weakDomains.length - 6} محاور أخرى
                               </Badge>
-                            ))}
+                            )}
                           </div>
                         </CardContent>
                       </Card>

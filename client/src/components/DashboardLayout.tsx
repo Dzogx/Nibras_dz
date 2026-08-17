@@ -102,6 +102,18 @@ export default function DashboardLayout({
           >
             تسجيل الدخول
           </Button>
+          {import.meta.env.DEV && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full mt-2 text-xs text-muted-foreground"
+              onClick={() => {
+                window.location.href = "/api/dev/login-as-owner";
+              }}
+            >
+              دخول تجريبي (تطوير فقط)
+            </Button>
+          )}
         </div>
       </div>
     );
