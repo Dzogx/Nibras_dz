@@ -146,24 +146,57 @@ export async function getCurriculumForTopic(topic: string, gradeLevel?: string, 
   const db = await getDb();
   if (!db) return [];
 
-  const conditions = [];
-  if (gradeLevel) conditions.push(eq(curriculumDocuments.gradeLevel, gradeLevel as any));
-  if (subject) conditions.push(eq(curriculumDocuments.subject, subject as any));
+  const referenceConditions = [];
+  if (gradeLevel) referenceConditions.push(eq(curriculumDocuments.gradeLevel, gradeLevel as any));
+  if (subject) {
+    // مخططات التاريخ والجغرافيا الرسمية مخزنة كمرجع مشترك، بينما قد يأتي طلب
+    // المولد بمادة «التاريخ» أو «الجغرافيا» منفردة.
+    const matchingSubjects = subject === "التاريخ" || subject === "الجغرافيا"
+      ? or(
+          eq(curriculumDocuments.subject, subject as any),
+          eq(curriculumDocuments.subject, "التاريخ والجغرافيا" as any),
+        )
+      : eq(curriculumDocuments.subject, subject as any);
+    referenceConditions.push(matchingSubjects);
+  }
 
   // Split topic into keywords and match against title/content
   const keywords = topic.split(/\s+/).filter(k => k.length > 2);
+  let keywordCondition;
   if (keywords.length > 0) {
     const searchConditions = keywords.map(k =>
       or(like(curriculumDocuments.title, `%${k}%`), like(curriculumDocuments.content, `%${k}%`))
     );
     if (searchConditions.length > 0) {
-      conditions.push(or(...searchConditions));
+      keywordCondition = or(...searchConditions);
     }
   }
 
-  if (conditions.length > 0) {
-    return await db.select().from(curriculumDocuments).where(and(...conditions)).orderBy(desc(curriculumDocuments.createdAt)).limit(10);
+  if (keywordCondition) {
+    const topicalDocuments = await db.select().from(curriculumDocuments)
+      .where(and(...referenceConditions, keywordCondition))
+      .orderBy(desc(curriculumDocuments.createdAt))
+      .limit(10);
+    if (topicalDocuments.length > 0) return topicalDocuments;
   }
+
+  if (referenceConditions.length > 0) {
+    // عدم تطابق عنوان الوضعية حرفيًا لا يعني غياب المرجع: المخطط السنوي وثيقة
+    // منهجية رسمية، وهو المرجع الصحيح لتثبيت المستوى والمادة والكفاءات والوضعيات.
+    const annualPlanReferences = await db.select().from(curriculumDocuments)
+      .where(and(...referenceConditions, eq(curriculumDocuments.type, "annualPlan" as any)))
+      .orderBy(desc(curriculumDocuments.createdAt))
+      .limit(2);
+    const supportingReferences = await db.select().from(curriculumDocuments)
+      .where(and(...referenceConditions))
+      .orderBy(desc(curriculumDocuments.createdAt))
+      .limit(8);
+
+    return [...annualPlanReferences, ...supportingReferences.filter(document =>
+      !annualPlanReferences.some(plan => plan.id === document.id)
+    )].slice(0, 10);
+  }
+
   return await db.select().from(curriculumDocuments).orderBy(desc(curriculumDocuments.createdAt)).limit(10);
 }
 

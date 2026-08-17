@@ -758,14 +758,20 @@ ${teachingTemplate.stages.map((stage, index) => `${index + 1}. ${stage}`).join("
             type: d.type,
             source: d.sourceReference || "المنهاج الرسمي",
           }));
+          const hasAnnualPlanReference = docs.some(d => d.type === "annualPlan");
+          const referenceLabel = hasAnnualPlanReference
+            ? "المخططات السنوية الرسمية والوثائق المنهجية المرتبطة"
+            : "الوثائق المنهجية الرسمية المرتبطة";
           const docExcerpts = docs.map((d, i) =>
             `[${i + 1}] ${d.title} (${d.type} - ${d.gradeLevel}):
 ${d.content.substring(0, 300)}`
           ).join("\n\n");
           curriculumContext = `
 
-وثائق المنهاج الرسمية المرجعية (استخدمها كأساس للمحتوى):
+${referenceLabel} (استخدمها كأساس للمحتوى):
 ${docExcerpts}
+
+المخطط السنوي الرسمي مرجع منهجي ملزم يحدد الكفاءات والوضعيات والتدرج الزمني. لا تكتب أي تنبيه عن غياب المرجع الرسمي ما دام حاضرًا ضمن هذه المراجع.
 
 استشهد بهذه الوثائق عند التوليد بالصيغة: [مرجع: ${docs.length > 0 ? docs[0].id : 0} — ${docs.length > 0 ? docs[0].title : "غير متوفر"}]`;
         } else {

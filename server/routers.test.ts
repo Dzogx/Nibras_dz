@@ -643,6 +643,34 @@ describe("ai.generateLesson with teaching template", () => {
     expect(result.teachingTemplate?.key).toBe("problem_solving");
   });
 
+  it("treats an annual plan as an official methodological reference in the lesson prompt", async () => {
+    (db.getCurriculumForTopic as any).mockResolvedValue([{
+      id: 901,
+      title: "المخطط السنوي الرسمي للجغرافيا — السنة الثانية متوسط",
+      type: "annualPlan",
+      gradeLevel: "السنة الثانية متوسط",
+      subject: "الجغرافيا",
+      content: "الكفاءة الختامية والوضعيات والتدرج الزمني الرسمي.",
+      sourceReference: "المخطط السنوي الرسمي 2022",
+    }]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    await caller.ai.generateLesson({
+      lessonId: 81,
+      classId: 7,
+      title: "التعرف على مختلف مظاهر السطح",
+      subject: "الجغرافيا",
+      gradeLevel: "السنة الثانية متوسط",
+      duration: "ساعة واحدة",
+      contentType: "differentiation",
+    });
+
+    const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("المخططات السنوية الرسمية والوثائق المنهجية المرتبطة");
+    expect(prompt).toContain("المخطط السنوي الرسمي مرجع منهجي ملزم");
+    expect(prompt).not.toContain("لم يتم العثور على وثائق منهاج رسمية مطابقة");
+  });
+
   it("returns a controlled Arabic error instead of crashing when the AI response has no choices", async () => {
     (invokeLLM as any).mockResolvedValue({
       error: { message: "المزود لم يُرجع استجابة صالحة" },
