@@ -491,3 +491,17 @@
 - [x] تطبيق نفس القائمة في Assessment Studio (توليد التقويم) + توليد مذكرة الدرس يمرر llmModel؛ البطاقات وInspector لا تحتوي توليدًا مباشرًا
 - [x] اختبار 402 fallback (موجود في llm-fallback) + فحص بصري للواجهتين + TypeScript نظيف + 105/105 اختبار
 - [x] checkpoint + مزامنة + تسليم
+
+## إضافة MiniMax كخيار مجاني في قائمة النماذج (طلب الأستاذ 17 أوت)
+
+- [x] التحقق من معرف نموذج MiniMax الرسمي على OpenRouter (minimax/minimax-m2.5) وأنه الأكثر استخدامًا ويدعم العربية
+- [x] إضافة MiniMax إلى shared/llm-models.ts مع توضيح عربي
+- [x] TypeScript نظيف + 105/105 اختبار + مفتاح OpenRouter صالح (414 نموذجًا) + checkpoint + تسليم
+
+## استعراض ودمج أفضل نماذج OpenRouter للمنتج التربوي (طلب الأستاذ 17 أوت)
+
+- [x] استعراض القائمة عبر API (414 نموذجًا): المجاني الحقيقي للعربية minimax-m2.5 + deepseek-chat-v3-0324:free؛ المدفوع الرخيص gpt-4.1-mini/gpt-4o-mini/gemini-2.5-flash/deepseek-chat-v3.1
+- [x] اختيار 5 نماذج: gpt-4.1-mini (افتراضي)، gemini-2.5-flash، minimax-m2.5 (مجاني عربي)، deepseek-chat-v3.1 (مجاني قوي)، gpt-4o-mini
+- [x] تحديث shared/llm-models.ts بالقائمة الجديدة مع free:true للـ MiniMax وDeepSeek
+- [x] اختبار فعلي (عينة «مهام المجالس المنتخبة» 1AM): MiniMax جيد مع اختلاط لغات نادر، DeepSeek V3.1 أدق عربيًا — كلاهما مجاني تقريبًا فلا يسبب 402
+- [x] TypeScript نظيف + 105/105 اختبار + checkpoint + تسليم

@@ -345,11 +345,11 @@ export default function Assessment() {
               </div>
             </div>
 
+            <div className="flex flex-wrap items-end gap-x-3">
+              <Label>نموذج الذكاء الاصطناعي</Label>
+              <span className="text-[11px] font-normal text-muted-foreground">الافتراضي قوي وموثوق؛ إذا نفد رصيد OpenRouter يرجع النظام تلقائيًا إلى محرك نبراس</span>
+            </div>
             <div>
-              <Label className="flex items-center gap-2">
-                نموذج الذكاء الاصطناعي
-                <span className="text-[11px] font-normal text-muted-foreground">الافتراضي قوي وموثوق؛ إذا نفد رصيد OpenRouter يرجع النظام تلقائيًا إلى محرك نبراس</span>
-              </Label>
               <Select value={form.llmModel || "__default__"} onValueChange={v => setForm({ ...form, llmModel: v === "__default__" ? "" : v })}>
                 <SelectTrigger>
                   <SelectValue placeholder="النموذج الافتراضي" />
