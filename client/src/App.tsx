@@ -23,6 +23,7 @@ import Verify from "./pages/Verify";
 import AnswerPage from "./pages/AnswerPage";
 import Brand from "./pages/Brand";
 import SeasonSetup from "./pages/SeasonSetup";
+import IntegrativeSituation from "./pages/IntegrativeSituation";
 
 
 function Router() {
@@ -57,6 +58,9 @@ function Router() {
       </Route>
       <Route path="/assessment">
         {() => <DashboardLayout><Assessment /></DashboardLayout>}
+      </Route>
+      <Route path="/integrative-situation">
+        {() => <DashboardLayout><IntegrativeSituation /></DashboardLayout>}
       </Route>
       <Route path="/content-library">
         {() => <DashboardLayout><ContentLibrary /></DashboardLayout>}

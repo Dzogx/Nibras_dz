@@ -23,7 +23,7 @@ import { useLocation } from "wouter";
 import { useMemo, useState } from "react";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { toast } from "sonner";
-import { buildQuickAssessmentPath, buildQuickLessonPath, getScheduledSlotForNow } from "@shared/quick-click";
+import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, getScheduledSlotForNow } from "@shared/quick-click";
 import {
   Select,
   SelectContent,
@@ -94,6 +94,7 @@ export default function Dashboard() {
   const dailySection = teacherOSContext?.currentSection;
   const dailySituation = teacherOSContext?.nextSituation;
   const lastCompletedSituation = teacherOSContext?.completedSituations?.[0];
+  const contextualSituation = dailySituation ?? lastCompletedSituation;
   const currentSectionProgress = teacherOSContext?.currentSectionProgress ?? teacherOSContext?.sectionProgress;
   const hasDailySession = Boolean(activeClass && dailySituation);
   const completeSessionMutation = trpc.situations.completeSession.useMutation({
@@ -321,6 +322,48 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/15">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-primary">مهامي السريعة</p>
+              <CardTitle className="mt-1 text-xl">ماذا تريد أن تنشئ الآن؟</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">يعتمد كل إجراء على القسم والوضعية الظاهرين أعلاه؛ لا تعِد إدخال المعلومات نفسها.</p>
+            </div>
+            {activeClass && <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">{activeClass.name}</span>}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!dailySituation} onClick={() => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id))}>
+              <Sparkles className="ml-3 h-5 w-5 shrink-0 text-primary" />
+              <span><b className="block">أنشئ مذكرة</b><span className="mt-1 block text-xs font-normal text-muted-foreground">للوضعية التالية في خطتك</span></span>
+            </Button>
+            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!contextualSituation} onClick={() => contextualSituation && setLocation(`/lesson-generator?situationId=${contextualSituation.id}&contentType=activity`)}>
+              <BookOpen className="ml-3 h-5 w-5 shrink-0 text-primary" />
+              <span><b className="block">أنشئ نشاطاً أو مورداً</b><span className="mt-1 block text-xs font-normal text-muted-foreground">مرتبطاً بالوضعية المحددة</span></span>
+            </Button>
+            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!lastCompletedSituation || !activeClassId} onClick={() => lastCompletedSituation && activeClassId && setLocation(buildQuickAssessmentPath(lastCompletedSituation.id, activeClassId))}>
+              <ClipboardList className="ml-3 h-5 w-5 shrink-0 text-primary" />
+              <span><b className="block">أنشئ تقويماً</b><span className="mt-1 block text-xs font-normal text-muted-foreground">بناءً على آخر وضعية منجزة</span></span>
+            </Button>
+            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!contextualSituation} onClick={() => contextualSituation && setLocation(buildQuickIntegrativeSituationPath(contextualSituation.id, activeClassId))}>
+              <Target className="ml-3 h-5 w-5 shrink-0 text-primary" />
+              <span><b className="block">أنشئ وضعية إدماجية</b><span className="mt-1 block text-xs font-normal text-muted-foreground">مسودة قابلة للتحرير والطباعة</span></span>
+            </Button>
+            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!activeClassId} onClick={() => activeClassId && setLocation(`/results?classId=${activeClassId}`)}>
+              <BarChart3 className="ml-3 h-5 w-5 shrink-0 text-primary" />
+              <span><b className="block">سجّل النتائج</b><span className="mt-1 block text-xs font-normal text-muted-foreground">للقسم المحدد مباشرة</span></span>
+            </Button>
+            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!lastCompletedSituation || !activeClassId} onClick={() => activeClassId && setLocation(`/results?classId=${activeClassId}&action=remediation`)}>
+              <CheckCircle2 className="ml-3 h-5 w-5 shrink-0 text-primary" />
+              <span><b className="block">عالج صعوبات</b><span className="mt-1 block text-xs font-normal text-muted-foreground">من النتائج إلى نشاط صفي</span></span>
+            </Button>
+          </div>
+          {!lastCompletedSituation && activeClass && <p className="mt-3 text-xs text-muted-foreground">سيُفعّل التقويم والعلاج تلقائياً بعد تسجيل إنجاز أول وضعية في هذا القسم.</p>}
         </CardContent>
       </Card>
 

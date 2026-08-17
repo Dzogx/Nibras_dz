@@ -50,7 +50,9 @@ export default function ResourceDetail({ id }: { id: string }) {
   const levelSection = linkedClass ? `${linkedClass.gradeLevel}${linkedClass.section ? ` — القسم ${linkedClass.section}` : ""}` : gradeLevel;
 
   const docTitle =
-    resource?.type === "quiz" || resource?.type === "exam"
+    meta?.resourceKind === "integrativeSituation"
+      ? "وضعية إدماجية"
+      : resource?.type === "quiz" || resource?.type === "exam"
       ? `اختبار في ${subject || "الاجتماعيات"}`
       : resource?.type === "answerKey"
         ? "مفتاح الإجابات"
@@ -115,7 +117,7 @@ export default function ResourceDetail({ id }: { id: string }) {
 
       <div className="flex items-center gap-2 flex-wrap">
         <span className={`text-xs px-2 py-0.5 rounded ${resource.type === 'quiz' || resource.type === 'exam' ? 'bg-red-100 text-red-700' : 'bg-primary/10 text-primary'}`}>
-          {typeLabels[resource.type] || resource.type}
+          {meta?.resourceKind === "integrativeSituation" ? "وضعية إدماجية" : (typeLabels[resource.type] || resource.type)}
         </span>
         {(resource.metadata as any)?.subject && <span className="text-xs bg-muted px-2 py-0.5 rounded">{(resource.metadata as any).subject}</span>}
         {(resource.metadata as any)?.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{(resource.metadata as any).gradeLevel}</span>}

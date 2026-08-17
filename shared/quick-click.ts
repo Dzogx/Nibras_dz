@@ -12,6 +12,12 @@ export function buildQuickAssessmentPath(situationId: number, classId?: number) 
   return `/assessment?${params.toString()}`;
 }
 
+export function buildQuickIntegrativeSituationPath(situationId: number, classId?: number) {
+  const params = new URLSearchParams({ situationId: String(situationId) });
+  if (classId) params.set("classId", String(classId));
+  return `/integrative-situation?${params.toString()}`;
+}
+
 export type WeeklyScheduleSlot = {
   dayOfWeek: string;
   periodIndex: number;

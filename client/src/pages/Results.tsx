@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,9 @@ import { useLocation } from "wouter";
 
 export default function Results() {
   const [, setLocation] = useLocation();
-  const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
+  const classIdFromSearch = typeof window === "undefined" ? null : Number(new URLSearchParams(window.location.search).get("classId")) || null;
+  const remediationFromSearch = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("action") === "remediation";
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(classIdFromSearch);
   const [addOpen, setAddOpen] = useState(false);
   const [remediationOpen, setRemediationOpen] = useState(false);
   const [remediationSituationId, setRemediationSituationId] = useState<number | null>(null);
@@ -34,6 +36,10 @@ export default function Results() {
   });
 
   const { data: classes } = trpc.classes.list.useQuery();
+
+  useEffect(() => {
+    if (classIdFromSearch && selectedClassId !== classIdFromSearch) setSelectedClassId(classIdFromSearch);
+  }, [classIdFromSearch, selectedClassId]);
 
   const { data: results } = trpc.results.list.useQuery(
     { classId: selectedClassId! },
@@ -65,6 +71,12 @@ export default function Results() {
     setRemediationTitleEdited(false);
     setRemediationOpen(true);
   };
+
+  useEffect(() => {
+    if (remediationFromSearch && selectedClassId && completedSituations.length > 0 && !remediationOpen) {
+      openRemediationActivity();
+    }
+  }, [remediationFromSearch, selectedClassId, completedSituations.length, remediationOpen]);
 
   const createMutation = trpc.results.create.useMutation({
     onSuccess: () => {

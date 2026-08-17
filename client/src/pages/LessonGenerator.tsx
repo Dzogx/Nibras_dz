@@ -91,6 +91,7 @@ export default function LessonGenerator() {
   // ربط مباشر من لوحة التحكم: /lesson-generator?situationId=X (حضّر الحصة)
   const situationIdParam = parseSearchParam("situationId");
   const situationId = situationIdParam ? parseInt(situationIdParam) : undefined;
+  const requestedContentType = parseSearchParam("contentType");
   const { data: linkedSituation } = trpc.situations.getById.useQuery(
     { id: situationId ?? 0 },
     { enabled: Boolean(situationId) }
@@ -170,6 +171,12 @@ export default function LessonGenerator() {
   useEffect(() => {
     if (form.classId) setPreferredClassId(form.classId);
   }, [form.classId, setPreferredClassId]);
+
+  useEffect(() => {
+    if (requestedContentType && contentTypes.some((item) => item.value === requestedContentType) && form.contentType !== requestedContentType) {
+      setForm((previous) => ({ ...previous, contentType: requestedContentType }));
+    }
+  }, [requestedContentType, form.contentType, setForm]);
 
   const generateMutation = trpc.ai.generateLesson.useMutation({
     onSuccess: (data) => {
@@ -473,7 +480,7 @@ export default function LessonGenerator() {
               generateMutation.mutate(payload);
             }} disabled={generateMutation.isPending || !form.title}>
               {generateMutation.isPending ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري التوليد...</> : <>
-                <Sparkles className="w-4 h-4 ml-2" />توليد
+                <Sparkles className="w-4 h-4 ml-2" />{form.contentType === "lessonPlan" ? "أنشئ المذكرة" : `أنشئ ${contentTypes.find((item) => item.value === form.contentType)?.label || "المورد"}`}
               </>}
             </Button>
           </CardContent>

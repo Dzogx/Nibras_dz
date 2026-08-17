@@ -714,7 +714,7 @@ ${curriculumContext}`
       unitNumber: z.number().optional(),
       lessonNumber: z.number().optional(),
       duration: z.string().optional(),
-      contentType: z.enum(["lessonPlan", "activity", "homework", "classQuestions", "differentiation"]),
+      contentType: z.enum(["lessonPlan", "activity", "homework", "classQuestions", "differentiation", "integrativeSituation"]),
       curriculumDocs: z.any().optional(),
       // Differentiation options
       enableDifferentiation: z.boolean().optional(),
@@ -926,6 +926,16 @@ ${diffBlock}
 ${diffBlock}
 
 قدم استراتيجيات تمايز لتناسب: الطلاب المتقدمين، الطلاب العاديين، الطلاب الذين يحتاجون دعماً إضافياً.${curriculumContext}`,
+
+        integrativeSituation: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ وضعية إدماجية أصلية قابلة للتحرير والطباعة، مرتبطة بما دُرّس فعلياً ولا تضف محتوى خارج المرجع الرسمي.
+- الوضعية التعليمية المرجعية: ${canonicalTitle}
+- المادة: ${input.subject}
+- المستوى: ${input.gradeLevel}
+- المدة المقترحة: ${input.duration || "حصة واحدة"}
+
+${AI_ROLE_PRINCIPLE}
+
+ابنِ الوضعية في الأقسام التالية فقط: عنوان واضح، سياق قصير واقعي مناسب للمتعلمين، سند أو معطيات قابلة للاستعمال داخل القسم دون افتراض إنترنت أو طباعة كثيرة، تعليمة إدماجية واحدة دقيقة، مؤشرات إنجاز أو عناصر منتظرَة، ومعايير تقويم موجزة. اجعل المهمة تدعو إلى توظيف موارد الوضعية لا نسخها، وراعِ التدرج والوضوح والواقعية في قسم كبير. لا تكتب الكفاءة المستهدفة في وثيقة التلميذ، ولا تخترع معطيات منهاجية غير موجودة في المراجع.${curriculumContext}`,
       };
 
       const response = await invokeLLM({
@@ -949,6 +959,7 @@ ${diffBlock}
         homework: "واجب منزلي",
         classQuestions: "أسئلة صفية",
         differentiation: "استراتيجيات تمييز",
+        integrativeSituation: "وضعية إدماجية",
       };
 
       if (input.lessonId && teachingTemplate) {
@@ -965,7 +976,9 @@ ${diffBlock}
         userId: ctx.user.id,
         lessonId: input.lessonId,
         classId: input.classId,
-        type: input.contentType,
+        // تُحفظ الوضعية الإدماجية ضمن نوع «نشاط» المتاح في النموذج الحالي،
+        // وتُميّز في البيانات الوصفية حتى تبقى قابلة للتحرير والطباعة دون تغيير بنية القاعدة.
+        type: input.contentType === "integrativeSituation" ? "activity" : input.contentType,
         title: canonicalTitle,
         content,
         metadata: {
@@ -981,6 +994,7 @@ ${diffBlock}
             label: teachingTemplate.label,
             stages: teachingTemplate.stages,
           } : undefined,
+          resourceKind: input.contentType === "integrativeSituation" ? "integrativeSituation" : undefined,
         },
         tags: [typeLabels[input.contentType], input.subject, input.gradeLevel, ...(teachingTemplate ? [`قالب تدريس: ${teachingTemplate.label}`] : [])],
         sourceDocumentIds: curriculumCitations.length > 0 ? curriculumCitations.map(c => c.id) : undefined,

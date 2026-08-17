@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQuickAssessmentPath, buildQuickLessonPath, getScheduledSlotForNow } from "../shared/quick-click";
+import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, getScheduledSlotForNow } from "../shared/quick-click";
 
 describe("مسار النقرات السريعة", () => {
   it("يحمل معرّف الوضعية إلى مولّد المذكرة لاسترجاع عنوانها الرسمي", () => {
@@ -8,6 +8,10 @@ describe("مسار النقرات السريعة", () => {
 
   it("يحمل الوضعية والقسم إلى استوديو التقييم دون إعادة إدخال السياق", () => {
     expect(buildQuickAssessmentPath(201004, 11)).toBe("/assessment?situationId=201004&classId=11");
+  });
+
+  it("يحمل الوضعية والقسم إلى مولّد الوضعية الإدماجية دون إعادة إدخال السياق", () => {
+    expect(buildQuickIntegrativeSituationPath(201004, 11)).toBe("/integrative-situation?situationId=201004&classId=11");
   });
 
   it("يختار الحصة الجارية أو التالية من جدول اليوم", () => {
