@@ -278,7 +278,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                               variant="outline"
                               size="sm"
                               className="border-primary/30 text-primary"
-                              onClick={() => setLocation(`/assessment?classId=${plan.classId}`)}
+                              onClick={() => setLocation(`/assessment?classId=${plan.classId}&situationId=${sit.id}`)}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 ml-1" />أنشئ تقويماً
                             </Button>

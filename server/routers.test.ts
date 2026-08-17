@@ -37,6 +37,7 @@ vi.mock("./db", () => ({
   getTeachingNotes: vi.fn(),
   updateCurriculumDocument: vi.fn(),
   getAnnualPlanSections: vi.fn(),
+  getAnnualPlanSectionById: vi.fn(),
   getLearningSituations: vi.fn(),
   getLearningSituationsByUserId: vi.fn(),
   deleteCurriculumDocument: vi.fn(),
@@ -560,6 +561,52 @@ describe("ai.generateAssessment with curriculum citations", () => {
     expect(result.curriculumCitations[0].referenceNumber).toBe(1);
   });
 
+  it("uses one selected official situation as the canonical assessment title and topic", async () => {
+    (db.getLearningSituationsByUserId as any).mockResolvedValue([{
+      id: 61,
+      userId: 1,
+      sectionId: 7,
+      title: "الثورة التحريرية الجزائرية: أسبابها ومراحلها",
+      objectives: "تمييز أسباب الثورة ومراحلها الأساسية.",
+      situationNumber: 2,
+    }]);
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({
+      id: 7,
+      title: "التاريخ الوطني",
+      competencies: "تحليل التحولات التاريخية الوطنية",
+    });
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateAssessment({
+      title: "عنوان حر مؤقت",
+      topic: "موضوع حر مؤقت",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "exam",
+      situationIds: [61],
+    });
+
+    const officialTitle = "الثورة التحريرية الجزائرية: أسبابها ومراحلها";
+    expect(result.title).toBe(officialTitle);
+    expect(result.topic).toBe(officialTitle);
+    expect(db.getCurriculumForTopic).toHaveBeenLastCalledWith(
+      officialTitle,
+      "السنة الرابعة متوسط",
+      "التاريخ والجغرافيا",
+    );
+    expect(invokeLLM).toHaveBeenLastCalledWith(expect.objectContaining({
+      messages: expect.arrayContaining([expect.objectContaining({ content: expect.stringContaining(officialTitle) })]),
+    }));
+    expect(db.createAIResource).toHaveBeenLastCalledWith(expect.objectContaining({
+      title: officialTitle,
+      metadata: expect.objectContaining({
+        situationIds: [61],
+        officialSituationTitles: [officialTitle],
+        titleSource: "official_situation",
+      }),
+    }));
+  });
+
   it("returns a controlled Arabic error instead of crashing when the AI response has no choices", async () => {
     (invokeLLM as any).mockResolvedValue({
       error: { message: "المزود لم يُرجع استجابة صالحة" },
@@ -598,6 +645,48 @@ describe("ai.generateAssessment with curriculum citations", () => {
 
     const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
     expect(prompt).toContain("لا توجد وثائق منهاج مطابقة");
+  });
+});
+
+// ─── Teacher-edited official situation titles ───────────────────
+describe("ai.generateAssessment with teacher-edited situation titles", () => {
+  beforeEach(() => {
+    resetMocks();
+    (db.getCurriculumForTopic as any).mockResolvedValue([]);
+    (db.createAIResource as any).mockResolvedValue({ id: 2 });
+    (db.getLessons as any).mockResolvedValue([]);
+    (db.getLearningSituationsByUserId as any).mockResolvedValue([{
+      id: 62,
+      userId: 1,
+      sectionId: 8,
+      title: "الوضعية الرسمية",
+      objectives: "هدف رسمي",
+      situationNumber: 1,
+    }]);
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({ id: 8, title: "مقطع رسمي" });
+    (invokeLLM as any).mockResolvedValue({
+      choices: [{ message: { content: "تقويم محرر." } }],
+    });
+  });
+
+  it("preserves a teacher-edited assessment title when explicitly requested", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateAssessment({
+      title: "اختبار تحصيلي من إعداد الأستاذ",
+      topic: "صياغة موضوعية يحددها الأستاذ",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "quiz",
+      situationIds: [62],
+      preferOfficialSituationTitle: false,
+    });
+
+    expect(result.title).toBe("اختبار تحصيلي من إعداد الأستاذ");
+    expect(result.topic).toBe("صياغة موضوعية يحددها الأستاذ");
+    expect(db.createAIResource).toHaveBeenLastCalledWith(expect.objectContaining({
+      title: "اختبار تحصيلي من إعداد الأستاذ",
+      metadata: expect.objectContaining({ titleSource: "teacher_edit" }),
+    }));
   });
 });
 
@@ -669,6 +758,44 @@ describe("ai.generateLesson with teaching template", () => {
     expect(prompt).toContain("المخططات السنوية الرسمية والوثائق المنهجية المرتبطة");
     expect(prompt).toContain("المخطط السنوي الرسمي مرجع منهجي ملزم");
     expect(prompt).not.toContain("لم يتم العثور على وثائق منهاج رسمية مطابقة");
+  });
+
+  it("uses the linked official situation title instead of an editable draft title", async () => {
+    (db.getLearningSituationsByUserId as any).mockResolvedValue([{
+      id: 90061,
+      userId: 1,
+      sectionId: 70001,
+      title: "الموقع الجغرافي للجزائر وأهميته الاستراتيجية",
+      objectives: "تحديد الموقع الجغرافي واستنتاج أهميته.",
+      situationNumber: 1,
+    }]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    await caller.ai.generateLesson({
+      situationId: 90061,
+      title: "عنوان يدوّي قابل للتعديل",
+      unitTitle: "عنوان آخر غير معتمد",
+      subject: "الجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      contentType: "lessonPlan",
+    });
+
+    const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
+    expect(prompt).toContain("الموقع الجغرافي للجزائر وأهميته الاستراتيجية");
+    expect(prompt).not.toContain("عنوان يدوّي قابل للتعديل");
+    expect(db.getCurriculumForTopic).toHaveBeenCalledWith(
+      expect.stringContaining("الموقع الجغرافي للجزائر وأهميته الاستراتيجية"),
+      "السنة الرابعة متوسط",
+      "الجغرافيا"
+    );
+    expect(db.createAIResource).toHaveBeenCalledWith(expect.objectContaining({
+      title: "الموقع الجغرافي للجزائر وأهميته الاستراتيجية",
+      metadata: expect.objectContaining({
+        situationId: 90061,
+        officialSituationTitle: "الموقع الجغرافي للجزائر وأهميته الاستراتيجية",
+        officialSituationObjectives: "تحديد الموقع الجغرافي واستنتاج أهميته.",
+      }),
+    }));
   });
 
   it("returns a controlled Arabic error instead of crashing when the AI response has no choices", async () => {

@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -35,6 +35,13 @@ function classIdFromSearch(): number | undefined {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+function situationIdFromSearch(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const value = new URLSearchParams(window.location.search).get("situationId");
+  const parsed = value ? Number(value) : NaN;
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 interface LessonSummary {
   id: number;
   title: string;
@@ -58,6 +65,7 @@ export default function Assessment() {
   const [selectedLessonIds, setSelectedLessonIds] = useState<number[]>([]);
   const [selectedCompetencies, setSelectedCompetencies] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const linkedSituationId = situationIdFromSearch();
 
   // المورد المولّد في استوديو التقييم (لتمرير الرقم التسلسلي إلى الترويسة)
   const { data: currentResource } = trpc.aiResources.getById.useQuery(
@@ -107,6 +115,18 @@ export default function Assessment() {
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
+  const { data: linkedSituation } = trpc.situations.getById.useQuery(
+    { id: linkedSituationId ?? 0 },
+    { enabled: Boolean(linkedSituationId) }
+  );
+  const { data: linkedSection } = trpc.sections.getById.useQuery(
+    { id: linkedSituation?.sectionId ?? 0 },
+    { enabled: Boolean(linkedSituation?.sectionId) }
+  );
+  const { data: linkedPlan } = trpc.annualPlans.getById.useQuery(
+    { id: linkedSection?.annualPlanId ?? 0 },
+    { enabled: Boolean(linkedSection?.annualPlanId) }
+  );
   const { data: selectedClass } = trpc.classes.getById.useQuery(
     { id: form.classId ?? 0 },
     { enabled: Boolean(form.classId) }
@@ -121,6 +141,23 @@ export default function Assessment() {
     { gradeLevel: form.gradeLevel, subject: form.subject },
     { enabled: form.useNationalRules }
   );
+
+  const linkedSituationInitialized = useRef(false);
+  useEffect(() => {
+    if (!linkedSituationInitialized.current && linkedSituation && linkedSection && linkedPlan) {
+      linkedSituationInitialized.current = true;
+      setForm(previous => ({
+        ...previous,
+        classId: linkedPlan.classId ?? previous.classId,
+        subject: linkedPlan.subject,
+        gradeLevel: linkedPlan.gradeLevel,
+        title: linkedSituation.title,
+        topic: linkedSituation.title,
+        situationIds: [linkedSituation.id],
+      }));
+      setShowAdvanced(true);
+    }
+  }, [linkedSituation, linkedSection, linkedPlan, setForm]);
 
   const assessmentPrintMeta = useMemo(() => ({
     title: `اختبار في ${form.subject}`,
@@ -193,15 +230,25 @@ export default function Assessment() {
   });
 
   const handleGenerate = useCallback(() => {
+    const selectedOfficialSituation = form.situationIds.length === 1
+      ? teacherOSContext?.completedSituations.find(situation => situation.id === form.situationIds[0])
+      : undefined;
+    const officialSituationForTitle = selectedOfficialSituation
+      ?? (linkedSituation && form.situationIds.length === 1 && linkedSituation.id === form.situationIds[0]
+        ? linkedSituation
+        : undefined);
     const payload = {
       ...form,
       llmModel: form.llmModel || undefined,
       lessonIds: selectedLessonIds.length > 0 ? selectedLessonIds : undefined,
       situationIds: form.situationIds.length > 0 ? form.situationIds : undefined,
       competencyIds: selectedCompetencies.length > 0 ? selectedCompetencies : undefined,
+      preferOfficialSituationTitle: officialSituationForTitle
+        ? form.title === officialSituationForTitle.title && form.topic === officialSituationForTitle.title
+        : undefined,
     };
     generateMutation.mutate(payload as any);
-  }, [form, selectedLessonIds, selectedCompetencies, generateMutation]);
+  }, [form, teacherOSContext?.completedSituations, linkedSituation, selectedLessonIds, selectedCompetencies, generateMutation]);
 
   const copyContent = () => {
     navigator.clipboard.writeText(generated);
@@ -259,12 +306,19 @@ export default function Assessment() {
   };
 
   const toggleSituationSelection = (id: number) => {
-    setForm(f => ({
-      ...f,
-      situationIds: f.situationIds.includes(id)
+    setForm(f => {
+      const situationIds = f.situationIds.includes(id)
         ? f.situationIds.filter(x => x !== id)
-        : [...f.situationIds, id],
-    }));
+        : [...f.situationIds, id];
+      const officialSituation = situationIds.length === 1
+        ? teacherOSContext?.completedSituations.find(situation => situation.id === situationIds[0])
+        : undefined;
+      return {
+        ...f,
+        situationIds,
+        ...(officialSituation ? { title: officialSituation.title, topic: officialSituation.title } : {}),
+      };
+    });
   };
   const toggleLessonSelection = (id: number) => {
     setSelectedLessonIds(prev =>
@@ -320,6 +374,7 @@ export default function Assessment() {
           <CardContent className="space-y-4">
             <div><Label>عنوان التقييم *</Label>
               <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="مثال: اختبار الفصل الأول" />
+              {form.situationIds.length === 1 && <p className="mt-1 text-xs text-muted-foreground">تمت تعبئته من عنوان الوضعية الرسمية؛ يمكنك تعديله عند الحاجة.</p>}
             </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

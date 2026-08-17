@@ -636,6 +636,7 @@ ${curriculumContext}`
     generateLesson: protectedProcedure.input(z.object({
       classId: z.number().optional(),
       lessonId: z.number().optional(),
+      situationId: z.number().optional(),
       title: z.string().min(1),
       subject: z.string(),
       gradeLevel: z.string(),
@@ -655,7 +656,28 @@ ${curriculumContext}`
       supportStrategy: z.enum(["scaffolding", "extension", "simplification", "enrichment", "none"]).optional(),
       teachingTemplateKey: z.enum(TEACHING_TEMPLATES.map(template => template.key) as [string, ...string[]]).optional(),
       llmModel: z.string().optional(),
+      preferOfficialSituationTitle: z.boolean().optional(),
     })).mutation(async ({ ctx, input }) => {
+      // عند الانطلاق من وضعية في المخطط السنوي، تكون تسميتها الرسمية هي المرجع
+      // ولا نعتمد النص الحر إلا في التوليد غير المرتبط بوضعية.
+      let officialSituationTitle: string | undefined;
+      let officialSituationObjectives: string | undefined;
+      if (input.situationId) {
+        try {
+          const userSituations = await getLearningSituationsByUserId(ctx.user.id);
+          const officialSituation = userSituations.find(situation => situation.id === input.situationId);
+          if (officialSituation) {
+            officialSituationTitle = officialSituation.title;
+            officialSituationObjectives = officialSituation.objectives || undefined;
+          }
+        } catch {
+          // يبقى النص الذي أدخله الأستاذ بديلاً آمناً إذا تعذر الوصول إلى السجل.
+        }
+      }
+      const useOfficialSituationTitle = input.preferOfficialSituationTitle !== false;
+      const canonicalTitle = useOfficialSituationTitle && officialSituationTitle ? officialSituationTitle : input.title;
+      const canonicalSituationTitle = officialSituationTitle || input.unitTitle;
+
       // Build differentiation context
       const diffContext: string[] = [];
       if (input.enableDifferentiation) {
@@ -747,7 +769,7 @@ ${teachingTemplate.stages.map((stage, index) => `${index + 1}. ${stage}`).join("
       let curriculumCitations: Array<{ id: number; title: string; type: string; source: string }> = [];
       try {
         const docs = await getCurriculumForTopic(
-          `${input.title} ${input.unitTitle || ""} ${input.subject}`,
+          `${canonicalTitle} ${canonicalSituationTitle || ""} ${input.subject}`,
           input.gradeLevel,
           input.subject
         );
@@ -784,10 +806,10 @@ ${docExcerpts}
       const prompts: Record<string, string> = {
         lessonPlan: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ خطة درس مفصلة ومبنية على المنهج الرسمي الجزائري.
 بيانات الحصة:
-- عنوان الدرس (الوضعية التعليمية): ${input.title}
+- عنوان الدرس (الوضعية التعليمية): ${canonicalTitle}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
-${input.unitTitle ? `- الوضعية التعليمية: ${input.unitTitle}` : ""}
+${canonicalSituationTitle ? `- الوضعية التعليمية: ${canonicalSituationTitle}` : ""}
 ${input.unitNumber ? `- رقم الوضعية في المقطع: ${input.unitNumber}` : ""}
 ${input.lessonNumber ? `- رقم الدرس: ${input.lessonNumber}` : ""}
 ${input.duration ? `- المدة: ${input.duration}` : ""}
@@ -803,7 +825,7 @@ ${AI_ROLE_PRINCIPLE}
 كل مخرج مسودة قابلة للتعديل: الكفاءة والكفاءات والمقاطع من وثائق المنهاج فقط، وبقية الصياغة يراجعها الأستاذ قبل الاعتماد.`,
 
         activity: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ نشاط تعلم نشط.
-- الموضوع: ${input.title}
+- الموضوع: ${canonicalTitle}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 - المدة: ${input.duration || "حصة واحدة"}
@@ -812,7 +834,7 @@ ${diffBlock}
 صمم نشاطاً تفاعلياً يحدد بوضوح العناصر التسعة: هدف واضح، تعليمة مباشرة، زمن محدد، تنظيم العمل، أدوار داخل المجموعة، منتج ملموس، معيار نجاح معلوم، طريقة عرض أو تصحيح سريع، وبديل قليل الوسائل. اختر استراتيجية واحدة من القائمة المعتمدة: فرز البطاقات، فكر ثم زاوج ثم شارك، الخريطة الصامتة، الخط الزمني، حقيبة الأدلة، محطات التعلم، الجيسكو، معرض مصغر، تحدي الأخطاء، تدريس الأقران، مناظرة مضبوطة، قضية مدنية. صمم لأقسام كبيرة من 40 إلى 45 تلميذاً ولا تفترض عارضاً أو إنترنتاً أو طباعة كثيرة.${curriculumContext}`,
 
         homework: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ واجباً منزلياً مناسباً.
-- الموضوع: ${input.title}
+- الموضوع: ${canonicalTitle}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${diffBlock}
@@ -820,7 +842,7 @@ ${diffBlock}
 أعِدّ تمارين متنوعة تشمل: أسئلة مباشرة، تحليل، وتطبيق عملي.${curriculumContext}`,
 
         classQuestions: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ مجموعة أسئلة صفية.
-- الموضوع: ${input.title}
+- الموضوع: ${canonicalTitle}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${diffBlock}
@@ -828,7 +850,7 @@ ${diffBlock}
 قدم أسئلة متنوعة تشمل مستويات تصنيف بلوم المختلفة: تذكر، فهم، تطبيق، تحليل، تقييم، إبداع.${curriculumContext}`,
 
         differentiation: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ استراتيجيات تمييز.
-- الموضوع: ${input.title}
+- الموضوع: ${canonicalTitle}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${diffBlock}
@@ -874,11 +896,15 @@ ${diffBlock}
         lessonId: input.lessonId,
         classId: input.classId,
         type: input.contentType,
-        title: input.title,
+        title: canonicalTitle,
         content,
         metadata: {
           subject: input.subject,
           gradeLevel: input.gradeLevel,
+          situationId: input.situationId,
+          officialSituationTitle,
+          officialSituationObjectives,
+          titleSource: officialSituationTitle && useOfficialSituationTitle ? "official_situation" : "teacher_edit",
           curriculumCitations,
           teachingTemplate: teachingTemplate ? {
             key: teachingTemplate.key,
@@ -909,6 +935,7 @@ ${diffBlock}
       useNationalRules: z.boolean().optional().default(true),
       llmModel: z.string().optional(),
       situationIds: z.array(z.number()).optional(),
+      preferOfficialSituationTitle: z.boolean().optional(),
       // وقت نهاية الاختبار (بالمللي ثانية) — يُستخدم لرمز QR نموذج الإجابات
       examEndsAt: z.number().optional(),
     })).mutation(async ({ ctx, input }) => {
@@ -928,13 +955,14 @@ ${diffBlock}
       }
 
       // ─── Get completed situations (Teacher OS) ─────────────
-      let completedSituations: { title: string; sectionTitle?: string; objectives?: string; competencies?: string; situationNumber?: number }[] = [];
+      let completedSituations: { id: number; title: string; sectionTitle?: string; objectives?: string; competencies?: string; situationNumber?: number }[] = [];
       if (input.situationIds && input.situationIds.length > 0) {
         const allSituations = await getLearningSituationsByUserId(ctx.user.id);
         for (const s of allSituations) {
           if (input.situationIds!.includes(s.id)) {
             const section = await getAnnualPlanSectionById(s.sectionId);
             completedSituations.push({
+              id: s.id,
               title: s.title,
               sectionTitle: section ? section.title : undefined,
               objectives: s.objectives || undefined,
@@ -944,8 +972,15 @@ ${diffBlock}
           }
         }
       }
+      // عنوان وضعية واحدة محددة هو العنوان الافتراضي للتقويم؛ وعند جمع وضعيات
+      // متعددة يبقى العنوان الذي يحرره الأستاذ هو الأنسب لوصف التقويم الجامع.
+      const officialSituationTitle = completedSituations.length === 1 ? completedSituations[0].title : undefined;
+      const useOfficialSituationTitle = input.preferOfficialSituationTitle !== false;
+      const canonicalAssessmentTitle = useOfficialSituationTitle && officialSituationTitle ? officialSituationTitle : input.title;
+      const canonicalTopic = useOfficialSituationTitle && officialSituationTitle ? officialSituationTitle : input.topic;
+
       // ─── Retrieve curriculum knowledge base documents (RAG) ──
-      const curriculumDocs = await getCurriculumForTopic(input.topic, input.gradeLevel, input.subject);
+      const curriculumDocs = await getCurriculumForTopic(canonicalTopic, input.gradeLevel, input.subject);
       const curriculumContext = curriculumDocs.length > 0
         ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: يجب ربط كل سؤال بوثيقة المنهاج الرسمية ذات الصلة من القائمة أعلاه. بعد كل سؤال ضع الاستشهاد بالصيغة التالية:\n[مرجع: رقم الوثيقة — عنوان الوثيقة — المقطع]\nمثال: [مرجع: 1 — وثيقة المنهاج السنة الرابعة — المقطع الثاني: التاريخ الوطني — درس الثورة الجزائرية]\nلا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
         : "لا توجد وثائق منهاج مطابقة في قاعدة المعرفة. أنشئ الأسئلة بناءً على الموضوع المطلوب فقط.";
@@ -970,7 +1005,7 @@ ${curriculumContext}
 
 ${rulesContext}
 
-- الموضوع: ${input.topic}
+- الموضوع: ${canonicalTopic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${input.numQuestions ? `- عدد الأسئلة: ${input.numQuestions}` : "- 10 أسئلة متنوعة"}
@@ -988,7 +1023,7 @@ ${curriculumContext}
 
 ${rulesContext}
 
-- الموضوع: ${input.topic}
+- الموضوع: ${canonicalTopic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${input.numQuestions ? `- عدد الأسئلة: ${input.numQuestions}` : "- 5 أسئلة مقالية متنوعة"}
@@ -1014,7 +1049,7 @@ ${curriculumContext}
 
 ${rulesContext}
 
-- الموضوع: ${input.topic}
+- الموضوع: ${canonicalTopic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 
@@ -1026,7 +1061,7 @@ ${curriculumContext}
 
 ${rulesContext}
 
-- الموضوع: ${input.topic}
+- الموضوع: ${canonicalTopic}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 
@@ -1071,7 +1106,10 @@ ${rulesContext}
       const metadata: Record<string, unknown> = {
         subject: input.subject,
         gradeLevel: input.gradeLevel,
-        topic: input.topic,
+        topic: canonicalTopic,
+        situationIds: completedSituations.map(situation => situation.id),
+        officialSituationTitles: completedSituations.map(situation => situation.title),
+        titleSource: officialSituationTitle && useOfficialSituationTitle ? "official_situation" : "teacher_edit",
         useNationalRules: input.useNationalRules,
         completedLessonIds: input.lessonIds || [],
         competencyIds: input.competencyIds || [],
@@ -1093,7 +1131,7 @@ ${rulesContext}
         userId: ctx.user.id,
         classId: input.classId,
         type: input.assessmentType,
-        title: input.title,
+        title: canonicalAssessmentTitle,
         content,
         metadata,
         tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel, ...(input.useNationalRules ? ["تقويم وطني"] : [])],
@@ -1104,7 +1142,7 @@ ${rulesContext}
         await updateAIResource(result.id, { examEndsAt: input.examEndsAt } as any);
       }
 
-      return { resourceId: result?.id, content, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد", curriculumCitations, curriculumDocsCount: curriculumDocs.length };
+      return { resourceId: result?.id, content, title: canonicalAssessmentTitle, topic: canonicalTopic, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد", curriculumCitations, curriculumDocsCount: curriculumDocs.length };
     }),
 
     // ─── National Rules API ────────────────────────────────────

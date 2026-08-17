@@ -449,6 +449,8 @@ export default function LessonGenerator() {
               const payload = {
                 ...form,
                 llmModel: form.llmModel || undefined,
+                situationId: situationId || undefined,
+                preferOfficialSituationTitle: linkedSituation ? form.title === linkedSituation.title : undefined,
               } as Parameters<typeof generateMutation.mutate>[0];
               generateMutation.mutate(payload);
             }} disabled={generateMutation.isPending || !form.title}>
