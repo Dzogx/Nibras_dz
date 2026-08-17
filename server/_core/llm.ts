@@ -348,6 +348,114 @@ const normalizeResponseFormat = ({
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 
+// ---------------------------------------------------------------------------
+// Gemini Context Caching (free tier — saves up to ~90% of cached tokens).
+// One in-memory cache per (model, systemInstruction) pair, recreated lazily
+// when the curriculum prompt changes or the cache expires (404 from Gemini).
+// ---------------------------------------------------------------------------
+type GeminiCacheEntry = {
+  name: string;
+  systemHash: string;
+  createdAt: number;
+};
+
+const GEMINI_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const GEMINI_CACHABLE_SYSTEM_MIN_CHARS = 500;
+
+let GEMINI_CACHE = new Map<string, GeminiCacheEntry>();
+
+// Deterministic hash of the system instruction so a changed curriculum prompt
+// creates a fresh cache instead of silently reusing stale content.
+const hashString = (value: string): string => {
+  let h = 0;
+  for (let i = 0; i < value.length; i++) {
+    h = (h * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return `${value.length}-${h}`;
+};
+
+async function createGeminiCache(
+  modelId: string,
+  systemInstruction: string
+): Promise<GeminiCacheEntry> {
+  const createUrl = `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${ENV.geminiApiKey}`;
+  const createResponse = await fetch(createUrl, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      model: `models/${modelId}`,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: systemInstruction }],
+        },
+      ],
+      ttl: "86400s",
+    }),
+  });
+
+  if (!createResponse.ok) {
+    const body = await createResponse.text();
+    console.warn(
+      `Gemini cachedContent creation failed (${createResponse.status}); skipping caching: ${body.slice(0, 200)}`
+    );
+    throw new Error("GEMINI_CACHE_MISS");
+  }
+
+  const created = (await createResponse.json()) as {
+    name?: string;
+    usageMetadata?: { totalTokenCount?: number };
+  };
+
+  if (!created.name) {
+    throw new Error("GEMINI_CACHE_MISS");
+  }
+
+  if (typeof created.usageMetadata?.totalTokenCount === "number") {
+    console.info(
+      `Gemini context cache created (${modelId}): ${created.usageMetadata.totalTokenCount} cached tokens`
+    );
+  }
+
+  return {
+    name: created.name,
+    systemHash: hashString(systemInstruction),
+    createdAt: Date.now(),
+  };
+}
+
+// Resolve the cachedContent name for a Gemini request. Returns undefined when
+// caching should be skipped (short system prompt, missing key, cache failure).
+const resolveGeminiCachedContent = async (
+  modelId: string,
+  systemInstruction: string
+): Promise<string | undefined> => {
+  if (systemInstruction.length < GEMINI_CACHABLE_SYSTEM_MIN_CHARS) {
+    return undefined;
+  }
+
+  const key = `${modelId}:${hashString(systemInstruction)}`;
+  const existing = GEMINI_CACHE.get(key);
+  if (existing && Date.now() - existing.createdAt < GEMINI_CACHE_TTL_MS) {
+    return existing.name;
+  }
+
+  try {
+    const created = await createGeminiCache(modelId, systemInstruction);
+    GEMINI_CACHE.set(key, created);
+    return created.name;
+  } catch {
+    // Cache creation failure must never block generation — the request
+    // proceeds without caching (tokens counted normally against the quota).
+    return undefined;
+  }
+};
+
+// Allow tests to reset the in-memory cache.
+export const __resetGeminiCache = () => {
+  GEMINI_CACHE = new Map();
+};
+
 const geminiRole = (role: Role): "user" | "model" =>
   role === "assistant" ? "model" : "user";
 
@@ -426,6 +534,16 @@ async function invokeGemini(params: InvokeParams): Promise<InvokeResult> {
     };
   }
 
+  // Attach a Gemini context cache so the long curriculum/system prompt is
+  // charged once instead of on every generation (free tier supports this).
+  const cachedContentName = await resolveGeminiCachedContent(
+    requestedModelId,
+    systemInstruction
+  );
+  if (cachedContentName) {
+    body.cachedContent = cachedContentName;
+  }
+
   let response = await fetchWithBackoff(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -434,6 +552,22 @@ async function invokeGemini(params: InvokeParams): Promise<InvokeResult> {
 
   if (!response.ok) {
     const errorText = await response.text();
+
+    // A stale cachedContent name returns 404 — drop the cache and retry the
+    // same request without it instead of failing outright.
+    if (response.status === 404 && cachedContentName) {
+      console.warn(
+        `Gemini cachedContent not found (${cachedContentName}); retrying without cache`
+      );
+      GEMINI_CACHE.delete(`${requestedModelId}:${hashString(systemInstruction)}`);
+      delete body.cachedContent;
+      response = await fetchWithBackoff(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    }
+
     // Gemini free-tier quotas and server problems: fall back to the Manus
     // gateway so generation never stays blocked for the teacher.
     const isProviderUnavailable =

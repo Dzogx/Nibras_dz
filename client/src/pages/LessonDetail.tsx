@@ -12,6 +12,7 @@ import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { Eye, Presentation } from "lucide-react";
+import { VoicePlayer } from "@/components/VoicePlayer";
 import { ClassroomSlides } from "@/components/ClassroomSlides";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
 
@@ -179,6 +180,7 @@ export default function LessonDetail({ id }: { id: string }) {
           title="مذكرة بيداغوجية"
           subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`}
         />
+        <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
       </div>
 
       {/* المعاينة الاحترافية: ترويسة رسمية عند الطباعة */}

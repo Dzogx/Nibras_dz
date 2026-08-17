@@ -12,6 +12,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { Eye } from "lucide-react";
+import { VoicePlayer } from "@/components/VoicePlayer";
 
 const typeLabels: Record<string, string> = {
   lessonPlan: "خطة درس",
@@ -132,6 +133,7 @@ export default function ResourceDetail({ id }: { id: string }) {
           معاينة
         </Button>
         <A4PrintButton title={docTitle} subtitle={levelSection || undefined} />
+        <VoicePlayer text={resource?.content || ""} label="النسخة الصوتية" />
       </div>
 
       {/* المعاينة الاحترافية: ترويسة رسمية جزائرية عند الطباعة */}

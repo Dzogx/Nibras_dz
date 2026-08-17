@@ -432,6 +432,20 @@ export const appRouter = router({
     }),
   }),
 
+  // ─── Arabic TTS (Gemini free tier) ─────────────────────────
+  tts: router({
+    generate: protectedProcedure.input(z.object({
+      text: z.string().min(1),
+      voice: z.string().optional(),
+    })).mutation(async ({ input }) => {
+      // Keep the mutation lightweight for long lesson content: trim to a safe
+      // cap so TTS quota (RPM/minute limits) is respected.
+      const trimmed = input.text.slice(0, 6000);
+      const { generateTtsAudio } = await import("./_core/tts");
+      return await generateTtsAudio({ text: trimmed, voice: input.voice });
+    }),
+  }),
+
   // ─── Inspector Reviews ─────────────────────────────────────
   inspector: router({
     reviews: protectedProcedure.query(async ({ ctx }) => {
