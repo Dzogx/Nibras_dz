@@ -8,12 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, BarChart3, TrendingDown, Lightbulb, Loader2, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, BarChart3, TrendingDown, Lightbulb, Loader2, Trash2, AlertTriangle, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 export default function Results() {
+  const [, setLocation] = useLocation();
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [remediationOpen, setRemediationOpen] = useState(false);
   const [newResult, setNewResult] = useState({
     title: "",
     totalStudents: 0,
@@ -55,6 +58,15 @@ export default function Results() {
       utils.results.analyze.invalidate({ classId: selectedClassId! });
       toast.success("تم الحذف");
     },
+  });
+
+  const remediationActivityMutation = trpc.aiResources.create.useMutation({
+    onSuccess: (resource) => {
+      toast.success("حُفظ النشاط العلاجي في مكتبة المحتوى.");
+      setRemediationOpen(false);
+      setLocation(`/content-library/${resource?.id}`);
+    },
+    onError: (error) => toast.error(error.message || "تعذر حفظ النشاط العلاجي."),
   });
 
   const utils = trpc.useUtils();
@@ -291,6 +303,14 @@ export default function Results() {
                               </li>
                             ))}
                           </ul>
+                          <div className="mt-5 border-t border-amber-200/80 pt-4">
+                            <p className="text-xs leading-relaxed text-amber-900/75 mb-3">
+                              حوّل هذه التوصيات إلى نشاط قصير للحصة القادمة، ثم عدّله أو اطبعه من المكتبة.
+                            </p>
+                            <Button size="sm" onClick={() => setRemediationOpen(true)}>
+                              <NotebookPen className="w-4 h-4 ml-2" />إنشاء نشاط علاجي للحصة القادمة
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     )}
@@ -304,6 +324,45 @@ export default function Results() {
               </div>
             </TabsContent>
           </Tabs>
+
+          <Dialog open={remediationOpen} onOpenChange={setRemediationOpen}>
+            <DialogContent className="max-w-xl" dir="rtl">
+              <DialogHeader>
+                <DialogTitle>نشاط علاجي للحصة القادمة</DialogTitle>
+              </DialogHeader>
+              <div className="rounded-lg border bg-muted/40 p-4 text-sm leading-7 max-h-80 overflow-y-auto">
+                <p className="font-semibold">القسم: {classes?.find((item) => item.id === selectedClassId)?.name || "القسم الحالي"}</p>
+                <p className="mt-2"><strong>المدة المقترحة:</strong> 20 دقيقة</p>
+                <p className="mt-2"><strong>مواطن العلاج:</strong> {analysis?.weakDomains?.join("، ") || "النتائج المسجلة"}</p>
+                <p className="mt-3 font-semibold">خطوات النشاط</p>
+                <ol className="list-decimal pr-5 space-y-1">
+                  <li>استرجاع سريع للمعارف السابقة بسؤالين قصيرين.</li>
+                  <li>تقسيم التلاميذ إلى ثنائيات لمعالجة المثال أو السند الذي يختاره الأستاذ.</li>
+                  <li>عرض الحلول ومناقشة الخطأ الشائع المرتبط بمواطن الضعف.</li>
+                  <li>بطاقة خروج قصيرة للتحقق من التحسن قبل متابعة التعلم.</li>
+                </ol>
+                <p className="mt-3 text-xs text-muted-foreground">يُحفظ النشاط قابلًا للتعديل؛ أضف السند أو المثال المطابق لما دُرّس فعليًا قبل طباعته.</p>
+              </div>
+              <Button
+                disabled={remediationActivityMutation.isPending || !selectedClassId || !analysis}
+                onClick={() => {
+                  const className = classes?.find((item) => item.id === selectedClassId)?.name || "القسم";
+                  const weakDomains = analysis?.weakDomains?.join("، ") || "مواطن الضعف المسجلة";
+                  const suggestions = analysis?.suggestions?.map((suggestion, index) => `${index + 1}. ${suggestion}`).join("\n") || "- راجع النتائج المسجلة وحدد الهدف الدقيق للنشاط.";
+                  remediationActivityMutation.mutate({
+                    classId: selectedClassId,
+                    type: "activity",
+                    title: `نشاط علاجي — ${className}`,
+                    content: `# نشاط علاجي صفي\n\n**القسم:** ${className}\n\n**المدة المقترحة:** 20 دقيقة\n\n## مواطن العلاج\n${weakDomains}\n\n## هدف النشاط\nمعالجة مواطن الضعف التي ظهرت في التقويم، مع التحقق من تحسن الأداء بنهاية الحصة.\n\n## خطوات التنفيذ\n1. استرجاع سريع للمعارف السابقة بسؤالين قصيرين.\n2. عمل ثنائي على مثال أو سند يختاره الأستاذ من الدرس المنجز.\n3. عرض الحلول ومناقشة الخطأ الشائع.\n4. بطاقة خروج قصيرة للتحقق من التحسن.\n\n## توصيات التحليل المعتمدة\n${suggestions}\n\n## ملاحظة للأستاذ\nأضف السند أو المثال المطابق لما دُرّس فعليًا قبل التنفيذ أو الطباعة.`,
+                    metadata: { source: "assessment_results", weakDomains: analysis?.weakDomains ?? [], suggestions: analysis?.suggestions ?? [] },
+                    tags: ["علاج تربوي", "نشاط صفي", "نتائج التقويم"],
+                  });
+                }}
+              >
+                {remediationActivityMutation.isPending ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جارٍ الحفظ…</> : <><NotebookPen className="w-4 h-4 ml-2" />حفظ وفتح النشاط</>}
+              </Button>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

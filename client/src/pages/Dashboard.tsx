@@ -16,8 +16,12 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
 import { useMemo, useState } from "react";
+import { usePreferredClass } from "@/hooks/usePreferredClass";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -61,7 +65,10 @@ export default function Dashboard() {
   const pendingLessons = pendingSituations.length;
   const pendingLessonsList = pendingSituations;
 
-  const [selectedClassId, setSelectedClassId] = useState<number | undefined>(undefined);
+  const [selectedClassId, setSelectedClassId] = usePreferredClass();
+  const [finishSessionOpen, setFinishSessionOpen] = useState(false);
+  const [sessionNote, setSessionNote] = useState("");
+  const utils = trpc.useUtils();
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     {
       classId: selectedClassId ?? classes?.[0]?.id ?? -1,
@@ -78,6 +85,19 @@ export default function Dashboard() {
   const dailySituation = teacherOSContext?.nextSituation;
   const currentSectionProgress = teacherOSContext?.currentSectionProgress ?? teacherOSContext?.sectionProgress;
   const hasDailySession = Boolean(activeClass && dailySituation);
+  const completeSessionMutation = trpc.situations.completeSession.useMutation({
+    onSuccess: async (result) => {
+      await Promise.all([
+        utils.ai.getTeacherOSContext.invalidate(),
+        utils.situations.listPending.invalidate(),
+        utils.teachingNotes.list.invalidate(),
+      ]);
+      setFinishSessionOpen(false);
+      setSessionNote("");
+      toast.success(result.noteSaved ? "سُجّلت الحصة وملاحظة الأستاذ." : "سُجّلت الحصة كمنجزة.");
+    },
+    onError: (error) => toast.error(error.message || "تعذر تسجيل انتهاء الحصة."),
+  });
 
 
   return (
@@ -168,6 +188,13 @@ export default function Dashboard() {
                     >
                       <ClipboardList className="w-4 h-4 ml-2" />افتح مسار التنفيذ
                     </Button>
+                    <Button
+                      variant="outline"
+                      className="border-emerald-300/45 bg-emerald-500/15 text-white hover:bg-emerald-500/25 hover:text-white"
+                      onClick={() => setFinishSessionOpen(true)}
+                    >
+                      <CheckCircle2 className="w-4 h-4 ml-2" />أنهِ الحصة
+                    </Button>
                   </div>
                 </>
               ) : activeClass ? (
@@ -220,6 +247,34 @@ export default function Dashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={finishSessionOpen} onOpenChange={setFinishSessionOpen}>
+        <DialogContent className="sm:max-w-lg" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>إنهاء الحصة وتحديث المتابعة</DialogTitle>
+            <DialogDescription>
+              ستُسجَّل «{dailySituation?.title}» كمنجزة. أضف ملاحظة مختصرة إن وجدت؛ تحفظ في دفتر الأستاذ.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={sessionNote}
+            onChange={(event) => setSessionNote(event.target.value)}
+            placeholder="مثال: يحتاج التلاميذ إلى مراجعة قراءة الخريطة في بداية الحصة القادمة."
+            className="min-h-28 resize-y"
+            maxLength={3000}
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setFinishSessionOpen(false)}>متابعة الحصة</Button>
+            <Button
+              onClick={() => dailySituation && completeSessionMutation.mutate({ situationId: dailySituation.id, note: sessionNote || undefined })}
+              disabled={!dailySituation || completeSessionMutation.isPending}
+            >
+              <CheckCircle2 className="w-4 h-4 ml-2" />
+              {completeSessionMutation.isPending ? "جارٍ الحفظ…" : "سجّل الحصة منجزة"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

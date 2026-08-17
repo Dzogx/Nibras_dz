@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useRef, useState } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
+import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { LLM_MODEL_OPTIONS } from "@shared/llm-models";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
@@ -81,6 +82,7 @@ function parseSearchParam(name: string): string | undefined {
 
 export default function LessonGenerator() {
   const [, setLocation] = useLocation();
+  const [preferredClassId, setPreferredClassId] = usePreferredClass();
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -156,6 +158,17 @@ export default function LessonGenerator() {
       }));
     }
   }, [linkedSituation, linkedSection, linkedPlan]);
+
+  // القسم المعتاد يُعبّأ فقط حين لا يأتي الأستاذ من وضعية محددة.
+  useEffect(() => {
+    if (!situationId && preferredClassId && !form.classId) {
+      setForm((previous) => ({ ...previous, classId: preferredClassId }));
+    }
+  }, [situationId, preferredClassId, form.classId, setForm]);
+
+  useEffect(() => {
+    if (form.classId) setPreferredClassId(form.classId);
+  }, [form.classId, setPreferredClassId]);
 
   const generateMutation = trpc.ai.generateLesson.useMutation({
     onSuccess: (data) => {

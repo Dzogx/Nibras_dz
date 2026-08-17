@@ -1432,6 +1432,25 @@ ${rulesContext}
       await toggleLearningSituationCompleted(input.id, input.isCompleted);
       return { success: true } as const;
     }),
+    completeSession: protectedProcedure.input(z.object({
+      situationId: z.number(),
+      note: z.string().trim().max(3000).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const situations = await getLearningSituationsByUserId(ctx.user.id);
+      const situation = situations.find((item) => item.id === input.situationId);
+      if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+
+      await toggleLearningSituationCompleted(situation.id, true);
+      if (input.note) {
+        await createTeachingNote({
+          userId: ctx.user.id,
+          title: `ملاحظة حصة: ${situation.title}`,
+          content: input.note,
+          noteType: "session_reflection",
+        } as any);
+      }
+      return { success: true, noteSaved: Boolean(input.note) } as const;
+    }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await deleteLearningSituation(input.id);
       return { success: true } as const;

@@ -1,6 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
+import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ interface LessonSummary {
 
 export default function Assessment() {
   const [, setLocation] = useLocation();
+  const [preferredClassId, setPreferredClassId] = usePreferredClass();
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [rulesInfo, setRulesInfo] = useState<{ rulesApplied: boolean; pointDistribution: { subject: string; points: number; label: string }[]; totalPoints: number; duration: string } | null>(null);
@@ -93,10 +95,15 @@ export default function Assessment() {
 
   const linkedClassId = classIdFromSearch();
   useEffect(() => {
-    if (linkedClassId && form.classId !== linkedClassId) {
-      setForm((previous) => ({ ...previous, classId: linkedClassId }));
+    const targetClassId = linkedClassId ?? (!form.classId ? preferredClassId : undefined);
+    if (targetClassId && form.classId !== targetClassId) {
+      setForm((previous) => ({ ...previous, classId: targetClassId }));
     }
-  }, [linkedClassId, form.classId, setForm]);
+  }, [linkedClassId, preferredClassId, form.classId, setForm]);
+
+  useEffect(() => {
+    if (form.classId) setPreferredClassId(form.classId);
+  }, [form.classId, setPreferredClassId]);
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
@@ -329,7 +336,11 @@ export default function Assessment() {
                 </Select>
               </div>
               <div><Label>القسم</Label>
-                <Select value={form.classId ? String(form.classId) : ""} onValueChange={v => setForm({ ...form, classId: v ? parseInt(v) : undefined })}>
+                <Select value={form.classId ? String(form.classId) : ""} onValueChange={v => {
+                  const classId = v ? parseInt(v) : undefined;
+                  setForm({ ...form, classId });
+                  setPreferredClassId(classId);
+                }}>
                   <SelectTrigger><SelectValue placeholder={classesList && classesList.length > 0 ? "--" : "لا يوجد"} /></SelectTrigger>
                   <SelectContent>
                     {classesList && classesList.length > 0 ? classesList.map(c => (

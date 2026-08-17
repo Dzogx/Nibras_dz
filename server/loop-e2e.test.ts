@@ -62,6 +62,31 @@ describe("Full Pedagogical Loop E2E", () => {
     vi.clearAllMocks();
   });
 
+  it("ينهي الحصة ويسجل ملاحظة الأستاذ في الإجراء نفسه", async () => {
+    const caller = appRouter.createCaller(mockContext as any);
+    vi.mocked(db.getLearningSituationsByUserId).mockResolvedValue([{
+      id: 17,
+      title: "التحولات السياسية في الجزائر",
+      sectionId: 4,
+      isCompleted: false,
+    }] as any);
+    vi.mocked(db.toggleLearningSituationCompleted).mockResolvedValue(undefined);
+    vi.mocked(db.createTeachingNote).mockResolvedValue({ id: 8 } as any);
+
+    const result = await caller.situations.completeSession({
+      situationId: 17,
+      note: "احتاج التلاميذ إلى دعم إضافي في ترتيب الأحداث زمنياً.",
+    });
+
+    expect(result).toEqual({ success: true, noteSaved: true });
+    expect(db.toggleLearningSituationCompleted).toHaveBeenCalledWith(17, true);
+    expect(db.createTeachingNote).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 1,
+      title: "ملاحظة حصة: التحولات السياسية في الجزائر",
+      content: "احتاج التلاميذ إلى دعم إضافي في ترتيب الأحداث زمنياً.",
+    }));
+  });
+
   it("should create a class, plan, section, situation, lesson, and generate assessment", async () => {
     const caller = appRouter.createCaller(mockContext as any);
 
