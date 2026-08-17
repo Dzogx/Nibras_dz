@@ -10,4 +10,8 @@ export const ENV = {
   // Optional external LLM provider (OpenAI-compatible, e.g. AgentRouter). When set, overrides Manus gateway.
   llmApiUrl: process.env.LLM_API_URL ?? "",
   llmApiKey: process.env.LLM_API_KEY ?? "",
+  // Optional Google Gemini API key (free tier via Google AI Studio).
+  // When present, model ids with the "gemini/" prefix are routed to the
+  // Gemini REST API instead of the OpenAI-compatible external provider.
+  geminiApiKey: process.env.GEMINI_API_KEY ?? "",
 };

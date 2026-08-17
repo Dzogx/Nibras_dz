@@ -505,3 +505,12 @@
 - [x] تحديث shared/llm-models.ts بالقائمة الجديدة مع free:true للـ MiniMax وDeepSeek
 - [x] اختبار فعلي (عينة «مهام المجالس المنتخبة» 1AM): MiniMax جيد مع اختلاط لغات نادر، DeepSeek V3.1 أدق عربيًا — كلاهما مجاني تقريبًا فلا يسبب 402
 - [x] TypeScript نظيف + 105/105 اختبار + checkpoint + تسليم
+
+## دمج أفضل مزود LLM قوي (حتى باشتراك) بنبراس (طلب الأستاذ 17 أوت)
+
+- [x] استعراض الخيارات: Google AI Studio (Gemini مجاني سخي) اختير الأفضل — لا يحتاج بطاقة دفع ويوفر Gemini 3.5/3.7 Flash وPro مجانًا
+- [x] دعم Gemini كمزود جديد في بنية llm.ts (بادئة gemini/ مع isGeminiModel وresolveProvider وfallback تلقائي من Gemini إلى Manus عند 401/403/429/5xx)
+- [x] إضافة 3 نماذج Gemini إلى shared/llm-models.ts (gemini-3.5-flash وgemini-3.7-flash وgemini-3.1-pro مع free:true) — القائمة الآن 8 نماذج
+- [x] المفتاح GEMINI_API_KEY من الأستاذ محفوظ عبر secrets — اختُبر توليد حي ناجح بعينة تربوية (geog 1AM موقع الجزائر)
+- [x] اختبار الجودة على عينة تربوية جزائرية: إجابة عربية تربوية دقيقة وواضحة
+- [x] اختبارات 105/105 + TypeScript نظيف + فحص بصري لواجهتي LessonGenerator/Assessment + تحديث رسائل الافتراضي + checkpoint + تسليم

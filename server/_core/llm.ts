@@ -1,4 +1,10 @@
 import { ENV } from "./env";
+import {
+  GEMINI_MODEL_PREFIX,
+  isGeminiModel,
+  LLM_MODEL_OPTIONS,
+} from "../../shared/llm-models";
+import type { LlmModelOption } from "../../shared/llm-models";
 
 export type Role = "system" | "user" | "assistant" | "tool" | "function";
 
@@ -271,7 +277,11 @@ const extractShortErrorMessage = (raw: string): string => {
   return "";
 };
 
-export { LLM_MODEL_OPTIONS } from "../../shared/llm-models";
+export {
+  LLM_MODEL_OPTIONS,
+  GEMINI_MODEL_PREFIX,
+  isGeminiModel,
+} from "../../shared/llm-models";
 export type { LlmModelOption } from "../../shared/llm-models";
 
 const assertApiKey = (apiKey: string, provider: string) => {
@@ -328,6 +338,196 @@ const normalizeResponseFormat = ({
     },
   };
 };
+
+// ---------------------------------------------------------------------------
+// Google Gemini REST API (free tier via Google AI Studio).
+// Converts the shared OpenAI-shaped InvokeParams into Gemini's
+// generateContent payload, then maps the response back into InvokeResult so
+// the rest of the codebase stays provider-agnostic.
+// ---------------------------------------------------------------------------
+
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+
+const geminiRole = (role: Role): "user" | "model" =>
+  role === "assistant" ? "model" : "user";
+
+const geminiTextOf = (part: MessageContent): string => {
+  if (typeof part === "string") return part;
+  if (part.type === "text") return part.text;
+  // Gemini generates text only; skip non-text parts.
+  return "";
+};
+
+const geminiPartsOf = (
+  content: MessageContent | MessageContent[]
+): Array<{ text: string }> =>
+  ensureArray(content)
+    .map(geminiTextOf)
+    .filter(text => text.length > 0)
+    .map(text => ({ text }));
+
+async function invokeGemini(params: InvokeParams): Promise<InvokeResult> {
+  const messages = params.messages;
+  const requestedModelId = params.model?.replace(
+    GEMINI_MODEL_PREFIX,
+    ""
+  ) || "gemini-3.5-flash";
+  const url = `${GEMINI_BASE_URL}/${encodeURIComponent(requestedModelId)}:generateContent?key=${ENV.geminiApiKey}`;
+
+  // Gemini REST roles: "user" and "model" only — system messages merge into
+  // systemInstruction; consecutive same-role messages merge into one turn.
+  const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+  let systemInstruction = "";
+  for (const message of messages) {
+    const parts = geminiPartsOf(message.content);
+    if (parts.length === 0) continue;
+    if (message.role === "system") {
+      systemInstruction += parts.map(p => p.text).join("\n");
+      continue;
+    }
+    const role = geminiRole(message.role);
+    const last = contents[contents.length - 1];
+    if (last && last.role === role) {
+      last.parts.push(...parts);
+    } else {
+      contents.push({ role, parts });
+    }
+  }
+
+  const normalizedResponseFormat = normalizeResponseFormat({
+    responseFormat: params.responseFormat,
+    response_format: params.response_format,
+    outputSchema: params.outputSchema,
+    output_schema: params.output_schema,
+  });
+
+  const generationConfig: Record<string, unknown> = {};
+  const resolvedMaxTokens = params.max_tokens ?? params.maxTokens;
+  if (typeof resolvedMaxTokens === "number") {
+    generationConfig.maxOutputTokens = resolvedMaxTokens;
+  }
+  if (normalizedResponseFormat) {
+    if (normalizedResponseFormat.type === "json_schema") {
+      generationConfig.responseMimeType = "application/json";
+      generationConfig.responseSchema = normalizedResponseFormat.json_schema.schema;
+    } else if (normalizedResponseFormat.type === "json_object") {
+      generationConfig.responseMimeType = "application/json";
+    }
+    // text is the default — nothing to configure.
+  }
+
+  const body: Record<string, unknown> = {
+    contents,
+    generationConfig,
+  };
+  if (systemInstruction.length > 0) {
+    body.systemInstruction = {
+      parts: [{ text: systemInstruction }],
+    };
+  }
+
+  let response = await fetchWithBackoff(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    // Gemini free-tier quotas and server problems: fall back to the Manus
+    // gateway so generation never stays blocked for the teacher.
+    const isProviderUnavailable =
+      response.status === 401 ||
+      response.status === 402 ||
+      response.status === 403 ||
+      response.status === 429 ||
+      response.status >= 500;
+    if (isProviderUnavailable) {
+      console.warn(
+        `Gemini provider failed (${response.status}); falling back to Manus gateway`
+      );
+      const fallback = resolveLlmTarget("manus");
+      assertApiKey(fallback.apiKey, fallback.provider);
+      response = await fetchWithBackoff(fallback.url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${fallback.apiKey}`,
+        },
+        body: JSON.stringify({
+          messages: messages.map(normalizeMessage),
+          model: EXTERNAL_LLM_DEFAULT_MODEL,
+          ...(normalizedResponseFormat
+            ? { response_format: normalizedResponseFormat }
+            : {}),
+        }),
+      });
+      if (!response.ok) {
+        const fallbackError = await response.text();
+        throw new Error(
+          `LLM invoke failed on both Gemini (${response.status} ${response.statusText}) and the Manus gateway (${fallbackError})`
+        );
+      }
+      return (await response.json()) as InvokeResult;
+    }
+    const shortMessage = extractShortErrorMessage(errorText);
+    throw new Error(
+      `Gemini invoke failed: ${response.status} ${response.statusText}${shortMessage ? ` – ${shortMessage}` : ""}`
+    );
+  }
+
+  const geminiResult = (await response.json()) as {
+    candidates?: Array<{
+      content?: {
+        role?: string;
+        parts?: Array<{ text?: string; inlineData?: unknown }>;
+      };
+      finishReason?: string;
+    }>;
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      totalTokenCount?: number;
+    };
+    modelVersion?: string;
+  };
+
+  const candidate = geminiResult.candidates?.[0];
+  const parts = candidate?.content?.parts ?? [];
+  const text = parts.map(p => p.text ?? "").join("");
+
+  if (!text && !candidate?.content?.parts?.some(p => p.inlineData)) {
+    throw new Error(
+      `Gemini returned an empty response${candidate?.finishReason ? ` (finishReason: ${candidate.finishReason})` : ""}`
+    );
+  }
+
+  return {
+    id: `gemini-${Date.now()}`,
+    created: Math.floor(Date.now() / 1000),
+    model: geminiResult.modelVersion ?? requestedModelId,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text }],
+        },
+        finish_reason: candidate?.finishReason ?? null,
+      },
+    ],
+    ...(geminiResult.usageMetadata
+      ? {
+          usage: {
+            prompt_tokens: geminiResult.usageMetadata.promptTokenCount ?? 0,
+            completion_tokens:
+              geminiResult.usageMetadata.candidatesTokenCount ?? 0,
+            total_tokens: geminiResult.usageMetadata.totalTokenCount ?? 0,
+          },
+        }
+      : {}),
+  };
+}
 
 const RETRY_MAX_RETRIES = 4;
 const RETRY_BASE_DELAY_MS = 500;
@@ -401,6 +601,13 @@ const fetchWithBackoff = async (
 };
 
 export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
+
+  // Google Gemini (free tier via Google AI Studio) uses a dedicated REST
+  // endpoint and a different payload shape — route those requests here so
+  // all callers keep using a single invokeLLM entry point.
+  if (params.model && isGeminiModel(params.model) && ENV.geminiApiKey) {
+    return invokeGemini(params);
+  }
 
   const {
     messages,

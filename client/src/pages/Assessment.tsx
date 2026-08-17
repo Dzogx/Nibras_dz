@@ -347,7 +347,7 @@ export default function Assessment() {
 
             <div className="flex flex-wrap items-end gap-x-3">
               <Label>نموذج الذكاء الاصطناعي</Label>
-              <span className="text-[11px] font-normal text-muted-foreground">الافتراضي قوي وموثوق؛ إذا نفد رصيد OpenRouter يرجع النظام تلقائيًا إلى محرك نبراس</span>
+              <span className="text-[11px] font-normal text-muted-foreground">الافتراضي Gemini مجاني؛ إذا تعذّر أي مزود خارجي يرجع النظام تلقائيًا إلى محرك نبراس</span>
             </div>
             <div>
               <Select value={form.llmModel || "__default__"} onValueChange={v => setForm({ ...form, llmModel: v === "__default__" ? "" : v })}>

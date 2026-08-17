@@ -14,7 +14,32 @@ export type LlmModelOption = {
   free: boolean;
 };
 
+// Prefix convention: model ids starting with "gemini/" are routed to the
+// Google Gemini API (GEMINI_API_KEY, REST endpoint), while all other ids are
+// sent through the OpenAI-compatible external provider (LLM_API_URL/KEY).
+export const GEMINI_MODEL_PREFIX = "gemini/";
+export const isGeminiModel = (modelId: string): boolean =>
+  modelId.startsWith(GEMINI_MODEL_PREFIX);
+
 export const LLM_MODEL_OPTIONS: LlmModelOption[] = [
+  {
+    id: "gemini/gemini-3.5-flash",
+    label: "Gemini 3.5 Flash (مجاني — Google AI Studio)",
+    description: "مجاني كليًا بلا حدود استهلاك تقريبًا — جودة عالية بالعربية، الأنسب للاستخدام اليومي",
+    free: true,
+  },
+  {
+    id: "gemini/gemini-3.7-flash",
+    label: "Gemini 3.7 Flash (مجاني)",
+    description: "أحدث نموذج مجاني من Google — أسرع وأدق في العربية",
+    free: true,
+  },
+  {
+    id: "gemini/gemini-3.1-pro",
+    label: "Gemini 3.1 Pro (جودة قصوى)",
+    description: "أعلى جودة تفكير للمواد الرسمية الهامة (شهادة التعليم المتوسط)",
+    free: true,
+  },
   {
     id: "openai/gpt-4.1-mini",
     label: "GPT-4.1-mini (افتراضي)",

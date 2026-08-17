@@ -248,7 +248,7 @@ export default function LessonGenerator() {
               </Label>
               <Select value={form.llmModel || "__default__"} onValueChange={v => setForm({ ...form, llmModel: v === "__default__" ? "" : v })}>
                 <SelectTrigger>
-                  <SelectValue placeholder="النموذج الافتراضي (عبر OpenRouter)" />
+                  <SelectValue placeholder="النموذج الافتراضي (Gemini مجاني)" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__default__">النموذج الافتراضي (افتراضي قوي وموثوق)</SelectItem>
