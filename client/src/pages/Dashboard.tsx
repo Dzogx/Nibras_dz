@@ -23,7 +23,7 @@ import { useLocation } from "wouter";
 import { useMemo, useState } from "react";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { toast } from "sonner";
-import { buildQuickAssessmentPath, buildQuickLessonPath } from "@shared/quick-click";
+import { buildQuickAssessmentPath, buildQuickLessonPath, getScheduledSlotForNow } from "@shared/quick-click";
 import {
   Select,
   SelectContent,
@@ -56,6 +56,8 @@ export default function Dashboard() {
   const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery();
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: profile } = trpc.profile.get.useQuery();
+  const academicYear = profile?.academicYear || "2025-2026";
+  const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery({ academicYear });
 
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
@@ -68,6 +70,7 @@ export default function Dashboard() {
   const pendingLessonsList = pendingSituations;
 
   const [selectedClassId, setSelectedClassId] = usePreferredClass();
+  const [followSchedule, setFollowSchedule] = useState(true);
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
   const utils = trpc.useUtils();
@@ -80,7 +83,8 @@ export default function Dashboard() {
     }
   );
 
-  const activeClassId = selectedClassId ?? classes?.[0]?.id;
+  const scheduledSlot = useMemo(() => getScheduledSlotForNow(weeklySchedule), [weeklySchedule]);
+  const activeClassId = (followSchedule ? scheduledSlot?.classId : undefined) ?? selectedClassId ?? classes?.[0]?.id;
   const activeClass = classes?.find((item) => item.id === activeClassId);
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
   const dailySection = teacherOSContext?.currentSection;
@@ -147,7 +151,10 @@ export default function Dashboard() {
                 <div className="w-full sm:w-60">
                   <Select
                     value={activeClassId?.toString()}
-                    onValueChange={(value) => setSelectedClassId(Number(value))}
+                    onValueChange={(value) => {
+                      setFollowSchedule(false);
+                      setSelectedClassId(Number(value));
+                    }}
                   >
                     <SelectTrigger className="h-9 border-white/25 bg-white/10 text-white [&>svg]:text-white" aria-label="اختيار القسم للحصة اليومية">
                       <SelectValue placeholder="اختر القسم" />
@@ -168,6 +175,19 @@ export default function Dashboard() {
                   <p className="text-sm text-white/70 mb-1">
                     {activeClass?.name} · {activePlan?.subject || activeClass?.gradeLevel}
                   </p>
+                  {scheduledSlot && followSchedule && (
+                    <div className="mb-3 flex items-center gap-2 text-xs text-white/80">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>حصة اليوم {scheduledSlot.startTime}–{scheduledSlot.endTime}{scheduledSlot.room ? ` · القاعة ${scheduledSlot.room}` : ""}</span>
+                      <button
+                        type="button"
+                        className="underline underline-offset-2 hover:text-white"
+                        onClick={() => setFollowSchedule(false)}
+                      >
+                        اختر قسماً آخر
+                      </button>
+                    </div>
+                  )}
                   <h3 className="text-xl md:text-2xl font-bold leading-relaxed">
                     {dailySituation?.title}
                   </h3>
@@ -208,8 +228,8 @@ export default function Dashboard() {
                 <div className="py-3">
                   <h3 className="text-xl font-bold">ابدأ بتعريف قسمك</h3>
                   <p className="text-sm text-white/75 mt-2">بعد إضافة القسم والخطة، سيقترح نبراس الحصة التالية تلقائياً.</p>
-                  <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/classes")}>
-                    <Plus className="w-4 h-4 ml-2" />إضافة قسم
+                  <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}>
+                    <Plus className="w-4 h-4 ml-2" />تهيئة الموسم الدراسي
                   </Button>
                 </div>
               )}

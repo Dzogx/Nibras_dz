@@ -11,6 +11,7 @@ import {
   getAcademicYears,
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
+  getWeeklyScheduleEntries, replaceWeeklyScheduleEntries,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan,
   getLessons, getLessonById, createLesson, updateLesson, deleteLesson, toggleLessonCompleted,
   getTeachingNotes, createTeachingNote, updateTeachingNote, deleteTeachingNote,
@@ -217,6 +218,45 @@ export const appRouter = router({
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await deleteClass(input.id);
       return { success: true };
+    }),
+  }),
+
+  // ─── Weekly Schedule ─────────────────────────────────────────
+  weeklySchedule: router({
+    get: protectedProcedure.input(z.object({
+      academicYear: z.string().min(4).max(16),
+    })).query(async ({ ctx, input }) => {
+      return await getWeeklyScheduleEntries(ctx.user.id, input.academicYear);
+    }),
+    save: protectedProcedure.input(z.object({
+      academicYear: z.string().min(4).max(16),
+      entries: z.array(z.object({
+        classId: z.number().int().positive(),
+        dayOfWeek: z.enum(["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"]),
+        periodIndex: z.number().int().min(1).max(8),
+        startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "صيغة الوقت هي HH:MM"),
+        endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "صيغة الوقت هي HH:MM"),
+        room: z.string().max(64).optional(),
+      })),
+    })).mutation(async ({ ctx, input }) => {
+      const ownedClassIds = new Set((await getClasses(ctx.user.id)).map(item => item.id));
+      const occupiedSlots = new Set<string>();
+
+      for (const entry of input.entries) {
+        if (!ownedClassIds.has(entry.classId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكنك إضافة قسم لا يتبع لمساحتك." });
+        }
+        if (entry.endTime <= entry.startTime) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "يجب أن تكون نهاية الحصة بعد بدايتها." });
+        }
+        const slotKey = `${entry.dayOfWeek}-${entry.periodIndex}`;
+        if (occupiedSlots.has(slotKey)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن تسجيل حصتين في الفترة نفسها." });
+        }
+        occupiedSlots.add(slotKey);
+      }
+
+      return await replaceWeeklyScheduleEntries(ctx.user.id, input.academicYear, input.entries);
     }),
   }),
 

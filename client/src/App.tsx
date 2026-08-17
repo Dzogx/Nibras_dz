@@ -22,6 +22,7 @@ import ResourceDetail from "./pages/ResourceDetail";
 import Verify from "./pages/Verify";
 import AnswerPage from "./pages/AnswerPage";
 import Brand from "./pages/Brand";
+import SeasonSetup from "./pages/SeasonSetup";
 
 
 function Router() {
@@ -35,6 +36,9 @@ function Router() {
       </Route>
       <Route path="/classes">
         {() => <DashboardLayout><Classes /></DashboardLayout>}
+      </Route>
+      <Route path="/season-setup">
+        {() => <DashboardLayout><SeasonSetup /></DashboardLayout>}
       </Route>
       <Route path="/annual-plans">
         {() => <DashboardLayout><AnnualPlans /></DashboardLayout>}

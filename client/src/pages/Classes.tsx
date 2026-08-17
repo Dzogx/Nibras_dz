@@ -4,15 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, GraduationCap, Users, Trash2, Pencil } from "lucide-react";
+import { Plus, GraduationCap, Users, Trash2, Pencil, CalendarDays } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 const gradeLevels = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const subjects = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
 
 export default function Classes() {
+  const [, setLocation] = useLocation();
   const [isAdding, setIsAdding] = useState(false);
   const [editClassId, setEditClassId] = useState<number | null>(null);
   const [newClass, setNewClass] = useState({
@@ -72,13 +74,18 @@ export default function Classes() {
           <h1 className="text-2xl font-bold">إدارة الأقسام</h1>
           <p className="text-muted-foreground mt-1">إنشاء وإدارة أقسامك الدراسية</p>
         </div>
-        <Dialog open={isAdding} onOpenChange={setIsAdding}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 ml-2" />
-              إضافة قسم
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setLocation("/season-setup")}>
+            <CalendarDays className="w-4 h-4 ml-2" />
+            تهيئة الموسم
+          </Button>
+          <Dialog open={isAdding} onOpenChange={setIsAdding}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 ml-2" />
+                إضافة قسم
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>إضافة قسم جديد</DialogTitle>
@@ -112,7 +119,8 @@ export default function Classes() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
 
         {/* Edit Dialog */}
         <Dialog open={editClassId !== null} onOpenChange={open => { if (!open) setEditClassId(null); }}>

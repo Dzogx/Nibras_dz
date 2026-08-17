@@ -6,6 +6,7 @@ import {
   InsertAcademicYear, academicYears,
   InsertCurriculumDocument, curriculumDocuments,
   InsertClass, classes,
+  InsertWeeklyScheduleEntry, weeklyScheduleEntries,
   InsertAnnualPlan, annualPlans,
   InsertLesson, lessons,
   InsertTeachingNote, teachingNotes,
@@ -266,6 +267,43 @@ export async function deleteClass(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(classes).where(eq(classes.id, id));
+}
+
+// ─── Weekly Schedule ──────────────────────────────────────────
+export async function getWeeklyScheduleEntries(userId: number, academicYear: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(weeklyScheduleEntries)
+    .where(and(
+      eq(weeklyScheduleEntries.userId, userId),
+      eq(weeklyScheduleEntries.academicYear, academicYear),
+    ))
+    .orderBy(weeklyScheduleEntries.dayOfWeek, weeklyScheduleEntries.periodIndex);
+}
+
+export async function replaceWeeklyScheduleEntries(
+  userId: number,
+  academicYear: string,
+  entries: Omit<InsertWeeklyScheduleEntry, "id" | "userId" | "academicYear" | "createdAt" | "updatedAt">[],
+) {
+  const db = await getDb();
+  if (!db) return { count: 0 };
+
+  await db.delete(weeklyScheduleEntries).where(and(
+    eq(weeklyScheduleEntries.userId, userId),
+    eq(weeklyScheduleEntries.academicYear, academicYear),
+  ));
+
+  if (entries.length === 0) return { count: 0 };
+
+  await db.insert(weeklyScheduleEntries).values(entries.map(entry => ({
+    ...entry,
+    userId,
+    academicYear,
+  })));
+  return { count: entries.length };
 }
 
 // ─── Annual Plans ─────────────────────────────────────────────

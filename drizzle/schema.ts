@@ -117,6 +117,27 @@ export type Class = typeof classes.$inferSelect;
 export type InsertClass = typeof classes.$inferInsert;
 
 /**
+ * Weekly teaching schedule (جدول خدمة الأستاذ)
+ * يُحفظ لكل موسم دراسي ويغذي خطة اليوم تلقائياً.
+ */
+export const weeklyScheduleEntries = mysqlTable("weeklyScheduleEntries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId").notNull(),
+  academicYear: varchar("academicYear", { length: 16 }).notNull(),
+  dayOfWeek: mysqlEnum("dayOfWeek", ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"]).notNull(),
+  periodIndex: int("periodIndex").notNull(),
+  startTime: varchar("startTime", { length: 5 }).notNull(),
+  endTime: varchar("endTime", { length: 5 }).notNull(),
+  room: varchar("room", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type WeeklyScheduleEntry = typeof weeklyScheduleEntries.$inferSelect;
+export type InsertWeeklyScheduleEntry = typeof weeklyScheduleEntries.$inferInsert;
+
+/**
  * Annual plans (الخطط السنوية)
  */
 export const annualPlans = mysqlTable("annualPlans", {
