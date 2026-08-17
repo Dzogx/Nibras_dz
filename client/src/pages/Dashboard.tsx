@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Clock,
   BarChart3,
+  MoreHorizontal,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const statCards = [
   { icon: GraduationCap, label: "الأقسام", path: "/classes", color: "bg-brand-ink-100 text-brand-ink-700" },
@@ -140,230 +149,94 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* نقطة العمل الأساسية: تجعل الخطوة التالية للأستاذ واضحة من أول شاشة */}
+      {/* نقطة العمل الأساسية: يقود نبراس الأستاذ إلى خطوة اليوم الواحدة. */}
       <Card className="overflow-hidden border-primary/20 shadow-md">
-        <CardContent className="p-0">
-          <div className="grid lg:grid-cols-[1.45fr_0.85fr]">
-            <div className="p-5 md:p-6 bg-gradient-to-bl from-brand-ink-900 via-brand-ink-800 to-brand-ink-700 text-white">
-              <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-wax-400 text-brand-ink-950 font-bold">1</span>
-                  <div>
-                    <p className="text-xs text-white/70">مساحة العمل اليومية</p>
-                    <h2 className="font-bold text-lg">ابدأ حصتك الآن</h2>
-                  </div>
-                </div>
-                <div className="w-full sm:w-60">
-                  <Select
-                    value={activeClassId?.toString()}
-                    onValueChange={(value) => {
-                      setFollowSchedule(false);
-                      setSelectedClassId(Number(value));
-                    }}
-                  >
-                    <SelectTrigger className="h-9 border-white/25 bg-white/10 text-white [&>svg]:text-white" aria-label="اختيار القسم للحصة اليومية">
-                      <SelectValue placeholder="اختر القسم" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {classes?.map((classItem) => (
-                        <SelectItem key={classItem.id} value={classItem.id.toString()}>
-                          {classItem.name} — {classItem.gradeLevel}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <CardContent className="p-5 md:p-6 bg-gradient-to-bl from-brand-ink-900 via-brand-ink-800 to-brand-ink-700 text-white">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-wax-400 text-brand-ink-950 font-bold">1</span>
+              <div>
+                <p className="text-xs text-white/70">مساحة العمل اليومية</p>
+                <h2 className="font-bold text-lg">خطوتك التالية</h2>
               </div>
-
-              {needsScheduleSetup && (
-                <div className="mb-4 flex flex-col gap-2 rounded-xl border border-brand-wax-300/40 bg-brand-wax-300/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-start gap-2 text-white/90">
-                    <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-wax-300" />
-                    <span>لم تُضف جدول خدمتك بعد. أعدّه مرة واحدة ليقترح نبراس حصة اليوم تلقائياً.</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="shrink-0 border-brand-wax-300/60 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                    onClick={() => setLocation("/season-setup")}
-                  >
-                    إعداد جدولي الأسبوعي
+            </div>
+            {classes && classes.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                    <MoreHorizontal className="ml-1 h-4 w-4" />تغيير القسم
                   </Button>
-                </div>
-              )}
-
-              {hasDailySession ? (
-                <>
-                  <p className="text-sm text-white/70 mb-1">
-                    {activeClass?.name} · {activePlan?.subject || activeClass?.gradeLevel}
-                  </p>
-                  {scheduledSlot && followSchedule && (
-                    <div className="mb-3 flex items-center gap-2 text-xs text-white/80">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>حصة اليوم {scheduledSlot.startTime}–{scheduledSlot.endTime}{scheduledSlot.room ? ` · القاعة ${scheduledSlot.room}` : ""}</span>
-                      <button
-                        type="button"
-                        className="underline underline-offset-2 hover:text-white"
-                        onClick={() => setFollowSchedule(false)}
-                      >
-                        اختر قسماً آخر
-                      </button>
-                    </div>
-                  )}
-                  <h3 className="text-xl md:text-2xl font-bold leading-relaxed">
-                    {dailySituation?.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-white/80 mt-3 flex-wrap">
-                    <span className="rounded-md bg-white/10 px-2.5 py-1">
-                      المقطع {dailySection?.number}: {dailySection?.title}
-                    </span>
-                    <span className="rounded-md bg-white/10 px-2.5 py-1">وضعية غير منجزة</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-5">
-                    <Button
-                      className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
-                      onClick={() => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id))}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-56">
+                  <DropdownMenuLabel>اختيار قسم آخر</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {classes.map((classItem) => (
+                    <DropdownMenuItem
+                      key={classItem.id}
+                      onSelect={() => {
+                        setFollowSchedule(false);
+                        setSelectedClassId(classItem.id);
+                      }}
                     >
-                      <Sparkles className="w-4 h-4 ml-2" />حضّر المذكرة
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="border-emerald-300/45 bg-emerald-500/15 text-white hover:bg-emerald-500/25 hover:text-white"
-                      onClick={() => setFinishSessionOpen(true)}
-                    >
-                      <CheckCircle2 className="w-4 h-4 ml-2" />أنهِ الحصة
-                    </Button>
-                  </div>
-                </>
-              ) : activeClass ? (
-                <div className="py-3">
-                  <h3 className="text-xl font-bold">لا توجد وضعية معلّقة في هذا القسم</h3>
-                  <p className="text-sm text-white/75 mt-2">راجِع الخطة أو أنشئ وضعية تعلمية جديدة لتبدأ الحصة التالية.</p>
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    <Button
-                      className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
-                      onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}
-                    >
-                      <ClipboardList className="w-4 h-4 ml-2" />الذهاب إلى الخطة
-                    </Button>
-                    {needsScheduleSetup && (
-                      <Button
-                        variant="outline"
-                        className="border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white"
-                        onClick={() => setLocation("/season-setup")}
-                      >
-                        <Clock className="w-4 h-4 ml-2" />إعداد جدولي الأسبوعي
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="py-3">
-                  <h3 className="text-xl font-bold">ابدأ بتعريف قسمك</h3>
-                  <p className="text-sm text-white/75 mt-2">بعد إضافة القسم والخطة، سيقترح نبراس الحصة التالية تلقائياً.</p>
-                  <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}>
-                    <Plus className="w-4 h-4 ml-2" />تهيئة الموسم الدراسي
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-card p-5 md:p-6">
-              <p className="text-xs font-semibold text-primary mb-1">نقرات الحصة السريعة</p>
-              <h3 className="font-bold text-lg mb-4">نفّذ الخطوة التالية فقط</h3>
-              <ol className="space-y-3">
-                {[
-                  {
-                    label: "حضّر المذكرة",
-                    detail: hasDailySession ? "جاهزة بعنوان الوضعية الرسمية" : "اختر قسمًا وخطة أولاً",
-                    ready: hasDailySession,
-                    onClick: () => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id)),
-                  },
-                  {
-                    label: "سجّل الإنجاز",
-                    detail: "نقرة واحدة بعد تنفيذ الحصة",
-                    ready: hasDailySession,
-                    onClick: () => setFinishSessionOpen(true),
-                  },
-                  {
-                    label: "أنشئ التقويم",
-                    detail: lastCompletedSituation ? "يبنى من آخر وضعية منجزة" : "يتاح بعد تسجيل إنجاز وضعية",
-                    ready: Boolean(lastCompletedSituation),
-                    onClick: () => lastCompletedSituation && setLocation(buildQuickAssessmentPath(lastCompletedSituation.id, activeClassId)),
-                  },
-                  {
-                    label: "شخّص النتائج والعلاج",
-                    detail: "سجّل النتائج ثم أنشئ نشاط الدعم",
-                    ready: Boolean(activeClassId),
-                    onClick: () => setLocation("/results"),
-                  },
-                ].map((step, index) => (
-                  <li key={step.label} className="flex gap-3 items-start">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="h-auto w-full justify-start gap-3 whitespace-normal p-0 text-right hover:bg-transparent disabled:opacity-55"
-                      disabled={!step.ready}
-                      onClick={step.onClick}
-                    >
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold ${step.ready ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                        {index + 1}
-                      </span>
-                      <span>
-                        <span className="block text-sm font-semibold">{step.label}</span>
-                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">{step.detail}</span>
-                      </span>
-                    </Button>
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-5 rounded-lg bg-muted/70 p-3 text-xs leading-relaxed text-muted-foreground">
-                لا يُنشئ نبراس تقويماً من دروس غير مسجّلة كمنجزة، حتى يبقى التقويم مرتبطاً بما دُرّس فعلياً.
-              </p>
-            </div>
+                      {classItem.name} — {classItem.gradeLevel}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
-        </CardContent>
-      </Card>
 
-      <Card className="border-primary/15">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-primary">مهامي السريعة</p>
-              <CardTitle className="mt-1 text-xl">ماذا تريد أن تنشئ الآن؟</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">يعتمد كل إجراء على القسم والوضعية الظاهرين أعلاه؛ لا تعِد إدخال المعلومات نفسها.</p>
+          {needsScheduleSetup && (
+            <div className="mt-5 flex flex-col gap-2 rounded-xl border border-brand-wax-300/40 bg-brand-wax-300/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-2 text-white/90">
+                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-wax-300" />
+                <span>أضف جدول خدمتك مرة واحدة ليقترح نبراس الحصة تلقائياً.</span>
+              </div>
+              <Button size="sm" variant="outline" className="shrink-0 border-brand-wax-300/60 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setLocation("/season-setup")}>
+                إعداد الجدول
+              </Button>
             </div>
-            {activeClass && <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium">{activeClass.name}</span>}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!dailySituation} onClick={() => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id))}>
-              <Sparkles className="ml-3 h-5 w-5 shrink-0 text-primary" />
-              <span><b className="block">أنشئ مذكرة</b><span className="mt-1 block text-xs font-normal text-muted-foreground">للوضعية التالية في خطتك</span></span>
-            </Button>
-            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!contextualSituation} onClick={() => contextualSituation && setLocation(`/lesson-generator?situationId=${contextualSituation.id}&contentType=activity`)}>
-              <BookOpen className="ml-3 h-5 w-5 shrink-0 text-primary" />
-              <span><b className="block">أنشئ نشاطاً أو مورداً</b><span className="mt-1 block text-xs font-normal text-muted-foreground">مرتبطاً بالوضعية المحددة</span></span>
-            </Button>
-            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!lastCompletedSituation || !activeClassId} onClick={() => lastCompletedSituation && activeClassId && setLocation(buildQuickAssessmentPath(lastCompletedSituation.id, activeClassId))}>
-              <ClipboardList className="ml-3 h-5 w-5 shrink-0 text-primary" />
-              <span><b className="block">أنشئ تقويماً</b><span className="mt-1 block text-xs font-normal text-muted-foreground">بناءً على آخر وضعية منجزة</span></span>
-            </Button>
-            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!contextualSituation} onClick={() => contextualSituation && setLocation(buildQuickIntegrativeSituationPath(contextualSituation.id, activeClassId))}>
-              <Target className="ml-3 h-5 w-5 shrink-0 text-primary" />
-              <span><b className="block">أنشئ وضعية إدماجية</b><span className="mt-1 block text-xs font-normal text-muted-foreground">مسودة قابلة للتحرير والطباعة</span></span>
-            </Button>
-            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!activeClassId} onClick={() => activeClassId && setLocation(`/results?classId=${activeClassId}`)}>
-              <BarChart3 className="ml-3 h-5 w-5 shrink-0 text-primary" />
-              <span><b className="block">سجّل النتائج</b><span className="mt-1 block text-xs font-normal text-muted-foreground">للقسم المحدد مباشرة</span></span>
-            </Button>
-            <Button variant="outline" className="h-auto min-h-20 justify-start whitespace-normal px-4 py-3 text-right" disabled={!lastCompletedSituation || !activeClassId} onClick={() => activeClassId && setLocation(`/results?classId=${activeClassId}&action=remediation`)}>
-              <CheckCircle2 className="ml-3 h-5 w-5 shrink-0 text-primary" />
-              <span><b className="block">عالج صعوبات</b><span className="mt-1 block text-xs font-normal text-muted-foreground">من النتائج إلى نشاط صفي</span></span>
-            </Button>
-          </div>
-          {!lastCompletedSituation && activeClass && <p className="mt-3 text-xs text-muted-foreground">سيُفعّل التقويم والعلاج تلقائياً بعد تسجيل إنجاز أول وضعية في هذا القسم.</p>}
+          )}
+
+          {hasDailySession ? (
+            <div className="pt-7">
+              <p className="text-sm text-white/70">{activeClass?.name} · {activePlan?.subject || activeClass?.gradeLevel}</p>
+              {scheduledSlot && followSchedule && <p className="mt-2 flex items-center gap-2 text-xs text-white/80"><Clock className="h-3.5 w-3.5" />حصة اليوم {scheduledSlot.startTime}–{scheduledSlot.endTime}{scheduledSlot.room ? ` · القاعة ${scheduledSlot.room}` : ""}</p>}
+              <h3 className="mt-3 text-xl font-bold leading-relaxed md:text-2xl">{dailySituation?.title}</h3>
+              <p className="mt-2 text-sm text-white/80">المقطع {dailySection?.number}: {dailySection?.title}</p>
+              <div className="mt-6 flex flex-wrap items-center gap-2">
+                <Button className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id))}>
+                  <Sparkles className="ml-2 h-4 w-4" />حضّر مذكرة الحصة
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" className="text-white hover:bg-white/10 hover:text-white"><MoreHorizontal className="ml-1 h-4 w-4" />المزيد</Button></DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-60">
+                    <DropdownMenuLabel>إجراءات مرتبطة بهذه الحصة</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={() => setFinishSessionOpen(true)}><CheckCircle2 />سجّل إنجاز الحصة</DropdownMenuItem>
+                    <DropdownMenuItem disabled={!contextualSituation} onSelect={() => contextualSituation && setLocation(`/lesson-generator?situationId=${contextualSituation.id}&contentType=activity`)}><BookOpen />أنشئ نشاطاً أو مورداً</DropdownMenuItem>
+                    <DropdownMenuItem disabled={!contextualSituation} onSelect={() => contextualSituation && setLocation(buildQuickIntegrativeSituationPath(contextualSituation.id, activeClassId))}><Target />أنشئ وضعية إدماجية</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem disabled={!lastCompletedSituation || !activeClassId} onSelect={() => lastCompletedSituation && activeClassId && setLocation(buildQuickAssessmentPath(lastCompletedSituation.id, activeClassId))}><ClipboardList />أنشئ تقويماً</DropdownMenuItem>
+                    <DropdownMenuItem disabled={!activeClassId} onSelect={() => activeClassId && setLocation(`/results?classId=${activeClassId}`)}><BarChart3 />سجّل النتائج أو عالج الصعوبات</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <p className="mt-4 text-xs text-white/65">ابدأ بالمذكرة، ثم سجّل الإنجاز بعد الحصة. تظهر الإجراءات التالية عند الحاجة.</p>
+            </div>
+          ) : activeClass ? (
+            <div className="pt-7">
+              <h3 className="text-xl font-bold">لا توجد وضعية معلّقة في هذا القسم</h3>
+              <p className="mt-2 text-sm text-white/75">راجع الخطة أو أضف وضعية تعلمية لتصبح الخطوة التالية واضحة.</p>
+              <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}><ClipboardList className="ml-2 h-4 w-4" />الذهاب إلى الخطة</Button>
+            </div>
+          ) : (
+            <div className="pt-7">
+              <h3 className="text-xl font-bold">ابدأ بتهيئة موسمك الدراسي</h3>
+              <p className="mt-2 text-sm text-white/75">أضف أقسامك وجدولك، وسيتولى نبراس اقتراح الحصة التالية.</p>
+              <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Plus className="ml-2 h-4 w-4" />تهيئة الموسم الدراسي</Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
