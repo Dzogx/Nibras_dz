@@ -594,14 +594,25 @@ export async function deleteLearningSituation(id: number) {
   await db.delete(learningSituations).where(eq(learningSituations.id, id));
 }
 
-export async function toggleLearningSituationCompleted(id: number, isCompleted: boolean, notes?: string | null) {
+export async function toggleLearningSituationCompleted(
+  id: number,
+  isCompleted: boolean,
+  notes?: string | null,
+  sessionStatus?: "completed" | "partial" | "postponed" | "cancelled" | null,
+) {
   const db = await getDb();
   if (!db) return;
-  const set: { isCompleted: boolean; completedDate: Date | null; completionNotes: string | null } = {
+  const set: {
+    isCompleted: boolean;
+    completedDate: Date | null;
+    completionNotes: string | null;
+    sessionStatus?: "completed" | "partial" | "postponed" | "cancelled" | null;
+  } = {
     isCompleted,
     completedDate: isCompleted ? new Date() : null,
     completionNotes: notes ?? null,
   };
+  if (sessionStatus !== undefined) set.sessionStatus = sessionStatus;
   await db.update(learningSituations).set(set).where(eq(learningSituations.id, id));
 }
 

@@ -299,6 +299,7 @@ export const learningSituations = mysqlTable("learningSituations", {
   isCompleted: boolean("isCompleted").default(false).notNull(),
   completedDate: timestamp("completedDate"),
   completionNotes: text("completionNotes"),
+  sessionStatus: mysqlEnum("sessionStatus", ["completed", "partial", "postponed", "cancelled"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

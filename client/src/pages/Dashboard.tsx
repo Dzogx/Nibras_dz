@@ -12,6 +12,9 @@ import {
   Clock,
   BarChart3,
   MoreHorizontal,
+  PauseCircle,
+  CalendarClock,
+  XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +40,45 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+type SessionStatus = "completed" | "partial" | "postponed" | "cancelled";
+
+const sessionStatusOptions: Array<{
+  value: SessionStatus;
+  label: string;
+  guidance: string;
+  actionLabel: string;
+  icon: typeof CheckCircle2;
+}> = [
+  {
+    value: "completed",
+    label: "مكتملة",
+    guidance: "أُنجزت عناصر الوضعية، ويمكنك الانتقال إلى التقويم أو الوضعية التالية.",
+    actionLabel: "سجّل الحصة مكتملة",
+    icon: CheckCircle2,
+  },
+  {
+    value: "partial",
+    label: "منجزة جزئياً",
+    guidance: "تبقى الوضعية مفتوحة لتستكمل عناصرها في الحصة القادمة.",
+    actionLabel: "سجّل الإنجاز الجزئي",
+    icon: PauseCircle,
+  },
+  {
+    value: "postponed",
+    label: "مؤجّلة",
+    guidance: "تبقى الوضعية مفتوحة؛ أعد برمجتها في أقرب حصة مناسبة.",
+    actionLabel: "سجّل تأجيل الحصة",
+    icon: CalendarClock,
+  },
+  {
+    value: "cancelled",
+    label: "ملغاة",
+    guidance: "يُحفظ سبب الإلغاء إن وجد، وتبقى الوضعية مفتوحة لتقرر موعد إعادتها.",
+    actionLabel: "سجّل إلغاء الحصة",
+    icon: XCircle,
+  },
+];
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -65,6 +107,7 @@ export default function Dashboard() {
   const [followSchedule, setFollowSchedule] = useState(true);
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
   const utils = trpc.useUtils();
   const scheduledSlot = useMemo(() => getScheduledSlotForNow(weeklySchedule), [weeklySchedule]);
   const preferredClassId = selectedClassId && classes?.some((classItem) => classItem.id === selectedClassId)
@@ -102,10 +145,30 @@ export default function Dashboard() {
       ]);
       setFinishSessionOpen(false);
       setSessionNote("");
-      toast.success(result.noteSaved ? "سُجّلت الحصة وملاحظة الأستاذ." : "سُجّلت الحصة كمنجزة.");
+      setSessionStatus("completed");
+      const successMessage: Record<SessionStatus, string> = {
+        completed: result.noteSaved ? "سُجّلت الحصة مكتملة وحُفظت ملاحظتك." : "سُجّلت الحصة مكتملة. يمكنك الانتقال إلى التقويم أو الوضعية التالية.",
+        partial: "سُجّل الإنجاز الجزئي. تبقى الوضعية مفتوحة لتستكملها في الحصة القادمة.",
+        postponed: "سُجّل تأجيل الحصة. تبقى الوضعية مفتوحة لإعادة برمجتها.",
+        cancelled: "سُجّل إلغاء الحصة. تبقى الوضعية مفتوحة لتحديد موعد جديد لها.",
+      };
+      toast.success(successMessage[result.sessionStatus]);
     },
     onError: (error) => toast.error(error.message || "تعذر تسجيل انتهاء الحصة."),
   });
+
+  const openFinishSessionDialog = () => {
+    setSessionStatus("completed");
+    setSessionNote("");
+    setFinishSessionOpen(true);
+  };
+  const closeFinishSessionDialog = () => {
+    setFinishSessionOpen(false);
+    setSessionStatus("completed");
+    setSessionNote("");
+  };
+  const selectedSessionStatus = sessionStatusOptions.find((option) => option.value === sessionStatus)!;
+  const SelectedSessionStatusIcon = selectedSessionStatus.icon;
 
 
   return (
@@ -192,7 +255,7 @@ export default function Dashboard() {
                   <DropdownMenuContent align="start" className="min-w-60">
                     <DropdownMenuLabel>إجراءات مرتبطة بهذه الحصة</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => setFinishSessionOpen(true)}><CheckCircle2 />سجّل إنجاز الحصة</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={openFinishSessionDialog}><CheckCircle2 />سجّل نتيجة الحصة</DropdownMenuItem>
                     <DropdownMenuItem disabled={!contextualSituation} onSelect={() => contextualSituation && setLocation(`/lesson-generator?situationId=${contextualSituation.id}&contentType=activity`)}><BookOpen />أنشئ نشاطاً أو مورداً</DropdownMenuItem>
                     <DropdownMenuItem disabled={!contextualSituation} onSelect={() => contextualSituation && setLocation(buildQuickIntegrativeSituationPath(contextualSituation.id, activeClassId))}><Target />أنشئ وضعية إدماجية</DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -201,7 +264,7 @@ export default function Dashboard() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <p className="mt-4 text-xs text-white/65">{readyLessonPlan ? "مذكرتك جاهزة لهذه الوضعية. افتحها ثم سجّل الإنجاز بعد الحصة." : "ابدأ بالمذكرة، ثم سجّل الإنجاز بعد الحصة. تظهر الإجراءات التالية عند الحاجة."}</p>
+              <p className="mt-4 text-xs text-white/65">{readyLessonPlan ? "مذكرتك جاهزة لهذه الوضعية. افتحها ثم سجّل نتيجة الحصة بعد تنفيذها." : "ابدأ بالمذكرة، ثم سجّل نتيجة الحصة. تظهر الإجراءات التالية عند الحاجة."}</p>
             </div>
           ) : needsScheduleSetup ? (
             <div className="pt-7">
@@ -226,29 +289,52 @@ export default function Dashboard() {
         </CardContent>
       </Card>
 
-      <Dialog open={finishSessionOpen} onOpenChange={setFinishSessionOpen}>
+      <Dialog open={finishSessionOpen} onOpenChange={(open) => open ? setFinishSessionOpen(true) : closeFinishSessionDialog()}>
         <DialogContent className="sm:max-w-lg" dir="rtl">
           <DialogHeader>
             <DialogTitle>إنهاء الحصة وتحديث المتابعة</DialogTitle>
             <DialogDescription>
-              ستُسجَّل «{dailySituation?.title}» كمنجزة. أضف ملاحظة مختصرة إن وجدت؛ تحفظ في دفتر الأستاذ.
+              حدّد ما جرى في «{dailySituation?.title}». {selectedSessionStatus.guidance}
             </DialogDescription>
           </DialogHeader>
+          <div className="grid grid-cols-2 gap-2" aria-label="حالة الحصة">
+            {sessionStatusOptions.map((option) => {
+              const StatusIcon = option.icon;
+              const isSelected = sessionStatus === option.value;
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant="outline"
+                  aria-pressed={isSelected}
+                  onClick={() => setSessionStatus(option.value)}
+                  className={`h-auto min-h-16 justify-start gap-2 whitespace-normal px-3 py-3 text-right leading-snug ${
+                    isSelected
+                      ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
+                      : "border-border bg-background text-foreground hover:bg-muted"
+                  }`}
+                >
+                  <StatusIcon className="h-4 w-4 shrink-0" />
+                  <span>{option.label}</span>
+                </Button>
+              );
+            })}
+          </div>
           <Textarea
             value={sessionNote}
             onChange={(event) => setSessionNote(event.target.value)}
-            placeholder="مثال: يحتاج التلاميذ إلى مراجعة قراءة الخريطة في بداية الحصة القادمة."
+            placeholder={sessionStatus === "completed" ? "مثال: يحتاج التلاميذ إلى مراجعة قراءة الخريطة في بداية الحصة القادمة." : "مثال: ما الذي أُنجز أو سبب التأجيل، وما الذي ستستكمله في الحصة القادمة؟"}
             className="min-h-28 resize-y"
             maxLength={3000}
           />
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setFinishSessionOpen(false)}>متابعة الحصة</Button>
+            <Button variant="outline" onClick={closeFinishSessionDialog}>العودة للحصة</Button>
             <Button
-              onClick={() => dailySituation && completeSessionMutation.mutate({ situationId: dailySituation.id, note: sessionNote || undefined })}
+              onClick={() => dailySituation && completeSessionMutation.mutate({ situationId: dailySituation.id, note: sessionNote || undefined, sessionStatus })}
               disabled={!dailySituation || completeSessionMutation.isPending}
             >
-              <CheckCircle2 className="w-4 h-4 ml-2" />
-              {completeSessionMutation.isPending ? "جارٍ الحفظ…" : "سجّل الحصة منجزة"}
+              <SelectedSessionStatusIcon className="w-4 h-4 ml-2" />
+              {completeSessionMutation.isPending ? "جارٍ الحفظ…" : selectedSessionStatus.actionLabel}
             </Button>
           </DialogFooter>
         </DialogContent>

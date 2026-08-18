@@ -1574,18 +1574,21 @@ ${rulesContext}
       return { success: true } as const;
     }),
     toggleCompleted: protectedProcedure.input(z.object({ id: z.number(), isCompleted: z.boolean() })).mutation(async ({ input }) => {
-      await toggleLearningSituationCompleted(input.id, input.isCompleted);
+      await toggleLearningSituationCompleted(input.id, input.isCompleted, undefined, input.isCompleted ? "completed" : null);
       return { success: true } as const;
     }),
     completeSession: protectedProcedure.input(z.object({
       situationId: z.number(),
       note: z.string().trim().max(3000).optional(),
+      sessionStatus: z.enum(["completed", "partial", "postponed", "cancelled"]).optional(),
     })).mutation(async ({ ctx, input }) => {
       const situations = await getLearningSituationsByUserId(ctx.user.id);
       const situation = situations.find((item) => item.id === input.situationId);
       if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
 
-      await toggleLearningSituationCompleted(situation.id, true);
+      const sessionStatus = input.sessionStatus ?? "completed";
+      const isCompleted = sessionStatus === "completed";
+      await toggleLearningSituationCompleted(situation.id, isCompleted, input.note, sessionStatus);
       if (input.note) {
         await createTeachingNote({
           userId: ctx.user.id,
@@ -1594,7 +1597,7 @@ ${rulesContext}
           noteType: "session_reflection",
         } as any);
       }
-      return { success: true, noteSaved: Boolean(input.note) } as const;
+      return { success: true, noteSaved: Boolean(input.note), sessionStatus, isCompleted } as const;
     }),
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
       await deleteLearningSituation(input.id);

@@ -78,13 +78,38 @@ describe("Full Pedagogical Loop E2E", () => {
       note: "احتاج التلاميذ إلى دعم إضافي في ترتيب الأحداث زمنياً.",
     });
 
-    expect(result).toEqual({ success: true, noteSaved: true });
-    expect(db.toggleLearningSituationCompleted).toHaveBeenCalledWith(17, true);
+    expect(result).toEqual({ success: true, noteSaved: true, sessionStatus: "completed", isCompleted: true });
+    expect(db.toggleLearningSituationCompleted).toHaveBeenCalledWith(
+      17,
+      true,
+      "احتاج التلاميذ إلى دعم إضافي في ترتيب الأحداث زمنياً.",
+      "completed",
+    );
     expect(db.createTeachingNote).toHaveBeenCalledWith(expect.objectContaining({
       userId: 1,
       title: "ملاحظة حصة: التحولات السياسية في الجزائر",
       content: "احتاج التلاميذ إلى دعم إضافي في ترتيب الأحداث زمنياً.",
     }));
+  });
+
+  it("يبقي الوضعية مفتوحة عندما تؤجّل الحصة", async () => {
+    const caller = appRouter.createCaller(mockContext as any);
+    vi.mocked(db.getLearningSituationsByUserId).mockResolvedValue([{
+      id: 17,
+      title: "التحولات السياسية في الجزائر",
+      sectionId: 4,
+      isCompleted: false,
+    }] as any);
+    vi.mocked(db.toggleLearningSituationCompleted).mockResolvedValue(undefined);
+
+    const result = await caller.situations.completeSession({
+      situationId: 17,
+      sessionStatus: "postponed",
+    });
+
+    expect(result).toEqual({ success: true, noteSaved: false, sessionStatus: "postponed", isCompleted: false });
+    expect(db.toggleLearningSituationCompleted).toHaveBeenCalledWith(17, false, undefined, "postponed");
+    expect(db.createTeachingNote).not.toHaveBeenCalled();
   });
 
   it("should create a class, plan, section, situation, lesson, and generate assessment", async () => {

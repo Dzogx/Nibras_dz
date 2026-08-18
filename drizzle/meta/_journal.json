@@ -43,6 +43,13 @@
       "when": 1786972313216,
       "tag": "0005_faithful_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787015000183,
+      "tag": "0006_chemical_eddie_brock",
+      "breakpoints": true
     }
   ]
 }

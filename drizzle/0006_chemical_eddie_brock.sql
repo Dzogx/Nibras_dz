@@ -1,0 +1,1 @@
+ALTER TABLE `learningSituations` ADD `sessionStatus` enum('completed','partial','postponed','cancelled');
