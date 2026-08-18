@@ -75,9 +75,18 @@ vi.mock("./_core/llm", () => ({
   invokeLLM: vi.fn(),
 }));
 
+vi.mock("./latex/compileLatex", () => {
+  class LatexCompilationError extends Error {}
+  return {
+    compileLatexToPdf: vi.fn(),
+    LatexCompilationError,
+  };
+});
+
 import * as db from "./db";
 // invokeLLM is mocked at the top of this file
 import { invokeLLM } from "./_core/llm";
+import { compileLatexToPdf } from "./latex/compileLatex";
 import {
   getAssessmentRule,
   getExamStructure,
@@ -1079,6 +1088,32 @@ describe("ai.exportAssessmentLatex", () => {
     expect(result.compiler).toBe("xelatex");
     expect(result.texContent).toContain("\\setmainlanguage{arabic}");
     expect(result.texContent).toContain("اختبار الفصل الأول");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+});
+
+describe("ai.exportAssessmentPdf", () => {
+  beforeEach(resetMocks);
+
+  it("يعيد ملف PDF جاهزاً من القالب العربي دون تثبيت أو استدعاء مزود ذكاء اصطناعي", async () => {
+    const pdf = Buffer.from("%PDF-1.7\nNibras assessment\n", "utf8");
+    (compileLatexToPdf as any).mockResolvedValue(pdf);
+    const caller = appRouter.createCaller(createMockContext());
+
+    const result = await caller.ai.exportAssessmentPdf({
+      title: "اختبار الفصل الأول",
+      content: "1. حدّد الموقع الجغرافي للجزائر.",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "exam",
+      totalPoints: 20,
+      assessmentDate: "2026-10-04",
+    });
+
+    expect(result.filename).toBe("nibras-assessment-2026-10-04.pdf");
+    expect(result.mimeType).toBe("application/pdf");
+    expect(result.pdfBase64).toBe(pdf.toString("base64"));
+    expect(compileLatexToPdf).toHaveBeenCalledWith(expect.stringContaining("\\setmainlanguage{arabic}"));
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,8 @@
 /**
  * قالب إخراج LaTeX للتقويم التحصيلي في نبراس.
  *
- * يعيد هذا الملف مصدراً نصياً فقط؛ لا يمرر أي مدخل للمترجم ولا ينفّذ أي أمر
- * LaTeX يأتي من الأستاذ أو من مخرج نموذج الذكاء الاصطناعي. يستطيع الأستاذ
- * فتح الملف في محرر يدعم XeLaTeX مثل Overleaf أو TeXstudio لإنتاج PDF عالي الدقة.
+ * يحضّر هذا الملف مصدراً مهرباً وآمناً ليجمعه خادم نبراس إلى PDF. لا يمرر أي
+ * مدخل للمترجم ولا ينفّذ أي أمر LaTeX يأتي من الأستاذ أو من مخرج الذكاء الاصطناعي.
  */
 
 export type AssessmentLatexInput = {
@@ -125,18 +124,18 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\end{minipage}}`;
 
   return `% Nibras Print System — Assessment Template
-% Compile with XeLaTeX. Required packages: polyglossia, fontspec, geometry, array, longtable, fancyhdr.
+% Compiled securely by Nibras with XeLaTeX. Required packages: polyglossia, fontspec, geometry, array, longtable, fancyhdr.
 % Title: ${escapeForComment(input.title)}
 \\documentclass[12pt,a4paper]{article}
 \\usepackage[a4paper,margin=1.8cm,headheight=18pt]{geometry}
 \\usepackage{fontspec}
+\\usepackage{xcolor}
+\\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage}
 \\usepackage{polyglossia}
 \\setmainlanguage{arabic}
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
 \\newfontfamily\\englishfont{Latin Modern Roman}
-\\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage}
-\\usepackage{xcolor}
 \\definecolor{NibrasInk}{HTML}{17324D}
 \\definecolor{NibrasLight}{HTML}{EAF2F3}
 \\setlength{\\parindent}{0pt}

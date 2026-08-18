@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileCode2 } from "lucide-react";
+import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
@@ -249,9 +249,11 @@ export default function Assessment() {
     onError: () => toast.error("خطأ في التوليد"),
   });
 
-  const exportLatexMutation = trpc.ai.exportAssessmentLatex.useMutation({
+  const exportPdfMutation = trpc.ai.exportAssessmentPdf.useMutation({
     onSuccess: (data) => {
-      const file = new Blob([data.texContent], { type: "application/x-tex;charset=utf-8" });
+      const binary = atob(data.pdfBase64);
+      const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+      const file = new Blob([bytes], { type: data.mimeType });
       const objectUrl = URL.createObjectURL(file);
       const link = document.createElement("a");
       link.href = objectUrl;
@@ -260,9 +262,9 @@ export default function Assessment() {
       link.click();
       link.remove();
       URL.revokeObjectURL(objectUrl);
-      toast.success("تم تنزيل قالب LaTeX. افتحه بـ XeLaTeX أو Overleaf للطباعة عالية الدقة.");
+      toast.success("تم تنزيل PDF جاهز للطباعة.");
     },
-    onError: () => toast.error("تعذر تجهيز قالب LaTeX الآن"),
+    onError: (error) => toast.error(error.message || "تعذر تجهيز ملف PDF الآن"),
   });
 
   const handleGenerate = useCallback(() => {
@@ -291,9 +293,9 @@ export default function Assessment() {
     toast.success("تم النسخ");
   };
 
-  const downloadLatexTemplate = () => {
+  const downloadReadyPdf = () => {
     if (!generated) return;
-    exportLatexMutation.mutate({
+    exportPdfMutation.mutate({
       title: form.title || `اختبار في ${form.subject}`,
       content: generated,
       subject: form.subject,
@@ -665,9 +667,9 @@ export default function Assessment() {
                   <Button variant="outline" size="sm" onClick={printContent}>
                     <Printer className="w-4 h-4 ml-1" />طباعة A4
                   </Button>
-                  <Button variant="outline" size="sm" onClick={downloadLatexTemplate} disabled={exportLatexMutation.isPending} title="ينزّل ملفاً قابلاً للفتح بـ XeLaTeX أو Overleaf">
-                    {exportLatexMutation.isPending ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <FileCode2 className="w-4 h-4 ml-1" />}
-                    تصدير LaTeX
+                  <Button variant="outline" size="sm" onClick={downloadReadyPdf} disabled={exportPdfMutation.isPending} title="ينزّل ملف PDF جاهزاً للطباعة دون أي تثبيت إضافي">
+                    {exportPdfMutation.isPending ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <FileDown className="w-4 h-4 ml-1" />}
+                    {form.assessmentType === "answerKey" ? "تنزيل نموذج الإجابة PDF" : "تنزيل التقويم PDF"}
                   </Button>
                   {resourceId && (
                     <Button size="sm" onClick={() => setLocation(`/content-library/${resourceId}`)}>
@@ -724,7 +726,7 @@ export default function Assessment() {
                   </div>
                 )}
                 <div className="print-container">
-                  <p className="mb-3 text-xs leading-5 text-muted-foreground print:hidden">للطباعة الاحترافية القابلة للتحرير: نزّل قالب LaTeX ثم افتحه بـ <span dir="ltr">XeLaTeX</span> أو <span dir="ltr">Overleaf</span>.</p>
+                  <p className="mb-3 text-xs leading-5 text-muted-foreground print:hidden">نزّل ملف PDF جاهزاً للطباعة عالية الدقة؛ لا تحتاج إلى تثبيت أي برنامج أو فتح ملف تقني.</p>
                   <Button variant="outline" size="sm" className="print:hidden ml-2" onClick={() => setPreviewOpen(true)}>
                     <Eye className="w-4 h-4 ml-1" />
                     معاينة

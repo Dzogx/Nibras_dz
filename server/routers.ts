@@ -37,6 +37,7 @@ import {
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 import { buildSeasonReadiness } from "../shared/seasonReadiness";
 import { buildAssessmentLatexDocument } from "./latex/assessmentTemplate";
+import { compileLatexToPdf, LatexCompilationError } from "./latex/compileLatex";
 
 /**
  * يتحقق من بنية استجابة مزود الذكاء الاصطناعي وقت التشغيل.
@@ -1516,6 +1517,42 @@ ${rulesContext}
         texContent,
         compiler: "xelatex" as const,
       };
+    }),
+
+    /**
+     * يعيد ملف PDF جاهزاً للطباعة من القالب العربي. يعمل التجميع داخل الخادم
+     * فقط؛ لا يحتاج الأستاذ إلى تثبيت LaTeX أو فتح ملف مصدر.
+     */
+    exportAssessmentPdf: protectedProcedure.input(z.object({
+      title: z.string().min(1).max(200),
+      content: z.string().min(1).max(100_000),
+      subject: z.string().min(1).max(80),
+      gradeLevel: z.string().min(1).max(80),
+      assessmentType: z.enum(["quiz", "exam", "rubric", "answerKey"]),
+      topic: z.string().max(300).optional(),
+      duration: z.string().max(80).optional(),
+      totalPoints: z.number().positive().max(100).optional(),
+      teacherName: z.string().max(160).optional(),
+      school: z.string().max(200).optional(),
+      className: z.string().max(80).optional(),
+      assessmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }).strict()).mutation(async ({ input }) => {
+      try {
+        const texContent = buildAssessmentLatexDocument(input);
+        const pdfBuffer = await compileLatexToPdf(texContent);
+        const datePart = input.assessmentDate || new Date().toISOString().slice(0, 10);
+        const kind = input.assessmentType === "answerKey" ? "answer-key" : "assessment";
+        return {
+          filename: `nibras-${kind}-${datePart}.pdf`,
+          pdfBase64: pdfBuffer.toString("base64"),
+          mimeType: "application/pdf" as const,
+        };
+      } catch (error) {
+        if (error instanceof LatexCompilationError) {
+          throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: error.message });
+        }
+        throw error;
+      }
     }),
 
     // ─── National Rules API ────────────────────────────────────
