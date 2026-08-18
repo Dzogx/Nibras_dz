@@ -5,12 +5,21 @@
  * مدخل للمترجم ولا ينفّذ أي أمر LaTeX يأتي من الأستاذ أو من مخرج الذكاء الاصطناعي.
  */
 
+export const ASSESSMENT_PRINT_THEMES = {
+  nibras: { label: "هوية نبراس", ink: "17324D", light: "EAF2F3", accent: "B6752B" },
+  official: { label: "رسمي اقتصادي", ink: "25364B", light: "F2F4F7", accent: "52677E" },
+  mono: { label: "أبيض وأسود", ink: "000000", light: "F4F4F4", accent: "000000" },
+} as const;
+
+export type AssessmentPrintTheme = keyof typeof ASSESSMENT_PRINT_THEMES;
+
 export type AssessmentLatexInput = {
   title: string;
   content: string;
   subject: string;
   gradeLevel: string;
   assessmentType: "quiz" | "exam" | "rubric" | "answerKey";
+  printTheme?: AssessmentPrintTheme;
   topic?: string;
   duration?: string;
   totalPoints?: number;
@@ -107,6 +116,7 @@ function escapeForComment(value: string): string {
 }
 
 export function buildAssessmentLatexDocument(input: AssessmentLatexInput): string {
+  const theme = ASSESSMENT_PRINT_THEMES[input.printTheme ?? "nibras"];
   const title = formatInline(input.title);
   const topic = input.topic ? formatInline(input.topic) : "—";
   const school = input.school ? formatInline(input.school) : "........................................";
@@ -136,8 +146,9 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
 \\newfontfamily\\englishfont{Latin Modern Roman}
-\\definecolor{NibrasInk}{HTML}{17324D}
-\\definecolor{NibrasLight}{HTML}{EAF2F3}
+\\definecolor{NibrasInk}{HTML}{${theme.ink}}
+\\definecolor{NibrasLight}{HTML}{${theme.light}}
+\\definecolor{NibrasAccent}{HTML}{${theme.accent}}
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{0.45em}
 \\renewcommand{\\arraystretch}{1.45}
@@ -152,7 +163,8 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\begin{center}
 {\\large\\bfseries الجمهورية الجزائرية الديمقراطية الشعبية}\\\\
 وزارة التربية الوطنية\\\\[0.6em]
-{\\color{NibrasInk}\\LARGE\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[0.35em]
+{\\color{NibrasInk}\\LARGE\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[0.15em]
+{\\small\\color{NibrasAccent} ${theme.label}}\\\\[0.2em]
 {\\large\\bfseries ${title}}
 \\end{center}
 

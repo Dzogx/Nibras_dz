@@ -42,4 +42,15 @@ describe("buildAssessmentLatexDocument", () => {
     expect(latex).toContain("نموذج الإجابة وسلم التنقيط");
     expect(latex).not.toContain("اللقب والاسم");
   });
+
+  it.each([
+    ["nibras", "17324D", "هوية نبراس"],
+    ["official", "25364B", "رسمي اقتصادي"],
+    ["mono", "000000", "أبيض وأسود"],
+  ] as const)("يضمّن نمط %s الطباعي في ألوان وترويسة القالب", (printTheme, ink, label) => {
+    const latex = buildAssessmentLatexDocument({ ...baseInput, printTheme });
+
+    expect(latex).toContain(`\\definecolor{NibrasInk}{HTML}{${ink}}`);
+    expect(latex).toContain(label);
+  });
 });

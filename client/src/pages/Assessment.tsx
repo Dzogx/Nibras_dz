@@ -10,12 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileDown } from "lucide-react";
+import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileDown, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
 import { A4PrintButton, A4PrintContent } from '@/components/A4Print';
 import { PrintPreviewDialog } from '@/components/PrintPreviewDialog';
+import { PdfPreviewDialog } from '@/components/PdfPreviewDialog';
 import { Eye } from "lucide-react";
 import { LLM_MODEL_OPTIONS } from "@shared/llm-models";
 
@@ -27,6 +28,17 @@ const assessmentTypes = [
   { value: "rubric", label: "معايير تقييم" },
   { value: "answerKey", label: "مفتاح إجابات" },
 ];
+
+const printThemes = [
+  { value: "nibras", label: "هوية نبراس", description: "كحلي هادئ وتمييز نحاسي خفيف" },
+  { value: "official", label: "رسمي اقتصادي", description: "تدرج هادئ واضح للطباعة اليومية" },
+  { value: "mono", label: "أبيض وأسود", description: "تباين عالٍ للنسخ الاقتصادي" },
+] as const;
+
+type PrintTheme = (typeof printThemes)[number]["value"];
+
+const LATEX_DEMO_PDF_URL = "/manus-storage/nibras-latex-demo_b01925b9.pdf";
+const LATEX_DEMO_PDF_FILENAME = "nibras-latex-demo.pdf";
 
 function classIdFromSearch(): number | undefined {
   if (typeof window === "undefined") return undefined;
@@ -67,6 +79,9 @@ export default function Assessment() {
   const [selectedLessonIds, setSelectedLessonIds] = useState<number[]>([]);
   const [selectedCompetencies, setSelectedCompetencies] = useState<string[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ url: string; filename: string; objectUrl: boolean } | null>(null);
+  const [printTheme, setPrintTheme] = useState<PrintTheme>("nibras");
   const linkedSituationId = situationIdFromSearch();
 
   // المورد المولّد في استوديو التقييم (لتمرير الرقم التسلسلي إلى الترويسة)
@@ -249,23 +264,25 @@ export default function Assessment() {
     onError: () => toast.error("خطأ في التوليد"),
   });
 
-  const exportPdfMutation = trpc.ai.exportAssessmentPdf.useMutation({
-    onSuccess: (data) => {
+  const preparePdfBlob = useCallback((data: { pdfBase64: string; mimeType: string; filename: string }) => {
       const binary = atob(data.pdfBase64);
       const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
       const file = new Blob([bytes], { type: data.mimeType });
-      const objectUrl = URL.createObjectURL(file);
+      return { file, objectUrl: URL.createObjectURL(file), filename: data.filename };
+  }, []);
+
+  const downloadPdf = useCallback((file: Blob, filename: string, objectUrl?: string) => {
+      const url = objectUrl ?? URL.createObjectURL(file);
       const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = data.filename;
+      link.href = url;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(objectUrl);
-      toast.success("تم تنزيل PDF جاهز للطباعة.");
-    },
-    onError: (error) => toast.error(error.message || "تعذر تجهيز ملف PDF الآن"),
-  });
+      if (!objectUrl) URL.revokeObjectURL(url);
+  }, []);
+
+  const exportPdfMutation = trpc.ai.exportAssessmentPdf.useMutation();
 
   const handleGenerate = useCallback(() => {
     const selectedOfficialSituation = form.situationIds.length === 1
@@ -293,22 +310,69 @@ export default function Assessment() {
     toast.success("تم النسخ");
   };
 
+  const getPdfPayload = () => ({
+    title: form.title || `اختبار في ${form.subject}`,
+    content: generated,
+    subject: form.subject,
+    gradeLevel: form.gradeLevel,
+    assessmentType: form.assessmentType as "quiz" | "exam" | "rubric" | "answerKey",
+    printTheme,
+    topic: form.topic || undefined,
+    duration: rulesInfo?.duration || form.duration || undefined,
+    totalPoints: rulesInfo?.totalPoints,
+    teacherName: profile?.displayName || undefined,
+    school: profile?.school || undefined,
+    className: selectedClass?.name || undefined,
+    assessmentDate: new Date().toISOString().slice(0, 10),
+  });
+
   const downloadReadyPdf = () => {
     if (!generated) return;
-    exportPdfMutation.mutate({
-      title: form.title || `اختبار في ${form.subject}`,
-      content: generated,
-      subject: form.subject,
-      gradeLevel: form.gradeLevel,
-      assessmentType: form.assessmentType as "quiz" | "exam" | "rubric" | "answerKey",
-      topic: form.topic || undefined,
-      duration: rulesInfo?.duration || form.duration || undefined,
-      totalPoints: rulesInfo?.totalPoints,
-      teacherName: profile?.displayName || undefined,
-      school: profile?.school || undefined,
-      className: selectedClass?.name || undefined,
-      assessmentDate: new Date().toISOString().slice(0, 10),
+    exportPdfMutation.mutate(getPdfPayload(), {
+      onSuccess: (data) => {
+        const pdf = preparePdfBlob(data);
+        downloadPdf(pdf.file, pdf.filename, pdf.objectUrl);
+        toast.success("تم تنزيل PDF جاهز للطباعة.");
+      },
+      onError: (error) => toast.error(error.message || "تعذر تجهيز ملف PDF الآن"),
     });
+  };
+
+  const previewReadyPdf = () => {
+    if (!generated) return;
+    exportPdfMutation.mutate(getPdfPayload(), {
+      onSuccess: (data) => {
+        const pdf = preparePdfBlob(data);
+        setPdfPreview((previous) => {
+          if (previous?.objectUrl) URL.revokeObjectURL(previous.url);
+          return { url: pdf.objectUrl, filename: pdf.filename, objectUrl: true };
+        });
+        setPdfPreviewOpen(true);
+      },
+      onError: (error) => toast.error(error.message || "تعذر تجهيز ملف PDF الآن"),
+    });
+  };
+
+  const previewLatexDemo = () => {
+    setPdfPreview((previous) => {
+      if (previous?.objectUrl) URL.revokeObjectURL(previous.url);
+      return { url: LATEX_DEMO_PDF_URL, filename: LATEX_DEMO_PDF_FILENAME, objectUrl: false };
+    });
+    setPdfPreviewOpen(true);
+  };
+
+  const downloadPreviewPdf = () => {
+    if (!pdfPreview) return;
+    if (pdfPreview.objectUrl) {
+      downloadPdf(new Blob(), pdfPreview.filename, pdfPreview.url);
+      return;
+    }
+    const link = document.createElement("a");
+    link.href = pdfPreview.url;
+    link.download = pdfPreview.filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
   const printContent = () => {
@@ -726,7 +790,22 @@ export default function Assessment() {
                   </div>
                 )}
                 <div className="print-container">
-                  <p className="mb-3 text-xs leading-5 text-muted-foreground print:hidden">نزّل ملف PDF جاهزاً للطباعة عالية الدقة؛ لا تحتاج إلى تثبيت أي برنامج أو فتح ملف تقني.</p>
+                  <div className="mb-3 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                      <Label className="mb-1 flex items-center gap-1.5 text-xs"><Palette className="h-3.5 w-3.5" />هوية ملف PDF</Label>
+                      <p className="text-xs leading-5 text-muted-foreground">اختر نمط الطباعة ثم عاين النسخة النهائية أو نزّلها؛ لا تحتاج إلى تثبيت أي برنامج.</p>
+                    </div>
+                    <Select value={printTheme} onValueChange={(value) => setPrintTheme(value as PrintTheme)}>
+                      <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {printThemes.map((theme) => <SelectItem key={theme.value} value={theme.value}>{theme.label} — {theme.description}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button variant="outline" size="sm" className="print:hidden ml-2" onClick={previewReadyPdf} disabled={exportPdfMutation.isPending}>
+                    {exportPdfMutation.isPending ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <Eye className="w-4 h-4 ml-1" />}
+                    معاينة PDF
+                  </Button>
                   <Button variant="outline" size="sm" className="print:hidden ml-2" onClick={() => setPreviewOpen(true)}>
                     <Eye className="w-4 h-4 ml-1" />
                     معاينة
@@ -750,6 +829,14 @@ export default function Assessment() {
                     <Streamdown>{generated}</Streamdown>
                   </div>
                 </PrintPreviewDialog>
+                <PdfPreviewDialog
+                  open={pdfPreviewOpen}
+                  onOpenChange={setPdfPreviewOpen}
+                  pdfUrl={pdfPreview?.url ?? null}
+                  filename={pdfPreview?.filename}
+                  isLoading={exportPdfMutation.isPending}
+                  onDownload={downloadPreviewPdf}
+                />
               </div>
             ) : (
               <div className="text-center py-12 text-muted-foreground">
@@ -762,6 +849,13 @@ export default function Assessment() {
                 <div className="mt-2 flex items-center justify-center gap-2 text-xs text-muted-foreground">
                   <ListChecks className="w-4 h-4" />
                   <span>الدروس المنجزة تُستورد من Teacher OS</span>
+                </div>
+                <div className="mt-6 rounded-xl border border-dashed border-brand-copper-200 bg-brand-copper-50/40 p-4 text-right">
+                  <p className="text-sm font-semibold text-brand-ink-900">هل تريد رؤية النتيجة أولاً؟</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">اعرض نموذجاً عربياً حقيقياً تم توليده من قالب نبراس LaTeX، دون تثبيت أي برنامج.</p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={previewLatexDemo}>
+                    <Eye className="w-4 h-4 ml-1" />عرض نموذج PDF من LaTeX
+                  </Button>
                 </div>
               </div>
             )}
