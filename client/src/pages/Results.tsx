@@ -13,6 +13,7 @@ import { Plus, BarChart3, TrendingDown, Lightbulb, Loader2, Trash2, AlertTriangl
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
+import { prepareFirstResultInput } from "@shared/teacher-journey";
 
 export default function Results() {
   const [, setLocation] = useLocation();
@@ -117,6 +118,16 @@ export default function Results() {
   });
 
   const utils = trpc.useUtils();
+  const selectedClass = seasonClasses.find((classItem) => classItem.id === selectedClassId);
+
+  const openFirstResult = () => {
+    setNewResult((current) => ({ ...current, ...prepareFirstResultInput({
+      totalStudents: current.totalStudents,
+      participatedStudents: current.participatedStudents,
+      classSize: selectedClass?.studentCount,
+    }) }));
+    setAddOpen(true);
+  };
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -161,7 +172,7 @@ export default function Results() {
                 تغيير القسم
               </Button>
               <h2 className="text-lg font-semibold">
-                {seasonClasses.find(c => c.id === selectedClassId)?.name || "القسم"}
+                {selectedClass?.name || "القسم"}
               </h2>
             </div>
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
@@ -267,8 +278,14 @@ export default function Results() {
                   ))}
                 </div>
               ) : (
-                <Card className="mt-4"><CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">لم يتم تسجيل أي نتائج بعد لهذا القسم.</p>
+                <Card className="mt-4 border-dashed"><CardContent className="p-8 text-center">
+                  <BarChart3 className="mx-auto mb-3 h-10 w-10 text-primary/45" />
+                  <p className="font-semibold">لم تُسجَّل نتائج لهذا القسم بعد</p>
+                  <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">ابدأ بالنتائج المجمعة لتقويم واحد؛ بعدها يحسب نبراس مواطن الضعف ويقترح علاجاً مرتبطاً بالوضعيات المنجزة.</p>
+                  <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+                    <Button onClick={openFirstResult}><Plus className="ml-2 h-4 w-4" />سجّل أول نتيجة</Button>
+                    <Button variant="outline" onClick={() => { setPreferredClassId(selectedClassId); setLocation("/assessment"); }}><NotebookPen className="ml-2 h-4 w-4" />أنشئ تقويماً للقسم</Button>
+                  </div>
                 </CardContent></Card>
               )}
             </TabsContent>

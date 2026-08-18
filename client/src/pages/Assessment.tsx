@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { prepareAssessmentFromCompletedLessons as buildPreparedAssessment } from "@shared/teacher-journey";
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
@@ -456,6 +457,26 @@ export default function Assessment() {
     );
   };
 
+  const prepareAssessmentFromCompletedLessons = () => {
+    const completedLessons = teacherOSContext?.completedLessons ?? [];
+    if (completedLessons.length === 0) {
+      toast.error("لا توجد دروس منجزة لهذا القسم بعد. سجّل إنجاز الحصة أولاً.");
+      return;
+    }
+    setForm((current) => ({
+      ...current,
+      ...buildPreparedAssessment({
+        className: selectedClass?.name,
+        lessonTitles: completedLessons.map((lesson) => lesson.title),
+        currentTitle: current.title,
+        currentTopic: current.topic,
+      }),
+    }));
+    setShowAdvanced(false);
+    toast.success(`جُهّز التقويم من ${completedLessons.length} درس منجز. راجع العنوان ثم ولّده.`);
+    document.getElementById("assessment-generate")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+
   const rule = assessmentRules?.[0];
 
   return (
@@ -476,6 +497,20 @@ export default function Assessment() {
                 {rule.weights.map((w: WeightInfo) => `${w.label}: ${w.points} نقطة`).join(" | ")} | المدة: {rule.duration} | المجموع: {rule.totalPoints} نقطة
               </span>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeSeasonClassId && (
+        <Card className="border-emerald-200 bg-emerald-50/60">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-emerald-950">تقويم من دروس {selectedClass?.name ?? "القسم"} المنجزة</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-900/75">يستورد نبراس الدروس المنجزة تلقائياً، ثم يطبق قواعد النقاط والمدة المناسبة للمستوى والمادة.</p>
+            </div>
+            <Button size="sm" className="shrink-0" onClick={prepareAssessmentFromCompletedLessons} disabled={!teacherOSContext?.completedLessons.length}>
+              <BookOpen className="ml-2 h-4 w-4" />{teacherOSContext?.completedLessons.length ? `استعمل ${teacherOSContext.completedLessons.length} درساً منجزاً` : "لا توجد دروس منجزة"}
+            </Button>
           </CardContent>
         </Card>
       )}
@@ -714,7 +749,7 @@ export default function Assessment() {
               </Button>
             )}
 
-            <Button className="w-full" onClick={handleGenerate} disabled={generateMutation.isPending || !form.title || !form.topic}>
+            <Button id="assessment-generate" className="w-full" onClick={handleGenerate} disabled={generateMutation.isPending || !form.title || !form.topic}>
               {generateMutation.isPending ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري التوليد...</> : <>
                 <Sparkles className="w-4 h-4 ml-2" />توليد التقييم
               </>}

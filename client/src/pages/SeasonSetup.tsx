@@ -224,6 +224,38 @@ export default function SeasonSetup() {
         </div>
       </div>
 
+      <Card className="border-primary/15 bg-primary/[0.025]">
+        <CardContent className="grid gap-3 p-3 sm:grid-cols-3 sm:p-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto justify-start border-primary/20 bg-background px-4 py-3 text-right"
+            onClick={() => document.getElementById("season-classes")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            <GraduationCap className="ml-3 h-5 w-5 shrink-0 text-primary" />
+            <span><span className="block text-sm font-semibold">1. أضف الأقسام</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{seasonClasses.length ? `${seasonClasses.length} أقسام جاهزة للموسم` : "ابدأ بقسمك الأول"}</span></span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto justify-start border-primary/20 bg-background px-4 py-3 text-right"
+            onClick={() => document.getElementById("weekly-schedule")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            <CalendarDays className="ml-3 h-5 w-5 shrink-0 text-primary" />
+            <span><span className="block text-sm font-semibold">2. ضع الحصص الأسبوعية</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{scheduledCount ? `${scheduledCount} حصة أُعدت` : "تاريخ وجغرافيا وتربية مدنية"}</span></span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-auto justify-start border-primary/20 bg-background px-4 py-3 text-right"
+            onClick={() => setLocation("/annual-plans")}
+          >
+            <BookCopy className="ml-3 h-5 w-5 shrink-0 text-primary" />
+            <span><span className="block text-sm font-semibold">3. انسخ المخططات</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">ليربط نبراس كل قسم بتقدمه الرسمي</span></span>
+          </Button>
+        </CardContent>
+      </Card>
+
       <Card className="overflow-hidden border-primary/15">
         <CardHeader className="border-b bg-primary/[0.035] pb-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -331,7 +363,7 @@ export default function SeasonSetup() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-muted-foreground">بعد الحفظ، ستستعمل صفحة «اليوم» هذا الجدول لاختيار الحصة التالية تلقائياً.</p><Button onClick={saveSchedule} disabled={saveScheduleMutation.isPending || seasonClasses.length === 0}><CheckCircle2 className="ml-2 h-4 w-4" />{saveScheduleMutation.isPending ? "جارٍ الحفظ…" : "حفظ جدول الخدمة"}</Button></div>
+            <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-muted-foreground">بعد الحفظ، ستستعمل صفحة «اليوم» هذا الجدول لاختيار الحصة التالية تلقائياً.</p><div className="flex flex-col gap-2 sm:flex-row"><Button variant="outline" onClick={() => setLocation("/annual-plans")} disabled={seasonClasses.length === 0}><BookCopy className="ml-2 h-4 w-4" />الخطوة التالية: المخططات</Button><Button onClick={saveSchedule} disabled={saveScheduleMutation.isPending || seasonClasses.length === 0}><CheckCircle2 className="ml-2 h-4 w-4" />{saveScheduleMutation.isPending ? "جارٍ الحفظ…" : "حفظ جدول الخدمة"}</Button></div></div>
           </CardContent>
         </Card>
       </div>
