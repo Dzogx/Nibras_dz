@@ -1510,6 +1510,8 @@ ${rulesContext}
       school: z.string().max(200).optional(),
       className: z.string().max(80).optional(),
       assessmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      serialNumber: z.string().regex(/^NIBRAS-\d{4}-\d{5,}$/).max(32).optional(),
+      verifyUrl: z.string().url().max(512).regex(/^https?:\/\/[A-Za-z0-9._~:/?=+-]+$/).optional(),
     }).strict()).mutation(({ input }) => {
       const texContent = buildAssessmentLatexDocument(input);
       const datePart = input.assessmentDate || new Date().toISOString().slice(0, 10);
@@ -1538,6 +1540,8 @@ ${rulesContext}
       school: z.string().max(200).optional(),
       className: z.string().max(80).optional(),
       assessmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      serialNumber: z.string().regex(/^NIBRAS-\d{4}-\d{5,}$/).max(32).optional(),
+      verifyUrl: z.string().url().max(512).regex(/^https?:\/\/[A-Za-z0-9._~:/?=+-]+$/).optional(),
     }).strict()).mutation(async ({ input }) => {
       try {
         const texContent = buildAssessmentLatexDocument(input);

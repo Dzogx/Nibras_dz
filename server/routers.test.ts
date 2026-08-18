@@ -1108,12 +1108,15 @@ describe("ai.exportAssessmentPdf", () => {
       assessmentType: "exam",
       totalPoints: 20,
       assessmentDate: "2026-10-04",
+      serialNumber: "NIBRAS-2026-00010",
+      verifyUrl: "https://app.nibras.dz/verify?serial=NIBRAS-2026-00010",
     });
 
     expect(result.filename).toBe("nibras-assessment-2026-10-04.pdf");
     expect(result.mimeType).toBe("application/pdf");
     expect(result.pdfBase64).toBe(pdf.toString("base64"));
     expect(compileLatexToPdf).toHaveBeenCalledWith(expect.stringContaining("\\setmainlanguage{arabic}"));
+    expect(compileLatexToPdf).toHaveBeenCalledWith(expect.stringContaining("\\NibrasQrCode{https://app.nibras.dz/verify?serial=NIBRAS-2026-00010}"));
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 });

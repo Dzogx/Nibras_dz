@@ -27,6 +27,10 @@ export type AssessmentLatexInput = {
   school?: string;
   className?: string;
   assessmentDate?: string;
+  /** رقم إصدار محفوظ في مكتبة المحتوى؛ يظهر في أسفل ورقة التقويم فقط. */
+  serialNumber?: string;
+  /** رابط تحقق عام ASCII؛ يُشفّر داخل رمز QR ولا يعرض محتوى الإجابة. */
+  verifyUrl?: string;
 };
 
 function escapeLatex(value: string): string {
@@ -115,6 +119,17 @@ function escapeForComment(value: string): string {
   return value.replace(/[\r\n%]/g, " ").trim();
 }
 
+/** لا تمرر حزمة qrcode إلا رابط تحقق HTTP(S) مكوّناً من محارف آمنة فقط. */
+function isSafeQrUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    const allowedCharacters = new RegExp("^[A-Za-z0-9._~:/?=+-]+$");
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") && allowedCharacters.test(value);
+  } catch {
+    return false;
+  }
+}
+
 export function buildAssessmentLatexDocument(input: AssessmentLatexInput): string {
   const theme = ASSESSMENT_PRINT_THEMES[input.printTheme ?? "nibras"];
   const title = formatInline(input.title);
@@ -125,6 +140,16 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
   const date = input.assessmentDate ? formatInline(input.assessmentDate) : ".... / .... / ........";
   const duration = input.duration ? formatInline(input.duration) : "................................";
   const points = input.totalPoints ? `${input.totalPoints} نقطة` : "................................";
+  const canShowVerificationQr = (input.assessmentType === "quiz" || input.assessmentType === "exam")
+    && Boolean(input.serialNumber)
+    && Boolean(input.verifyUrl)
+    && isSafeQrUrl(input.verifyUrl!);
+  const verificationQr = canShowVerificationQr
+    ? `\\\\[0.55em]
+\\begin{english}
+\\NibrasQrCode{${input.verifyUrl}}{\\scriptsize\\ttfamily\\hspace{0.6em}${escapeLatex(input.serialNumber!)}}
+\\end{english}`
+    : "";
   const studentBlock = input.assessmentType === "answerKey" || input.assessmentType === "rubric"
     ? ""
     : `
@@ -141,6 +166,7 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\usepackage{fontspec}
 \\usepackage{xcolor}
 \\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage}
+\\usepackage{qrcode}
 \\usepackage{polyglossia}
 \\setmainlanguage{arabic}
 \\setotherlanguage{english}
@@ -149,6 +175,15 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\definecolor{NibrasInk}{HTML}{${theme.ink}}
 \\definecolor{NibrasLight}{HTML}{${theme.light}}
 \\definecolor{NibrasAccent}{HTML}{${theme.accent}}
+% تمنع هذه الحاوية المحلية تحويل عدادات qrcode إلى أرقام عربية أثناء الحساب.
+\\makeatletter
+\\newcommand{\\NibrasQrCode}[1]{%
+  \\begingroup
+  \\let\\@arabic\\xpg@save@arabic
+  \\qrcode[height=1.2cm]{#1}%
+  \\endgroup
+}
+\\makeatother
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{0.45em}
 \\renewcommand{\\arraystretch}{1.45}
@@ -187,7 +222,7 @@ ${markdownToLatex(input.content)}
 
 \\vfill
 \\begin{center}
-\\small\\textcolor{NibrasInk}{نبراس — قالب طباعي احترافي | المجموع: ${points}}
+\\small\\textcolor{NibrasInk}{نبراس — قالب طباعي احترافي | المجموع: ${points}}${verificationQr}
 \\end{center}
 \\end{document}
 `;

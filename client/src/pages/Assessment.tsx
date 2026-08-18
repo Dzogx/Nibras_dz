@@ -324,6 +324,10 @@ export default function Assessment() {
     school: profile?.school || undefined,
     className: selectedClass?.name || undefined,
     assessmentDate: new Date().toISOString().slice(0, 10),
+    serialNumber: currentResource?.serialNumber || undefined,
+    verifyUrl: currentResource?.serialNumber && typeof window !== "undefined"
+      ? `${window.location.origin}/verify?serial=${encodeURIComponent(currentResource.serialNumber)}`
+      : undefined,
   });
 
   const downloadReadyPdf = () => {
