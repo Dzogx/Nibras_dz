@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, Copy, GraduationCap, Plus, Users } from "lucide-react";
+import { BookCopy, CalendarDays, CheckCircle2, ChevronLeft, CircleAlert, ClipboardList, Clock3, Copy, GraduationCap, ListChecks, Plus, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,9 +61,9 @@ export default function SeasonSetup() {
   }, [profile?.academicYear]);
 
   const { data: classes = [], isLoading: classesLoading } = trpc.classes.list.useQuery();
-  const { data: plans = [] } = trpc.annualPlans.list.useQuery({ academicYear });
   const { data: savedSchedule = [], isLoading: scheduleLoading } = trpc.weeklySchedule.get.useQuery({ academicYear });
   const { data: scheduleSeasons = [] } = trpc.weeklySchedule.listSeasons.useQuery();
+  const { data: readiness, isLoading: readinessLoading } = trpc.seasonReadiness.get.useQuery({ academicYear });
   const previousScheduleSeasons = useMemo(
     () => scheduleSeasons.filter((season) => season !== academicYear),
     [scheduleSeasons, academicYear],
@@ -73,9 +73,9 @@ export default function SeasonSetup() {
     () => classes.filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
     [classes, academicYear],
   );
-  const linkedPlanClassIds = useMemo(
-    () => new Set(plans.filter((plan) => !plan.isReference && Boolean(plan.classId)).map((plan) => plan.classId)),
-    [plans],
+  const readinessByClass = useMemo(
+    () => new Map((readiness?.items ?? []).map((item) => [item.classId, item])),
+    [readiness],
   );
 
   useEffect(() => {
@@ -106,6 +106,7 @@ export default function SeasonSetup() {
   const createClassMutation = trpc.classes.create.useMutation({
     onSuccess: async () => {
       await utils.classes.list.invalidate();
+      await utils.seasonReadiness.get.invalidate({ academicYear });
       setClassDraft({ name: "", gradeLevel: GRADE_LEVELS[0], subject: SUBJECTS[0], studentCount: "" });
       toast.success("أُضيف القسم. يمكنك وضعه الآن في جدول الخدمة.");
     },
@@ -115,6 +116,7 @@ export default function SeasonSetup() {
   const saveScheduleMutation = trpc.weeklySchedule.save.useMutation({
     onSuccess: async (result) => {
       await utils.weeklySchedule.get.invalidate({ academicYear });
+      await utils.seasonReadiness.get.invalidate({ academicYear });
       toast.success(`حُفظ جدول الخدمة: ${result.count} حصة أسبوعية.`);
     },
     onError: (error) => toast.error(error.message || "تعذر حفظ جدول الخدمة."),
@@ -125,6 +127,7 @@ export default function SeasonSetup() {
       await Promise.all([
         utils.weeklySchedule.get.invalidate({ academicYear }),
         utils.weeklySchedule.listSeasons.invalidate(),
+        utils.seasonReadiness.get.invalidate({ academicYear }),
       ]);
       setScheduleInitialized(false);
       toast.success(`نُسخ جدول موسم ${previousSeason}: ${result.count} حصة. راجعه ثم احفظ التعديلات إن وجدت.`);
@@ -221,8 +224,32 @@ export default function SeasonSetup() {
         </div>
       </div>
 
+      <Card className="overflow-hidden border-primary/15">
+        <CardHeader className="border-b bg-primary/[0.035] pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-primary"><ListChecks className="h-5 w-5" /><span className="text-sm font-semibold">فحص البداية</span></div>
+              <CardTitle className="mt-1 text-lg">هل موسمك جاهز للاستعمال اليومي؟</CardTitle>
+              <CardDescription>لكل قسم ثلاث حصص أسبوعية وثلاثة مخططات صفية: تاريخ وجغرافيا وتربية مدنية.</CardDescription>
+            </div>
+            {!readinessLoading && readiness && <span className={`rounded-full px-3 py-1 text-xs font-semibold ${readiness.incompleteClasses === 0 && readiness.totalClasses > 0 ? "bg-emerald-100 text-emerald-800" : "bg-brand-wax-100 text-brand-ink-800"}`}>{readiness.readyClasses}/{readiness.totalClasses} أقسام مكتملة</span>}
+          </div>
+        </CardHeader>
+        <CardContent className="p-4">
+          {readinessLoading ? <p className="text-sm text-muted-foreground">جارٍ فحص جاهزية الموسم…</p> : !readiness || readiness.totalClasses === 0 ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm leading-6 text-muted-foreground">أضف أول قسم لتظهر قائمة جاهزيته للموسم.</p><Button size="sm" onClick={() => document.getElementById("season-classes")?.scrollIntoView({ behavior: "smooth", block: "start" })}>أضف قسماً</Button></div>
+          ) : readiness.incompleteClasses === 0 ? (
+            <div className="flex gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><p className="text-sm leading-6">كل الأقسام مكتملة: الجداول والمخططات الصفية جاهزة. يمكنك الانتقال إلى خطة اليوم.</p></div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-2">
+              {readiness.items.map((item) => item.isReady ? <div key={item.classId} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" /><span>{item.className}: مكتمل</span></div> : <div key={item.classId} className="rounded-xl border bg-muted/20 p-3"><div className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0 text-brand-wax-500" /><p className="font-semibold text-sm">{item.className}</p></div><div className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">{item.missingScheduleSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص الجدول: {item.missingScheduleSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => document.getElementById("weekly-schedule")?.scrollIntoView({ behavior: "smooth", block: "start" })}>أكمل الجدول</Button></div>}{item.missingPlanSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص المخطط: {item.missingPlanSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => setLocation("/annual-plans")}><BookCopy className="ml-1 h-3.5 w-3.5" />انسخ المخطط</Button></div>}</div></div>)}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 lg:grid-cols-[0.86fr_1.14fr]">
-        <Card>
+        <Card id="season-classes">
           <CardHeader className="pb-4">
             <div className="flex items-center gap-2 text-primary"><GraduationCap className="h-5 w-5" /><span className="text-sm font-semibold">1. الأقسام</span></div>
             <CardTitle className="text-lg">أقسامك في هذا الموسم</CardTitle>
@@ -242,20 +269,21 @@ export default function SeasonSetup() {
             </div>
 
             <div className="space-y-2" aria-live="polite">
-              {classesLoading ? <p className="text-sm text-muted-foreground">جارٍ تحميل الأقسام…</p> : seasonClasses.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">أضف أقسامك أولاً، ثم ضَعها في جدول الخدمة.</p> : seasonClasses.map((classItem) => (
-	                  <div key={classItem.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-	                    <div className="min-w-0"><p className="font-semibold">{classItem.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{classItem.gradeLevel} · {classItem.studentCount || "—"} تلميذاً</p><p className="mt-1 text-xs text-muted-foreground">الحصص الأسبوعية: {scheduledSubjectsByClass.get(classItem.id)?.size || 0}/3 مواد</p></div>
-                  {linkedPlanClassIds.has(classItem.id) ? <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-xs text-emerald-800">الخطة الصفية جاهزة</span> : <Button variant="outline" size="sm" onClick={() => setLocation("/annual-plans")}>
+            {classesLoading ? <p className="text-sm text-muted-foreground">جارٍ تحميل الأقسام…</p> : seasonClasses.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">أضف أقسامك أولاً، ثم ضَعها في جدول الخدمة.</p> : seasonClasses.map((classItem) => {
+              const classReadiness = readinessByClass.get(classItem.id);
+              return <div key={classItem.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+                <div className="min-w-0"><p className="font-semibold">{classItem.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{classItem.gradeLevel} · {classItem.studentCount || "—"} تلميذاً</p><p className="mt-1 text-xs text-muted-foreground">الحصص الأسبوعية: {scheduledSubjectsByClass.get(classItem.id)?.size || 0}/3 مواد</p></div>
+                {classReadiness?.missingPlanSubjects.length === 0 ? <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-xs text-emerald-800">المخططات الصفية مكتملة</span> : <Button variant="outline" size="sm" onClick={() => setLocation("/annual-plans")}>
                     <Copy className="ml-1.5 h-3.5 w-3.5" />نسخ من المرجع الرسمي
                   </Button>}
-                </div>
-              ))}
+              </div>;
+            })}
             </div>
-            {seasonClasses.some((classItem) => !linkedPlanClassIds.has(classItem.id)) && <p className="rounded-lg border border-dashed px-3 py-2 text-center text-xs leading-5 text-muted-foreground">اختر مخطط المستوى من المرجع الرسمي، ثم انسخه إلى القسم حتى يسجّل نبراس تقدمه بصورة مستقلة.</p>}
+            {seasonClasses.some((classItem) => readinessByClass.get(classItem.id)?.missingPlanSubjects.length) && <p className="rounded-lg border border-dashed px-3 py-2 text-center text-xs leading-5 text-muted-foreground">انسخ مخططات التاريخ والجغرافيا والتربية المدنية من المرجع إلى القسم حتى يسجّل نبراس التقدم بصورة مستقلة.</p>}
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden">
+	        <Card id="weekly-schedule" className="overflow-hidden">
 	          <CardHeader className="border-b bg-muted/25 pb-4">
 	            <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">2. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>لكل قسم ثلاث حصص: تاريخ وجغرافيا وتربية مدنية. التوقيت الافتراضي يتضمن الاستراحتين ويمكن تعديله عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
             {previousScheduleSeasons.length > 0 && (

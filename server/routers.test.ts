@@ -225,6 +225,50 @@ describe("weeklySchedule", () => {
   });
 });
 
+describe("seasonReadiness", () => {
+  beforeEach(resetMocks);
+
+  it("يرى القسم جاهزاً عندما تكتمل مواده الثلاث وجدوله ومخططاته الصفية", async () => {
+    (db.getClasses as any).mockResolvedValue([{ id: 7, name: "2 متوسط أ", gradeLevel: "السنة الثانية متوسط", academicYear: "2026-2027" }]);
+    (db.getAnnualPlans as any).mockResolvedValue([
+      { classId: 7, isReference: false, subject: "التاريخ والجغرافيا" },
+      { classId: 7, isReference: false, subject: "الجغرافيا" },
+      { classId: 7, isReference: false, subject: "التربية المدنية" },
+    ]);
+    (db.getWeeklyScheduleEntries as any).mockResolvedValue([
+      { classId: 7, subject: "التاريخ" },
+      { classId: 7, subject: "الجغرافيا" },
+      { classId: 7, subject: "التربية المدنية" },
+    ]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.seasonReadiness.get({ academicYear: "2026-2027" })).resolves.toMatchObject({
+      totalClasses: 1,
+      readyClasses: 1,
+      incompleteClasses: 0,
+      items: [{ classId: 7, isReady: true, missingScheduleSubjects: [], missingPlanSubjects: [] }],
+    });
+  });
+
+  it("يبين مواد الجدول والمخططات الناقصة للقسم قبل بداية الموسم", async () => {
+    (db.getClasses as any).mockResolvedValue([{ id: 7, name: "2 متوسط أ", academicYear: "2026-2027" }]);
+    (db.getAnnualPlans as any).mockResolvedValue([{ classId: 7, isReference: false, subject: "التاريخ والجغرافيا" }]);
+    (db.getWeeklyScheduleEntries as any).mockResolvedValue([{ classId: 7, subject: "التاريخ" }]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.seasonReadiness.get({ academicYear: "2026-2027" })).resolves.toMatchObject({
+      readyClasses: 0,
+      incompleteClasses: 1,
+      items: [{
+        classId: 7,
+        isReady: false,
+        missingScheduleSubjects: ["الجغرافيا", "التربية المدنية"],
+        missingPlanSubjects: ["الجغرافيا", "التربية المدنية"],
+      }],
+    });
+  });
+});
+
 describe("profile", () => {
   beforeEach(resetMocks);
 

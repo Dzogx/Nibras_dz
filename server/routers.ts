@@ -34,6 +34,7 @@ import {
   AI_ROLE_PRINCIPLE,
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
+import { buildSeasonReadiness } from "../shared/seasonReadiness";
 
 /**
  * يتحقق من بنية استجابة مزود الذكاء الاصطناعي وقت التشغيل.
@@ -346,6 +347,20 @@ export const appRouter = router({
         }));
 
       return await replaceWeeklyScheduleEntries(ctx.user.id, input.toAcademicYear, validEntries);
+    }),
+  }),
+
+  // ─── Season Readiness ───────────────────────────────────────
+  seasonReadiness: router({
+    get: protectedProcedure.input(z.object({
+      academicYear: z.string().min(4).max(16),
+    })).query(async ({ ctx, input }) => {
+      const [teacherClasses, plans, scheduleEntries] = await Promise.all([
+        getClasses(ctx.user.id),
+        getAnnualPlans(ctx.user.id, { academicYear: input.academicYear }),
+        getWeeklyScheduleEntries(ctx.user.id, input.academicYear),
+      ]);
+      return buildSeasonReadiness(teacherClasses, plans, scheduleEntries, input.academicYear);
     }),
   }),
 
