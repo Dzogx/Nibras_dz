@@ -1,0 +1,1 @@
+ALTER TABLE `annualPlans` ADD `isReference` boolean DEFAULT false NOT NULL;

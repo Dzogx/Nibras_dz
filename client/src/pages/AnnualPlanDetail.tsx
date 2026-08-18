@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle } from "lucide-react";
+import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle, Landmark } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState } from "react";
@@ -143,6 +143,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
   if (isLoading) return <div className="text-center py-12 text-muted-foreground">جاري التحميل...</div>;
   if (!plan) return <div className="text-center py-12">الخطة غير موجودة</div>;
 
+  const isReferencePlan = plan.isReference === true;
   const totalSituations = sections?.reduce((acc, s) => acc + (s.situations?.length || 0), 0) || 0;
   const completedSituations = sections?.reduce((acc, s) => acc + (s.situations?.filter(si => si.isCompleted).length || 0), 0) || 0;
 
@@ -158,13 +159,16 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
         {plan.subject && <Badge variant="secondary">{plan.subject}</Badge>}
         {plan.gradeLevel && <Badge variant="outline">{plan.gradeLevel}</Badge>}
         {plan.academicYear && <Badge variant="outline">{plan.academicYear}</Badge>}
+        {isReferencePlan && <Badge className="gap-1 bg-primary/15 text-primary hover:bg-primary/15"><Landmark className="h-3 w-3" />مرجع رسمي</Badge>}
         <span className="text-sm text-muted-foreground mr-2">
           {completedSituations}/{totalSituations} وضعية منجزة
         </span>
-        <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
+        {!isReferencePlan && <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
           <Pencil className="w-4 h-4 ml-1" />{isEditing ? "عرض" : "تحرير"}
-        </Button>
+        </Button>}
       </div>
+
+      {isReferencePlan && <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-sm leading-6 text-muted-foreground">هذا مخطط مرجعي رسمي للقراءة فقط. انسخه إلى أحد أقسامك من قائمة المخططات لتسجيل التقدم أو تعديل محتواه.</p>}
 
       {isEditing ? (
         <Card>
@@ -202,9 +206,9 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold">المقاطع والوضعيات التعليمية</h2>
         <Dialog open={addSectionOpen} onOpenChange={setAddSectionOpen}>
-          <DialogTrigger asChild>
+          {!isReferencePlan && <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 ml-1" />مقطع جديد</Button>
-          </DialogTrigger>
+          </DialogTrigger>}
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle>مقطع جديد</DialogTitle></DialogHeader>
             <div className="space-y-4">
@@ -262,7 +266,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                       </span>
                     </div>
                   </div>
-                  <div className="flex gap-1">
+                  <div className={isReferencePlan ? "hidden" : "flex gap-1"}>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -316,6 +320,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                           <Button
                             variant="outline"
                             size="sm"
+                            className={isReferencePlan ? "hidden" : undefined}
                             onClick={() => createLessonFromSituationMutation.mutate({ situationId: sit.id, classId: plan?.classId || undefined })}
                             disabled={createLessonFromSituationMutation.isPending}
                           >
@@ -325,13 +330,14 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                           <Button
                             variant={sit.isCompleted ? "secondary" : "outline"}
                             size="sm"
+                            className={isReferencePlan ? "hidden" : undefined}
                             onClick={() => sit.isCompleted ? toggleSituationMutation.mutate({ id: sit.id, isCompleted: false }) : openSessionDialog({ id: sit.id, title: sit.title })}
                             disabled={toggleSituationMutation.isPending}
                           >
                             {sit.isCompleted ? <Circle className="w-3.5 h-3.5 ml-1 text-green-600" /> : <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-muted-foreground" />}
                             {sit.isCompleted ? "إعادة فتح" : "سجّل نتيجة الحصة"}
                           </Button>
-                          {sit.isCompleted && (
+                          {!isReferencePlan && sit.isCompleted && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -344,7 +350,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="mr-auto"
+                            className={isReferencePlan ? "hidden" : "mr-auto"}
                             onClick={() => deleteSituationMutation.mutate({ id: sit.id })}
                             aria-label={`حذف ${sit.title}`}
                           >
@@ -356,11 +362,11 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
 
                     {/* Add situation button */}
                     <Dialog open={addSituationOpen && newSituation.sectionId === section.id} onOpenChange={open => { setAddSituationOpen(open); if (open) setNewSituation(prev => ({ ...prev, sectionId: section.id })); }}>
-                      <DialogTrigger asChild>
+                      {!isReferencePlan && <DialogTrigger asChild>
                         <Button variant="outline" size="sm" className="w-full">
                           <Plus className="w-3.5 h-3.5 ml-1" />إضافة وضعية تعليمية
                         </Button>
-                      </DialogTrigger>
+                      </DialogTrigger>}
                       <DialogContent className="max-w-md">
                         <DialogHeader><DialogTitle>وضعية تعليمية جديدة</DialogTitle></DialogHeader>
                         <div className="space-y-4">

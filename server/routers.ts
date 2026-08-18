@@ -12,14 +12,14 @@ import {
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
-  getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan,
+  getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, copyReferencePlanToClass,
   getLessons, getLessonById, createLesson, updateLesson, deleteLesson, toggleLessonCompleted,
   getTeachingNotes, createTeachingNote, updateTeachingNote, deleteTeachingNote,
   getAIResources, getAIResourceById,
   getAIResourceBySerial, createAIResource, updateAIResource, deleteAIResource, duplicateAIResource,
   getInspectorReviews, createInspectorReview, getInspectorReviewById,
   getAnnualPlanSections, getAnnualPlanSectionById, createAnnualPlanSection, updateAnnualPlanSection, deleteAnnualPlanSection,
-  getLearningSituations, getLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
+  getLearningSituations, getLearningSituationsByUserId, getPendingOperationalLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
 } from "./db";
 import {
@@ -62,6 +62,41 @@ function getLLMTextContent(response: unknown): string | undefined {
     if (textParts.trim().length > 0) return textParts;
   }
   return undefined;
+}
+
+/**
+ * تتحقق من أن المقطع تابع لخطة تشغيلية يملكها الأستاذ. تبقى المخططات المرجعية
+ * قابلة للقراءة والنسخ فقط، ولا يجوز تعديل بنيتها عبر إجراءات المقاطع التابعة.
+ */
+async function requireEditableSection(sectionId: number, userId: number) {
+  const section = await getAnnualPlanSectionById(sectionId);
+  if (!section) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "المقطع غير موجود" });
+  }
+
+  const plan = await getAnnualPlanById(section.annualPlanId);
+  if (!plan || plan.userId !== userId) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "المقطع غير موجود" });
+  }
+  if (plan.isReference) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن تعديل مقاطع المخطط المرجعي" });
+  }
+
+  return section;
+}
+
+/**
+ * تتحقق من أن الوضعية تابعة لخطة تشغيلية يملكها الأستاذ. لا يُسجَّل الإنجاز
+ * أو التأجيل أو أي تعديل آخر على البيانات المرجعية الأصلية.
+ */
+async function requireEditableSituation(situationId: number, userId: number) {
+  const situation = await getLearningSituationById(situationId);
+  if (!situation) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+  }
+
+  await requireEditableSection(situation.sectionId, userId);
+  return situation;
 }
 
 export const appRouter = router({
@@ -298,8 +333,10 @@ export const appRouter = router({
     }).optional()).query(async ({ ctx, input }) => {
       return await getAnnualPlans(ctx.user.id, input);
     }),
-    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
-      return await getAnnualPlanById(input.id);
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+      const plan = await getAnnualPlanById(input.id);
+      if (!plan || (plan.userId !== ctx.user.id && !plan.isReference)) throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
+      return plan;
     }),
     create: protectedProcedure.input(z.object({
       classId: z.number().optional(),
@@ -309,7 +346,18 @@ export const appRouter = router({
       title: z.string().optional(),
       content: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
-      return await createAnnualPlan({ userId: ctx.user.id, ...input } as any);
+      return await createAnnualPlan({ userId: ctx.user.id, ...input, isReference: false } as any);
+    }),
+    copyReferenceToClass: protectedProcedure.input(z.object({
+      referencePlanId: z.number(),
+      classId: z.number(),
+      academicYear: z.string().min(1),
+    })).mutation(async ({ ctx, input }) => {
+      const classItem = await getClassById(input.classId);
+      if (!classItem || classItem.userId !== ctx.user.id) throw new TRPCError({ code: "NOT_FOUND", message: "القسم غير موجود" });
+      const copied = await copyReferencePlanToClass(input.referencePlanId, ctx.user.id, input.classId, input.academicYear);
+      if (!copied) throw new TRPCError({ code: "NOT_FOUND", message: "المخطط المرجعي غير موجود" });
+      return copied;
     }),
     update: protectedProcedure.input(z.object({
       id: z.number(),
@@ -319,12 +367,16 @@ export const appRouter = router({
       academicYear: z.string().optional(),
       title: z.string().optional(),
       content: z.string().optional(),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
+      const plan = await getAnnualPlanById(id);
+      if (!plan || plan.userId !== ctx.user.id || plan.isReference) throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن تعديل المخطط المرجعي" });
       await updateAnnualPlan(id, data as any);
       return await getAnnualPlanById(id);
     }),
-    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      const plan = await getAnnualPlanById(input.id);
+      if (!plan || plan.userId !== ctx.user.id || plan.isReference) throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن حذف المخطط المرجعي" });
       await deleteAnnualPlan(input.id);
       return { success: true };
     }),
@@ -1488,6 +1540,13 @@ ${rulesContext}
       objectives: z.string().optional(),
       resources: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
+      const plan = await getAnnualPlanById(input.annualPlanId);
+      if (!plan || plan.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "الخطة غير موجودة" });
+      }
+      if (plan.isReference) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكن إضافة مقطع إلى المخطط المرجعي" });
+      }
       return await createAnnualPlanSection({ ...input, userId: ctx.user.id });
     }),
     update: protectedProcedure.input(z.object({
@@ -1498,11 +1557,13 @@ ${rulesContext}
       objectives: z.string().optional(),
       resources: z.string().optional(),
       isCompleted: z.boolean().optional(),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
+      await requireEditableSection(input.id, ctx.user.id);
       await updateAnnualPlanSection(input.id, input);
       return { success: true } as const;
     }),
-    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      await requireEditableSection(input.id, ctx.user.id);
       await deleteAnnualPlanSection(input.id);
       return { success: true } as const;
     }),
@@ -1550,8 +1611,7 @@ ${rulesContext}
     }),
     // كل الوضعيات المعلقة للمستخدم (لبطاقة «الدروس المعلقة» في لوحة التحكم)
     listPending: protectedProcedure.query(async ({ ctx }) => {
-      const all = await getLearningSituationsByUserId(ctx.user.id);
-      return all.filter((s) => !s.isCompleted);
+      return await getPendingOperationalLearningSituationsByUserId(ctx.user.id);
     }),
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return await getLearningSituationById(input.id);
@@ -1563,6 +1623,7 @@ ${rulesContext}
       objectives: z.string().optional(),
       content: z.string().optional(),
     })).mutation(async ({ ctx, input }) => {
+      await requireEditableSection(input.sectionId, ctx.user.id);
       return await createLearningSituation({ ...input, userId: ctx.user.id });
     }),
     update: protectedProcedure.input(z.object({
@@ -1571,14 +1632,13 @@ ${rulesContext}
       objectives: z.string().optional(),
       content: z.string().optional(),
       isCompleted: z.boolean().optional(),
-    })).mutation(async ({ input }) => {
+    })).mutation(async ({ ctx, input }) => {
+      await requireEditableSituation(input.id, ctx.user.id);
       await updateLearningSituation(input.id, input);
       return { success: true } as const;
     }),
     toggleCompleted: protectedProcedure.input(z.object({ id: z.number(), isCompleted: z.boolean() })).mutation(async ({ ctx, input }) => {
-      const situations = await getLearningSituationsByUserId(ctx.user.id);
-      const situation = situations.find((item) => item.id === input.id);
-      if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+      const situation = await requireEditableSituation(input.id, ctx.user.id);
       await toggleLearningSituationCompleted(situation.id, input.isCompleted, undefined, input.isCompleted ? "completed" : null);
       return { success: true } as const;
     }),
@@ -1587,9 +1647,7 @@ ${rulesContext}
       note: z.string().trim().max(3000).optional(),
       sessionStatus: z.enum(["completed", "partial", "postponed", "cancelled"]).optional(),
     })).mutation(async ({ ctx, input }) => {
-      const situations = await getLearningSituationsByUserId(ctx.user.id);
-      const situation = situations.find((item) => item.id === input.situationId);
-      if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+      const situation = await requireEditableSituation(input.situationId, ctx.user.id);
 
       const sessionStatus = input.sessionStatus ?? "completed";
       const isCompleted = sessionStatus === "completed";
@@ -1604,7 +1662,8 @@ ${rulesContext}
       }
       return { success: true, noteSaved: Boolean(input.note), sessionStatus, isCompleted } as const;
     }),
-    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ input }) => {
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      await requireEditableSituation(input.id, ctx.user.id);
       await deleteLearningSituation(input.id);
       return { success: true } as const;
     }),

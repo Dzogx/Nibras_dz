@@ -22,6 +22,9 @@ vi.mock("./db", () => ({
   getAnnualPlans: vi.fn(),
   getAnnualPlanById: vi.fn(),
   createAnnualPlan: vi.fn(),
+  updateAnnualPlan: vi.fn(),
+  deleteAnnualPlan: vi.fn(),
+  copyReferencePlanToClass: vi.fn(),
   getLessons: vi.fn(),
   getLessonById: vi.fn(),
   createLesson: vi.fn(),
@@ -41,9 +44,18 @@ vi.mock("./db", () => ({
   updateCurriculumDocument: vi.fn(),
   getAnnualPlanSections: vi.fn(),
   getAnnualPlanSectionById: vi.fn(),
+  createAnnualPlanSection: vi.fn(),
+  updateAnnualPlanSection: vi.fn(),
+  deleteAnnualPlanSection: vi.fn(),
   getLearningSituations: vi.fn(),
   getLearningSituationsByUserId: vi.fn(),
+  getPendingOperationalLearningSituationsByUserId: vi.fn(),
+  getLearningSituationById: vi.fn(),
+  createLearningSituation: vi.fn(),
+  updateLearningSituation: vi.fn(),
+  deleteLearningSituation: vi.fn(),
   toggleLearningSituationCompleted: vi.fn(),
+  createTeachingNote: vi.fn(),
   deleteCurriculumDocument: vi.fn(),
   updateLesson: vi.fn(),
   deleteLesson: vi.fn(),
@@ -111,12 +123,25 @@ describe("situations ownership", () => {
   beforeEach(resetMocks);
 
   it("refuses reopening a situation outside the current teacher workspace", async () => {
-    (db.getLearningSituationsByUserId as any).mockResolvedValue([]);
+    (db.getLearningSituationById as any).mockResolvedValue(undefined);
     const caller = appRouter.createCaller(createMockContext());
 
     await expect(caller.situations.toggleCompleted({ id: 404, isCompleted: false })).rejects.toMatchObject({
       code: "NOT_FOUND",
       message: "الوضعية غير موجودة",
+    });
+    expect(db.toggleLearningSituationCompleted).not.toHaveBeenCalled();
+  });
+
+  it("refuses recording a session on a reference situation", async () => {
+    (db.getLearningSituationById as any).mockResolvedValue({ id: 404, sectionId: 51, title: "وضعية مرجعية" });
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({ id: 51, annualPlanId: 7 });
+    (db.getAnnualPlanById as any).mockResolvedValue({ id: 7, userId: 1, isReference: true });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.situations.completeSession({ situationId: 404, sessionStatus: "completed" })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "لا يمكن تعديل مقاطع المخطط المرجعي",
     });
     expect(db.toggleLearningSituationCompleted).not.toHaveBeenCalled();
   });
@@ -272,6 +297,60 @@ describe("annualPlans", () => {
     const caller = appRouter.createCaller(createMockContext());
     const result = await caller.annualPlans.list();
     expect(result).toHaveLength(1);
+  });
+
+  it("copies a reference plan only into a class owned by the teacher", async () => {
+    (db.getClassById as any).mockResolvedValue({ id: 7, userId: 1, name: "1م1" });
+    (db.copyReferencePlanToClass as any).mockResolvedValue({ id: 42, classId: 7, isReference: false });
+    const caller = appRouter.createCaller(createMockContext());
+
+    const result = await caller.annualPlans.copyReferenceToClass({
+      referencePlanId: 12,
+      classId: 7,
+      academicYear: "2026/2027",
+    });
+
+    expect(result).toMatchObject({ id: 42, classId: 7, isReference: false });
+    expect(db.copyReferencePlanToClass).toHaveBeenCalledWith(12, 1, 7, "2026/2027");
+  });
+
+  it("does not copy a reference plan into another teacher's class", async () => {
+    (db.getClassById as any).mockResolvedValue({ id: 8, userId: 99, name: "قسم آخر" });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.annualPlans.copyReferenceToClass({
+      referencePlanId: 12,
+      classId: 8,
+      academicYear: "2026/2027",
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(db.copyReferencePlanToClass).not.toHaveBeenCalled();
+  });
+
+  it("refuses adding a section to a reference plan", async () => {
+    (db.getAnnualPlanById as any).mockResolvedValue({ id: 12, userId: 1, isReference: true });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.sections.create({
+      annualPlanId: 12,
+      sectionNumber: 4,
+      title: "مقطع جديد",
+    })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "لا يمكن إضافة مقطع إلى المخطط المرجعي",
+    });
+    expect(db.createAnnualPlanSection).not.toHaveBeenCalled();
+  });
+
+  it("refuses deleting a reference plan section", async () => {
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({ id: 51, annualPlanId: 12 });
+    (db.getAnnualPlanById as any).mockResolvedValue({ id: 12, userId: 1, isReference: true });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.sections.delete({ id: 51 })).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "لا يمكن تعديل مقاطع المخطط المرجعي",
+    });
+    expect(db.deleteAnnualPlanSection).not.toHaveBeenCalled();
   });
 });
 

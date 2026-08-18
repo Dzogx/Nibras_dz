@@ -16,12 +16,21 @@ vi.mock("./db", () => ({
   getAnnualPlans: vi.fn(),
   getAnnualPlanById: vi.fn(),
   createAnnualPlan: vi.fn(),
+  updateAnnualPlan: vi.fn(),
+  deleteAnnualPlan: vi.fn(),
+  copyReferencePlanToClass: vi.fn(),
   getAnnualPlanSections: vi.fn(),
   getAnnualPlanSectionById: vi.fn(),
   createAnnualPlanSection: vi.fn(),
+  updateAnnualPlanSection: vi.fn(),
+  deleteAnnualPlanSection: vi.fn(),
   getLearningSituations: vi.fn(),
   getLearningSituationsByUserId: vi.fn(),
+  getPendingOperationalLearningSituationsByUserId: vi.fn(),
+  getLearningSituationById: vi.fn(),
   createLearningSituation: vi.fn(),
+  updateLearningSituation: vi.fn(),
+  deleteLearningSituation: vi.fn(),
   toggleLearningSituationCompleted: vi.fn(),
   getLessons: vi.fn(),
   getLessonById: vi.fn(),
@@ -60,10 +69,18 @@ const mockContext = {
 describe("Full Pedagogical Loop E2E", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(db.getAnnualPlanSectionById).mockResolvedValue({ id: 4, annualPlanId: 1 } as any);
+    vi.mocked(db.getAnnualPlanById).mockResolvedValue({ id: 1, userId: 1, isReference: false } as any);
   });
 
   it("ينهي الحصة ويسجل ملاحظة الأستاذ في الإجراء نفسه", async () => {
     const caller = appRouter.createCaller(mockContext as any);
+    vi.mocked(db.getLearningSituationById).mockResolvedValue({
+      id: 17,
+      title: "التحولات السياسية في الجزائر",
+      sectionId: 4,
+      isCompleted: false,
+    } as any);
     vi.mocked(db.getLearningSituationsByUserId).mockResolvedValue([{
       id: 17,
       title: "التحولات السياسية في الجزائر",
@@ -94,6 +111,12 @@ describe("Full Pedagogical Loop E2E", () => {
 
   it("يبقي الوضعية مفتوحة عندما تؤجّل الحصة", async () => {
     const caller = appRouter.createCaller(mockContext as any);
+    vi.mocked(db.getLearningSituationById).mockResolvedValue({
+      id: 17,
+      title: "التحولات السياسية في الجزائر",
+      sectionId: 4,
+      isCompleted: false,
+    } as any);
     vi.mocked(db.getLearningSituationsByUserId).mockResolvedValue([{
       id: 17,
       title: "التحولات السياسية في الجزائر",
@@ -161,6 +184,14 @@ describe("Full Pedagogical Loop E2E", () => {
 
     // Step 5: Mark situation as completed
     vi.mocked(db.toggleLearningSituationCompleted).mockResolvedValue(undefined);
+    vi.mocked(db.getLearningSituationById).mockResolvedValue({
+      id: 1,
+      sectionId: 1,
+      situationNumber: 1,
+      title: "وضعية إدماجية: تحليل أسباب اندلاع الثورة",
+      isCompleted: false,
+    } as any);
+    vi.mocked(db.getAnnualPlanSectionById).mockResolvedValue({ id: 1, annualPlanId: 1 } as any);
     vi.mocked(db.getLearningSituationsByUserId).mockResolvedValue([{
       id: 1,
       sectionId: 1,

@@ -323,7 +323,7 @@ export async function replaceWeeklyScheduleEntries(
 export async function getAnnualPlans(userId: number, filters?: { academicYear?: string; subject?: string }) {
   const db = await getDb();
   if (!db) return [];
-  const conditions = [eq(annualPlans.userId, userId)];
+  const conditions = [or(eq(annualPlans.userId, userId), eq(annualPlans.isReference, true))];
   if (filters?.academicYear) conditions.push(eq(annualPlans.academicYear, filters.academicYear));
   if (filters?.subject) conditions.push(eq(annualPlans.subject, filters.subject));
   return await db.select().from(annualPlans).where(and(...conditions)).orderBy(desc(annualPlans.createdAt));
@@ -353,6 +353,64 @@ export async function deleteAnnualPlan(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(annualPlans).where(eq(annualPlans.id, id));
+}
+
+/** ينسخ بنية مرجع رسمي (خطة ← مقاطع ← وضعيات) إلى نسخة تشغيلية مستقلة لقسم الأستاذ. */
+export async function copyReferencePlanToClass(referencePlanId: number, userId: number, classId: number, academicYear: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [reference] = await db.select().from(annualPlans).where(and(
+    eq(annualPlans.id, referencePlanId),
+    eq(annualPlans.isReference, true),
+  )).limit(1);
+  if (!reference) return undefined;
+
+  const [planResult] = await db.insert(annualPlans).values({
+    userId,
+    classId,
+    subject: reference.subject,
+    gradeLevel: reference.gradeLevel,
+    academicYear,
+    title: reference.title,
+    content: reference.content,
+    isReference: false,
+  });
+  const copiedPlanId = planResult.insertId;
+  const referenceSections = await db.select().from(annualPlanSections)
+    .where(eq(annualPlanSections.annualPlanId, referencePlanId))
+    .orderBy(annualPlanSections.sectionNumber);
+
+  for (const referenceSection of referenceSections) {
+    const [sectionResult] = await db.insert(annualPlanSections).values({
+      userId,
+      annualPlanId: copiedPlanId,
+      sectionNumber: referenceSection.sectionNumber,
+      title: referenceSection.title,
+      duration: referenceSection.duration,
+      competencies: referenceSection.competencies,
+      objectives: referenceSection.objectives,
+      resources: referenceSection.resources,
+      isCompleted: false,
+    });
+    const referenceSituations = await db.select().from(learningSituations)
+      .where(eq(learningSituations.sectionId, referenceSection.id))
+      .orderBy(learningSituations.situationNumber);
+    if (referenceSituations.length) {
+      await db.insert(learningSituations).values(referenceSituations.map((situation) => ({
+        userId,
+        sectionId: sectionResult.insertId,
+        situationNumber: situation.situationNumber,
+        title: situation.title,
+        objectives: situation.objectives,
+        content: situation.content,
+        isCompleted: false,
+        completedDate: null,
+        completionNotes: null,
+        sessionStatus: null,
+      })));
+    }
+  }
+  return { id: copiedPlanId };
 }
 
 // ─── Lessons ──────────────────────────────────────────────────
@@ -573,6 +631,23 @@ export async function getLearningSituationsByUserId(userId: number) {
   const db = await getDb();
   if (!db) return [];
   return await db.select().from(learningSituations).where(eq(learningSituations.userId, userId)).orderBy(desc(learningSituations.createdAt));
+}
+
+/** تُرجع فقط الوضعيات التشغيلية المعلّقة، لا بنية المخططات المرجعية للقراءة والنسخ. */
+export async function getPendingOperationalLearningSituationsByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ situation: learningSituations })
+    .from(learningSituations)
+    .innerJoin(annualPlanSections, eq(learningSituations.sectionId, annualPlanSections.id))
+    .innerJoin(annualPlans, eq(annualPlanSections.annualPlanId, annualPlans.id))
+    .where(and(
+      eq(learningSituations.userId, userId),
+      eq(learningSituations.isCompleted, false),
+      eq(annualPlans.isReference, false),
+    ))
+    .orderBy(desc(learningSituations.createdAt));
+  return rows.map((row) => row.situation);
 }
 
 export async function createLearningSituation(data: InsertLearningSituation) {

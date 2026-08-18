@@ -64,7 +64,10 @@ export default function SeasonSetup() {
     () => classes.filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
     [classes, academicYear],
   );
-  const linkedPlanClassIds = useMemo(() => new Set(plans.map((plan) => plan.classId).filter(Boolean)), [plans]);
+  const linkedPlanClassIds = useMemo(
+    () => new Set(plans.filter((plan) => !plan.isReference && Boolean(plan.classId)).map((plan) => plan.classId)),
+    [plans],
+  );
 
   useEffect(() => {
     if (scheduleInitialized || scheduleLoading) return;
@@ -204,13 +207,15 @@ export default function SeasonSetup() {
 
             <div className="space-y-2" aria-live="polite">
               {classesLoading ? <p className="text-sm text-muted-foreground">جارٍ تحميل الأقسام…</p> : seasonClasses.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">أضف أقسامك أولاً، ثم ضَعها في جدول الخدمة.</p> : seasonClasses.map((classItem) => (
-                <div key={classItem.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                <div key={classItem.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
                   <div className="min-w-0"><p className="font-semibold">{classItem.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{classItem.gradeLevel} · {classItem.studentCount || "—"} تلميذاً</p></div>
-                  <span className={`shrink-0 rounded-md px-2 py-1 text-xs ${linkedPlanClassIds.has(classItem.id) ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>{linkedPlanClassIds.has(classItem.id) ? "الخطة جاهزة" : "ربط الخطة"}</span>
+                  {linkedPlanClassIds.has(classItem.id) ? <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-xs text-emerald-800">الخطة الصفية جاهزة</span> : <Button variant="outline" size="sm" onClick={() => setLocation("/annual-plans")}>
+                    <Copy className="ml-1.5 h-3.5 w-3.5" />نسخ من المرجع الرسمي
+                  </Button>}
                 </div>
               ))}
             </div>
-            {seasonClasses.some((classItem) => !linkedPlanClassIds.has(classItem.id)) && <Button variant="outline" className="w-full" onClick={() => setLocation("/annual-plans")}><ClipboardList className="ml-2 h-4 w-4" />راجِع ربط المخططات الرسمية</Button>}
+            {seasonClasses.some((classItem) => !linkedPlanClassIds.has(classItem.id)) && <p className="rounded-lg border border-dashed px-3 py-2 text-center text-xs leading-5 text-muted-foreground">اختر مخطط المستوى من المرجع الرسمي، ثم انسخه إلى القسم حتى يسجّل نبراس تقدمه بصورة مستقلة.</p>}
           </CardContent>
         </Card>
 

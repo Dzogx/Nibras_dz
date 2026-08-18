@@ -149,6 +149,7 @@ export const annualPlans = mysqlTable("annualPlans", {
   academicYear: varchar("academicYear", { length: 16 }).notNull(),
   title: varchar("title", { length: 256 }),
   content: text("content"),
+  isReference: boolean("isReference").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

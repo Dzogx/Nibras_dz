@@ -9,10 +9,12 @@ vi.mock("./db", () => ({
   getAnnualPlans: vi.fn(() => Promise.resolve([
     { id: 1, classId: 1, title: "الخطة السنوية", subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2025-2026", userId: "user-1" },
   ])),
+  getAnnualPlanById: vi.fn(() => Promise.resolve({ id: 1, userId: "user-1", isReference: false })),
   getAnnualPlanSections: vi.fn(() => Promise.resolve([
     { id: 1, annualPlanId: 1, sectionNumber: 1, title: "المقطع الأول", isCompleted: false, sectionOrder: 1 },
     { id: 2, annualPlanId: 1, sectionNumber: 2, title: "المقطع الثاني", isCompleted: true, sectionOrder: 2 },
   ])),
+  getAnnualPlanSectionById: vi.fn((id: number) => Promise.resolve({ id, annualPlanId: 1 })),
   getLearningSituations: vi.fn((sectionId: number) => {
     if (sectionId === 1) return Promise.resolve([
       { id: 1, sectionId: 1, situationNumber: 1, title: "الوضعية 1", isCompleted: true },
@@ -22,6 +24,8 @@ vi.mock("./db", () => ({
       { id: 3, sectionId: 2, situationNumber: 1, title: "وضعية المقطع 2", isCompleted: true },
     ]);
   }),
+  getPendingOperationalLearningSituationsByUserId: vi.fn(() => Promise.resolve([])),
+  getLearningSituationById: vi.fn((id: number) => Promise.resolve({ id, sectionId: 1, title: "وضعية اختبار", isCompleted: false })),
   getLessons: vi.fn(() => Promise.resolve([
     { id: 1, title: "درس 1", isCompleted: true, objectives: "فهم الثورة الجزائرية", gradeLevel: "السنة الأولى متوسط" },
     { id: 2, title: "درس 2", isCompleted: true, objectives: "تحليل الوثائق التاريخية", gradeLevel: "السنة الأولى متوسط" },
