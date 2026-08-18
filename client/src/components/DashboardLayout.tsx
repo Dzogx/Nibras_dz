@@ -123,6 +123,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider
+      className="min-w-0 max-w-full overflow-x-hidden"
       style={
         {
           "--sidebar-width": `${sidebarWidth}px`,
@@ -290,7 +291,7 @@ function DashboardLayoutContent({
         />}
       </div>
 
-      <SidebarInset className="min-w-0">
+      <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
           <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 md:hidden">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />

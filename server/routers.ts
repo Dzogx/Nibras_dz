@@ -12,6 +12,7 @@ import {
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
+  createCompensatorySession, getCompensatorySessionsBySituation, getUpcomingCompensatorySessions, updateCompensatorySessionStatus,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, copyReferencePlanToClass,
   getLessons, getLessonById, createLesson, updateLesson, deleteLesson, toggleLessonCompleted,
   getTeachingNotes, createTeachingNote, updateTeachingNote, deleteTeachingNote,
@@ -98,6 +99,40 @@ async function requireEditableSituation(situationId: number, userId: number) {
 
   await requireEditableSection(situation.sectionId, userId);
   return situation;
+}
+
+/**
+ * يحمي ربط الموعد البديل بالقسم الصحيح؛ فلا يكفي أن يكون القسم والوضعية تابعين
+ * للأستاذ نفسه، بل يجب أن تنتمي الوضعية فعلاً إلى خطة ذلك القسم.
+ */
+async function requireSituationForClass(situationId: number, classId: number, userId: number) {
+  const situation = await requireEditableSituation(situationId, userId);
+  const section = await getAnnualPlanSectionById(situation.sectionId);
+  const plan = section ? await getAnnualPlanById(section.annualPlanId) : undefined;
+  if (!plan || plan.classId !== classId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "هذه الوضعية لا تتبع للقسم المحدد." });
+  }
+  return situation;
+}
+
+const WEEK_DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"] as const;
+type WeekDay = (typeof WEEK_DAYS)[number];
+
+function toLocalDateString(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function dateFromLocalDateString(value: string): Date {
+  return new Date(`${value}T12:00:00`);
+}
+
+function getNextOccurrence(dayOfWeek: WeekDay, from = new Date()): Date {
+  const target = new Date(from);
+  target.setHours(12, 0, 0, 0);
+  const dayOffset = (WEEK_DAYS.indexOf(dayOfWeek) - target.getDay() + 7) % 7;
+  // لا يُعاد حجز الحصة التي سجلت نتيجتها للتو؛ ننتقل إلى ظهورها التالي في الجدول.
+  target.setDate(target.getDate() + (dayOffset === 0 ? 7 : dayOffset));
+  return target;
 }
 
 export const appRouter = router({
@@ -361,6 +396,140 @@ export const appRouter = router({
         getWeeklyScheduleEntries(ctx.user.id, input.academicYear),
       ]);
       return buildSeasonReadiness(teacherClasses, plans, scheduleEntries, input.academicYear);
+    }),
+  }),
+
+  // ─── Compensatory Sessions ───────────────────────────────────
+  compensatorySessions: router({
+    suggest: protectedProcedure.input(z.object({
+      situationId: z.number().int().positive(),
+      academicYear: z.string().min(4).max(16),
+      subject: z.enum(["التاريخ", "الجغرافيا", "التربية المدنية"]),
+      classId: z.number().int().positive(),
+      sourceStatus: z.enum(["postponed", "cancelled"]),
+    })).query(async ({ ctx, input }) => {
+      const classItem = await getClassById(input.classId);
+      if (!classItem || classItem.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "القسم غير موجود" });
+      }
+      if (classItem.academicYear && classItem.academicYear !== input.academicYear) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "القسم لا يتبع للموسم الدراسي المختار." });
+      }
+
+      const situation = await requireSituationForClass(input.situationId, input.classId, ctx.user.id);
+      if (situation.sessionStatus !== input.sourceStatus) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن اقتراح موعد بديل إلا لحصة مؤجلة أو ملغاة بالحالة نفسها." });
+      }
+
+      const [scheduleEntries, bookedSessions] = await Promise.all([
+        getWeeklyScheduleEntries(ctx.user.id, input.academicYear),
+        getUpcomingCompensatorySessions(ctx.user.id, input.academicYear),
+      ]);
+      const matchingSlots = scheduleEntries.filter((entry) => (
+        entry.classId === input.classId && entry.subject === input.subject
+      ));
+      if (matchingSlots.length === 0) return [];
+
+      const occupiedSlots = new Set(bookedSessions.map((session) => `${session.scheduledDate}-${session.periodIndex}`));
+      const suggestions: Array<{
+        scheduledDate: string;
+        dayOfWeek: WeekDay;
+        periodIndex: number;
+        startTime: string;
+        endTime: string;
+      }> = [];
+
+      for (const slot of matchingSlots) {
+        const firstDate = getNextOccurrence(slot.dayOfWeek as WeekDay);
+        for (let week = 0; week < 3; week += 1) {
+          const candidate = new Date(firstDate);
+          candidate.setDate(candidate.getDate() + (week * 7));
+          const scheduledDate = toLocalDateString(candidate);
+          if (occupiedSlots.has(`${scheduledDate}-${slot.periodIndex}`)) continue;
+          suggestions.push({
+            scheduledDate,
+            dayOfWeek: slot.dayOfWeek as WeekDay,
+            periodIndex: slot.periodIndex,
+            startTime: slot.startTime,
+            endTime: slot.endTime,
+          });
+        }
+      }
+
+      return suggestions
+        .sort((first, second) => first.scheduledDate.localeCompare(second.scheduledDate) || first.periodIndex - second.periodIndex)
+        .slice(0, 3);
+    }),
+    book: protectedProcedure.input(z.object({
+      situationId: z.number().int().positive(),
+      classId: z.number().int().positive(),
+      academicYear: z.string().min(4).max(16),
+      subject: z.enum(["التاريخ", "الجغرافيا", "التربية المدنية"]),
+      scheduledDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "صيغة التاريخ هي YYYY-MM-DD"),
+      dayOfWeek: z.enum(WEEK_DAYS),
+      periodIndex: z.number().int().min(1).max(7),
+      startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "صيغة الوقت هي HH:MM"),
+      endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "صيغة الوقت هي HH:MM"),
+      sourceStatus: z.enum(["postponed", "cancelled"]),
+    })).mutation(async ({ ctx, input }) => {
+      const classItem = await getClassById(input.classId);
+      if (!classItem || classItem.userId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "القسم غير موجود" });
+      }
+      if (classItem.academicYear && classItem.academicYear !== input.academicYear) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "القسم لا يتبع للموسم الدراسي المختار." });
+      }
+
+      const situation = await requireSituationForClass(input.situationId, input.classId, ctx.user.id);
+      if (situation.sessionStatus !== input.sourceStatus) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن حجز موعد بديل إلا لوضعية مؤجلة أو ملغاة بالحالة نفسها." });
+      }
+      if (input.endTime <= input.startTime) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "يجب أن تكون نهاية الحصة بعد بدايتها." });
+      }
+      const date = dateFromLocalDateString(input.scheduledDate);
+      if (Number.isNaN(date.valueOf()) || WEEK_DAYS[date.getDay()] !== input.dayOfWeek) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "تاريخ الموعد لا يطابق يوم الأسبوع المحدد." });
+      }
+
+      const [scheduleEntries, existingForSituation, upcomingSessions] = await Promise.all([
+        getWeeklyScheduleEntries(ctx.user.id, input.academicYear),
+        getCompensatorySessionsBySituation(ctx.user.id, input.situationId),
+        getUpcomingCompensatorySessions(ctx.user.id, input.academicYear),
+      ]);
+      const isMatchingSlot = scheduleEntries.some((entry) => (
+        entry.classId === input.classId
+        && entry.subject === input.subject
+        && entry.dayOfWeek === input.dayOfWeek
+        && entry.periodIndex === input.periodIndex
+        && entry.startTime === input.startTime
+        && entry.endTime === input.endTime
+      ));
+      if (!isMatchingSlot) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "اختر موعداً من حصص القسم المسجلة في جدول خدمتك." });
+      }
+      if (existingForSituation.some((session) => session.status === "scheduled")) {
+        throw new TRPCError({ code: "CONFLICT", message: "يوجد موعد بديل محجوز بالفعل لهذه الوضعية." });
+      }
+      if (upcomingSessions.some((session) => session.scheduledDate === input.scheduledDate && session.periodIndex === input.periodIndex)) {
+        throw new TRPCError({ code: "CONFLICT", message: "هذا الموعد محجوز بالفعل لحصة تعويضية أخرى." });
+      }
+
+      const created = await createCompensatorySession({
+        ...input,
+        userId: ctx.user.id,
+        status: "scheduled",
+      });
+      return { success: true, id: created?.id } as const;
+    }),
+    list: protectedProcedure.input(z.object({
+      academicYear: z.string().min(4).max(16),
+    })).query(async ({ ctx, input }) => {
+      return await getUpcomingCompensatorySessions(ctx.user.id, input.academicYear);
+    }),
+    cancel: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await updateCompensatorySessionStatus(input.id, ctx.user.id, "cancelled");
+      return { success: true } as const;
     }),
   }),
 

@@ -139,6 +139,30 @@ export type WeeklyScheduleEntry = typeof weeklyScheduleEntries.$inferSelect;
 export type InsertWeeklyScheduleEntry = typeof weeklyScheduleEntries.$inferInsert;
 
 /**
+ * One-off make-up sessions (حصص تعويضية) — لا تعدّل جدول الخدمة الأسبوعي الأصلي.
+ */
+export const compensatorySessions = mysqlTable("compensatorySessions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId").notNull(),
+  situationId: int("situationId").notNull(),
+  academicYear: varchar("academicYear", { length: 16 }).notNull(),
+  subject: varchar("subject", { length: 32 }).notNull(),
+  scheduledDate: varchar("scheduledDate", { length: 10 }).notNull(),
+  dayOfWeek: mysqlEnum("dayOfWeek", ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"]).notNull(),
+  periodIndex: int("periodIndex").notNull(),
+  startTime: varchar("startTime", { length: 5 }).notNull(),
+  endTime: varchar("endTime", { length: 5 }).notNull(),
+  sourceStatus: mysqlEnum("sourceStatus", ["postponed", "cancelled"]).notNull(),
+  status: mysqlEnum("status", ["scheduled", "completed", "cancelled"]).default("scheduled").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CompensatorySession = typeof compensatorySessions.$inferSelect;
+export type InsertCompensatorySession = typeof compensatorySessions.$inferInsert;
+
+/**
  * Annual plans (الخطط السنوية)
  */
 export const annualPlans = mysqlTable("annualPlans", {

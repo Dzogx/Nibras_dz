@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
   PauseCircle,
   CalendarClock,
+  CalendarPlus,
   XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useLocation } from "wouter";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { toast } from "sonner";
 import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, findReadyLessonPlan, getScheduledSlotForNow } from "@shared/quick-click";
@@ -42,6 +43,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type SessionStatus = "completed" | "partial" | "postponed" | "cancelled";
+type TeachingSubject = "التاريخ" | "الجغرافيا" | "التربية المدنية";
+
+const teachingSubjects: TeachingSubject[] = ["التاريخ", "الجغرافيا", "التربية المدنية"];
+
+function isTeachingSubject(value: string | undefined): value is TeachingSubject {
+  return Boolean(value && teachingSubjects.includes(value as TeachingSubject));
+}
 
 const sessionStatusOptions: Array<{
   value: SessionStatus;
@@ -123,6 +131,16 @@ export default function Dashboard() {
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
+  const [rescheduleContext, setRescheduleContext] = useState<{
+    situationId: number;
+    classId: number;
+    subject: TeachingSubject;
+    sourceStatus: "postponed" | "cancelled";
+    situationTitle: string;
+    className: string;
+  } | null>(null);
+  const [selectedRescheduleKey, setSelectedRescheduleKey] = useState<string | null>(null);
   const utils = trpc.useUtils();
   const seasonClasses = useMemo(
     () => (classes ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
@@ -154,6 +172,14 @@ export default function Dashboard() {
   const contextualSituation = dailySituation ?? lastCompletedSituation;
   const currentSectionProgress = teacherOSContext?.currentSectionProgress ?? teacherOSContext?.sectionProgress;
   const hasDailySession = Boolean(activeClass && dailySituation);
+  const rescheduleSubject = useMemo(() => {
+    const candidateSubjects = [
+      scheduledSlot?.subject,
+      activePlan?.subject,
+      weeklySchedule?.find((entry) => entry.classId === activeClassId)?.subject,
+    ];
+    return candidateSubjects.find(isTeachingSubject);
+  }, [activeClassId, activePlan?.subject, scheduledSlot?.subject, weeklySchedule]);
   const readyLessonPlan = useMemo(() => {
     return findReadyLessonPlan(resources, activeClassId, dailySituation?.id);
   }, [activeClassId, dailySituation?.id, resources]);
@@ -174,6 +200,21 @@ export default function Dashboard() {
         cancelled: "سُجّل إلغاء الحصة. تبقى الوضعية مفتوحة لتحديد موعد جديد لها.",
       };
       toast.success(successMessage[result.sessionStatus]);
+      if (result.sessionStatus === "postponed" || result.sessionStatus === "cancelled") {
+        if (dailySituation && activeClass && activeClassId && rescheduleSubject) {
+          setRescheduleContext({
+            situationId: dailySituation.id,
+            classId: activeClassId,
+            subject: rescheduleSubject,
+            sourceStatus: result.sessionStatus,
+            situationTitle: dailySituation.title,
+            className: activeClass.name,
+          });
+          setRescheduleOpen(true);
+        } else {
+          toast.info("سُجلت الحصة. أضف مادة الحصة إلى جدول الخدمة أولاً ليتمكن نبراس من اقتراح موعد بديل.");
+        }
+      }
     },
     onError: (error) => toast.error(error.message || "تعذر تسجيل انتهاء الحصة."),
   });
@@ -193,6 +234,43 @@ export default function Dashboard() {
   const dailySituationGuidance = dailySituation?.sessionStatus
     ? openSessionGuidance[dailySituation.sessionStatus as SessionStatus]
     : undefined;
+  const { data: rescheduleSuggestions, isLoading: rescheduleSuggestionsLoading } = trpc.compensatorySessions.suggest.useQuery(
+    {
+      situationId: rescheduleContext?.situationId ?? -1,
+      academicYear,
+      subject: rescheduleContext?.subject ?? "التاريخ",
+      classId: rescheduleContext?.classId ?? -1,
+      sourceStatus: rescheduleContext?.sourceStatus ?? "postponed",
+    },
+    { enabled: Boolean(rescheduleOpen && rescheduleContext) },
+  );
+  const selectedRescheduleSuggestion = useMemo(
+    () => rescheduleSuggestions?.find((suggestion) => `${suggestion.scheduledDate}-${suggestion.periodIndex}` === selectedRescheduleKey),
+    [rescheduleSuggestions, selectedRescheduleKey],
+  );
+  const bookCompensatorySessionMutation = trpc.compensatorySessions.book.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.compensatorySessions.suggest.invalidate(),
+        utils.compensatorySessions.list.invalidate(),
+      ]);
+      setRescheduleOpen(false);
+      setRescheduleContext(null);
+      setSelectedRescheduleKey(null);
+      toast.success("تم حجز الموعد البديل. بقيت الوضعية مفتوحة حتى تنفيذ الحصة التعويضية.");
+    },
+    onError: (error) => toast.error(error.message || "تعذر حجز الموعد البديل."),
+  });
+
+  useEffect(() => {
+    if (!rescheduleOpen) return;
+    const firstSuggestion = rescheduleSuggestions?.[0];
+    const firstSuggestionKey = firstSuggestion ? `${firstSuggestion.scheduledDate}-${firstSuggestion.periodIndex}` : null;
+    if (firstSuggestionKey && !(rescheduleSuggestions ?? []).some((suggestion) => `${suggestion.scheduledDate}-${suggestion.periodIndex}` === selectedRescheduleKey)) {
+      setSelectedRescheduleKey(firstSuggestionKey);
+    }
+    if (!firstSuggestionKey) setSelectedRescheduleKey(null);
+  }, [rescheduleOpen, rescheduleSuggestions, selectedRescheduleKey]);
 
 
   return (
@@ -366,6 +444,102 @@ export default function Dashboard() {
             >
               <SelectedSessionStatusIcon className="w-4 h-4 ml-2" />
               {completeSessionMutation.isPending ? "جارٍ الحفظ…" : selectedSessionStatus.actionLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rescheduleOpen}
+        onOpenChange={(open) => {
+          setRescheduleOpen(open);
+          if (!open) {
+            setRescheduleContext(null);
+            setSelectedRescheduleKey(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg" dir="rtl">
+          <DialogHeader>
+            <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CalendarPlus className="h-5 w-5" />
+            </div>
+            <DialogTitle>اقتراح موعد بديل</DialogTitle>
+            <DialogDescription className="leading-6">
+              {rescheduleContext
+                ? <>أُبقيت «{rescheduleContext.situationTitle}» مفتوحة. اختر موعداً من حصة {rescheduleContext.subject} للقسم {rescheduleContext.className} ثم أكّد الحجز.</>
+                : "اختر موعداً بديلاً قبل الحجز."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {rescheduleSuggestionsLoading ? (
+            <div className="space-y-2" aria-label="جارٍ البحث عن مواعيد">
+              {[1, 2, 3].map((item) => <div key={item} className="h-16 animate-pulse rounded-xl bg-muted" />)}
+            </div>
+          ) : rescheduleSuggestions && rescheduleSuggestions.length > 0 ? (
+            <div className="space-y-2" aria-label="المواعيد المقترحة">
+              {rescheduleSuggestions.map((suggestion) => {
+                const key = `${suggestion.scheduledDate}-${suggestion.periodIndex}`;
+                const isSelected = selectedRescheduleKey === key;
+                const dateLabel = new Date(`${suggestion.scheduledDate}T12:00:00`).toLocaleDateString("ar-DZ", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                });
+                return (
+                  <Button
+                    key={key}
+                    type="button"
+                    variant="outline"
+                    aria-pressed={isSelected}
+                    onClick={() => setSelectedRescheduleKey(key)}
+                    className={`h-auto w-full justify-between gap-3 whitespace-normal px-4 py-3 text-right ${
+                      isSelected
+                        ? "border-primary bg-primary/10 text-primary hover:bg-primary/15"
+                        : "border-border bg-background text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span className="font-semibold">{dateLabel}</span>
+                    <span className="shrink-0 text-sm font-normal text-muted-foreground">الفترة {suggestion.periodIndex} · {suggestion.startTime}–{suggestion.endTime}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed bg-muted/40 p-4 text-sm leading-6 text-muted-foreground">
+              لا يوجد موعد متاح في حصص {rescheduleContext?.subject ?? "هذه المادة"} الثلاث القادمة ضمن جدول خدمتك. يمكنك المتابعة الآن وتحديده لاحقاً من خطة الأسبوع.
+            </div>
+          )}
+
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setRescheduleOpen(false);
+                setRescheduleContext(null);
+                setSelectedRescheduleKey(null);
+              }}
+            >
+              تخطّي الآن
+            </Button>
+            <Button
+              type="button"
+              disabled={!rescheduleContext || !selectedRescheduleSuggestion || bookCompensatorySessionMutation.isPending}
+              onClick={() => {
+                if (!rescheduleContext || !selectedRescheduleSuggestion) return;
+                bookCompensatorySessionMutation.mutate({
+                  situationId: rescheduleContext.situationId,
+                  classId: rescheduleContext.classId,
+                  academicYear,
+                  subject: rescheduleContext.subject,
+                  sourceStatus: rescheduleContext.sourceStatus,
+                  ...selectedRescheduleSuggestion,
+                });
+              }}
+            >
+              <CalendarPlus className="ml-2 h-4 w-4" />
+              {bookCompensatorySessionMutation.isPending ? "جارٍ الحجز…" : "احجز الموعد"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -64,6 +64,13 @@
       "when": 1787047828153,
       "tag": "0008_plain_anthem",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1787052143357,
+      "tag": "0009_whole_shinko_yamashiro",
+      "breakpoints": true
     }
   ]
 }

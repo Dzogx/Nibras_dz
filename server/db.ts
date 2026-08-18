@@ -7,6 +7,7 @@ import {
   InsertCurriculumDocument, curriculumDocuments,
   InsertClass, classes,
   InsertWeeklyScheduleEntry, weeklyScheduleEntries,
+  InsertCompensatorySession, compensatorySessions,
   InsertAnnualPlan, annualPlans,
   InsertLesson, lessons,
   InsertTeachingNote, teachingNotes,
@@ -317,6 +318,65 @@ export async function replaceWeeklyScheduleEntries(
     academicYear,
   })));
   return { count: entries.length };
+}
+
+// ─── Compensatory Sessions ─────────────────────────────────────
+/**
+ * يحجز هذا السجل موعداً استثنائياً لوضعية مؤجلة أو ملغاة. يبقى مستقلاً تماماً
+ * عن جدول الخدمة الدوري حتى لا يؤدي إعادة البرمجة إلى تعديل جدول الأستاذ.
+ */
+export async function createCompensatorySession(data: InsertCompensatorySession) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [result] = await db.insert(compensatorySessions).values(data);
+  return { id: result.insertId };
+}
+
+export async function getCompensatorySessionsBySituation(userId: number, situationId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(compensatorySessions)
+    .where(and(
+      eq(compensatorySessions.userId, userId),
+      eq(compensatorySessions.situationId, situationId),
+    ))
+    .orderBy(desc(compensatorySessions.scheduledDate), desc(compensatorySessions.periodIndex));
+}
+
+/** يعرض فقط الحجوزات المقبلة النشطة في الموسم المختار. */
+export async function getUpcomingCompensatorySessions(userId: number, academicYear: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const today = new Date();
+  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return await db
+    .select()
+    .from(compensatorySessions)
+    .where(and(
+      eq(compensatorySessions.userId, userId),
+      eq(compensatorySessions.academicYear, academicYear),
+      eq(compensatorySessions.status, "scheduled"),
+      sql`${compensatorySessions.scheduledDate} >= ${localToday}`,
+    ))
+    .orderBy(compensatorySessions.scheduledDate, compensatorySessions.periodIndex);
+}
+
+export async function updateCompensatorySessionStatus(
+  id: number,
+  userId: number,
+  status: "completed" | "cancelled",
+) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(compensatorySessions)
+    .set({ status })
+    .where(and(
+      eq(compensatorySessions.id, id),
+      eq(compensatorySessions.userId, userId),
+    ));
 }
 
 // ─── Annual Plans ─────────────────────────────────────────────

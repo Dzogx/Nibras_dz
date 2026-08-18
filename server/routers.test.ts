@@ -19,6 +19,10 @@ vi.mock("./db", () => ({
   getWeeklyScheduleEntries: vi.fn(),
   replaceWeeklyScheduleEntries: vi.fn(),
   listScheduleSeasons: vi.fn(),
+  createCompensatorySession: vi.fn(),
+  getCompensatorySessionsBySituation: vi.fn(),
+  getUpcomingCompensatorySessions: vi.fn(),
+  updateCompensatorySessionStatus: vi.fn(),
   getAnnualPlans: vi.fn(),
   getAnnualPlanById: vi.fn(),
   createAnnualPlan: vi.fn(),
@@ -222,6 +226,112 @@ describe("weeklySchedule", () => {
       toAcademicYear: "2026-2027",
     })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "لا يمكن النسخ من الموسم نفسه." });
     expect(db.getWeeklyScheduleEntries).not.toHaveBeenCalled();
+  });
+});
+
+describe("compensatorySessions", () => {
+  beforeEach(resetMocks);
+
+  function mockOwnedReschedulingContext() {
+    (db.getClassById as any).mockResolvedValue({ id: 7, userId: 1, academicYear: "2026-2027", name: "2 متوسط أ" });
+    (db.getLearningSituationById as any).mockResolvedValue({
+      id: 101,
+      sectionId: 55,
+      title: "قراءة الوثيقة التاريخية",
+      sessionStatus: "postponed",
+    });
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({ id: 55, annualPlanId: 12 });
+    (db.getAnnualPlanById as any).mockResolvedValue({ id: 12, userId: 1, classId: 7, isReference: false });
+  }
+
+  it("يقترح أقرب موعد من حصة المادة نفسها لوضعية مؤجلة", async () => {
+    mockOwnedReschedulingContext();
+    (db.getWeeklyScheduleEntries as any).mockResolvedValue([
+      { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, subject: "التاريخ", startTime: "08:00", endTime: "09:00" },
+      { classId: 7, dayOfWeek: "الاثنين", periodIndex: 2, subject: "الجغرافيا", startTime: "09:00", endTime: "09:55" },
+    ]);
+    (db.getUpcomingCompensatorySessions as any).mockResolvedValue([]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    const suggestions = await caller.compensatorySessions.suggest({
+      situationId: 101,
+      classId: 7,
+      academicYear: "2026-2027",
+      subject: "التاريخ",
+      sourceStatus: "postponed",
+    });
+
+    expect(suggestions).toHaveLength(3);
+    expect(suggestions[0]).toMatchObject({
+      dayOfWeek: "الأحد",
+      periodIndex: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+    });
+    expect(suggestions[0]?.scheduledDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("يحجز موعداً تعويضياً لوضعية مؤجلة بعد التحقق من مطابقته للجدول", async () => {
+    mockOwnedReschedulingContext();
+    (db.getWeeklyScheduleEntries as any).mockResolvedValue([
+      { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, subject: "التاريخ", startTime: "08:00", endTime: "09:00" },
+    ]);
+    (db.getCompensatorySessionsBySituation as any).mockResolvedValue([]);
+    (db.getUpcomingCompensatorySessions as any).mockResolvedValue([]);
+    (db.createCompensatorySession as any).mockResolvedValue({ id: 19 });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.compensatorySessions.book({
+      situationId: 101,
+      classId: 7,
+      academicYear: "2026-2027",
+      subject: "التاريخ",
+      scheduledDate: "2026-10-04",
+      dayOfWeek: "الأحد",
+      periodIndex: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+      sourceStatus: "postponed",
+    })).resolves.toEqual({ success: true, id: 19 });
+
+    expect(db.createCompensatorySession).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 1,
+      situationId: 101,
+      classId: 7,
+      scheduledDate: "2026-10-04",
+      status: "scheduled",
+    }));
+  });
+
+  it("يرفض حجز موعد لوضعية لا يملكها الأستاذ", async () => {
+    (db.getClassById as any).mockResolvedValue({ id: 7, userId: 1, academicYear: "2026-2027" });
+    (db.getLearningSituationById as any).mockResolvedValue({ id: 101, sectionId: 55, title: "وضعية غير مملوكة", sessionStatus: "postponed" });
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({ id: 55, annualPlanId: 12 });
+    (db.getAnnualPlanById as any).mockResolvedValue({ id: 12, userId: 2, classId: 7, isReference: false });
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.compensatorySessions.book({
+      situationId: 101,
+      classId: 7,
+      academicYear: "2026-2027",
+      subject: "التاريخ",
+      scheduledDate: "2026-10-04",
+      dayOfWeek: "الأحد",
+      periodIndex: 1,
+      startTime: "08:00",
+      endTime: "09:00",
+      sourceStatus: "postponed",
+    })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(db.createCompensatorySession).not.toHaveBeenCalled();
+  });
+
+  it("يعرض فقط المواعيد التعويضية القادمة الخاصة بالأستاذ والموسم", async () => {
+    const sessions = [{ id: 19, classId: 7, scheduledDate: "2026-10-04", status: "scheduled" }];
+    (db.getUpcomingCompensatorySessions as any).mockResolvedValue(sessions);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.compensatorySessions.list({ academicYear: "2026-2027" })).resolves.toEqual(sessions);
+    expect(db.getUpcomingCompensatorySessions).toHaveBeenCalledWith(1, "2026-2027");
   });
 });
 
