@@ -43,6 +43,7 @@ vi.mock("./db", () => ({
   getAnnualPlanSectionById: vi.fn(),
   getLearningSituations: vi.fn(),
   getLearningSituationsByUserId: vi.fn(),
+  toggleLearningSituationCompleted: vi.fn(),
   deleteCurriculumDocument: vi.fn(),
   updateLesson: vi.fn(),
   deleteLesson: vi.fn(),
@@ -105,6 +106,21 @@ function createMockContext(userOverrides: Partial<AuthenticatedUser> = {}): Trpc
 function resetMocks() {
   vi.clearAllMocks();
 }
+
+describe("situations ownership", () => {
+  beforeEach(resetMocks);
+
+  it("refuses reopening a situation outside the current teacher workspace", async () => {
+    (db.getLearningSituationsByUserId as any).mockResolvedValue([]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.situations.toggleCompleted({ id: 404, isCompleted: false })).rejects.toMatchObject({
+      code: "NOT_FOUND",
+      message: "الوضعية غير موجودة",
+    });
+    expect(db.toggleLearningSituationCompleted).not.toHaveBeenCalled();
+  });
+});
 
 describe("weeklySchedule", () => {
   beforeEach(resetMocks);

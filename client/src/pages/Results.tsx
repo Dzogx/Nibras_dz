@@ -18,8 +18,9 @@ export default function Results() {
   const [, setLocation] = useLocation();
   const classIdFromSearch = typeof window === "undefined" ? null : Number(new URLSearchParams(window.location.search).get("classId")) || null;
   const remediationFromSearch = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("action") === "remediation";
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const [selectedClassId, setSelectedClassId] = useState<number | null>(classIdFromSearch);
-  const [preferredClassId, setPreferredClassId] = usePreferredClass();
+  const [preferredClassId, setPreferredClassId] = usePreferredClass(profile?.academicYear);
   const [addOpen, setAddOpen] = useState(false);
   const [remediationOpen, setRemediationOpen] = useState(false);
   const [remediationSituationId, setRemediationSituationId] = useState<number | null>(null);
@@ -38,7 +39,6 @@ export default function Results() {
   });
 
   const { data: classes } = trpc.classes.list.useQuery();
-  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const seasonClasses = useMemo(
     () => (classes ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === profile?.academicYear),
     [classes, profile?.academicYear],

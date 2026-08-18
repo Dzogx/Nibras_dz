@@ -118,7 +118,7 @@ export default function Dashboard() {
   const pendingLessons = pendingSituations.length;
   const pendingLessonsList = pendingSituations;
 
-  const [selectedClassId, setSelectedClassId] = usePreferredClass();
+  const [selectedClassId, setSelectedClassId] = usePreferredClass(academicYear);
   const [followSchedule, setFollowSchedule] = useState(true);
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");

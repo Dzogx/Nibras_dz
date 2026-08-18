@@ -14,7 +14,7 @@ import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTe
 import { BookOpenCheck, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { LLM_MODEL_OPTIONS } from "@shared/llm-models";
@@ -82,7 +82,8 @@ function parseSearchParam(name: string): string | undefined {
 
 export default function LessonGenerator() {
   const [, setLocation] = useLocation();
-  const [preferredClassId, setPreferredClassId] = usePreferredClass();
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
+  const [preferredClassId, setPreferredClassId] = usePreferredClass(profile?.academicYear);
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -143,6 +144,10 @@ export default function LessonGenerator() {
 
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
+  const seasonClasses = useMemo(
+    () => (classesList ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === profile?.academicYear),
+    [classesList, profile?.academicYear],
+  );
 
   const linkedInitialized = useRef(false);
   useEffect(() => {
@@ -163,14 +168,22 @@ export default function LessonGenerator() {
 
   // القسم المعتاد يُعبّأ فقط حين لا يأتي الأستاذ من وضعية محددة.
   useEffect(() => {
-    if (!situationId && preferredClassId && !form.classId) {
+    if (!situationId && preferredClassId && !form.classId && seasonClasses.some((classItem) => classItem.id === preferredClassId)) {
       setForm((previous) => ({ ...previous, classId: preferredClassId }));
     }
-  }, [situationId, preferredClassId, form.classId, setForm]);
+  }, [situationId, preferredClassId, form.classId, seasonClasses, setForm]);
 
   useEffect(() => {
-    if (form.classId) setPreferredClassId(form.classId);
-  }, [form.classId, setPreferredClassId]);
+    if (profile?.academicYear && !situationId && form.classId && !seasonClasses.some((classItem) => classItem.id === form.classId)) {
+      setForm((previous) => ({ ...previous, classId: undefined }));
+    }
+  }, [form.classId, profile?.academicYear, seasonClasses, setForm, situationId]);
+
+  useEffect(() => {
+    if (profile?.academicYear && form.classId && seasonClasses.some((classItem) => classItem.id === form.classId)) {
+      setPreferredClassId(form.classId);
+    }
+  }, [form.classId, profile?.academicYear, seasonClasses, setPreferredClassId]);
 
   useEffect(() => {
     if (requestedContentType && contentTypes.some((item) => item.value === requestedContentType) && form.contentType !== requestedContentType) {

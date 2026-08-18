@@ -5,12 +5,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText } from "lucide-react";
+import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState } from "react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+
+type SessionStatus = "completed" | "partial" | "postponed" | "cancelled";
+
+const sessionOutcomeOptions: Array<{ value: SessionStatus; label: string; guidance: string; icon: typeof CheckCircle2 }> = [
+  { value: "completed", label: "مكتملة", guidance: "تُغلق الوضعية وتصبح جاهزة للتقويم أو الانتقال إلى التالية.", icon: CheckCircle2 },
+  { value: "partial", label: "منجزة جزئياً", guidance: "تبقى الوضعية مفتوحة لتستكمل عناصرها في الحصة القادمة.", icon: PauseCircle },
+  { value: "postponed", label: "مؤجّلة", guidance: "تبقى الوضعية مفتوحة؛ ستظهر مجدداً كخطوتك التالية في لوحة اليوم.", icon: CalendarClock },
+  { value: "cancelled", label: "ملغاة", guidance: "تبقى الوضعية مفتوحة حتى تقرر متى تعيد تقديمها.", icon: XCircle },
+];
+
+const pendingStatusLabels: Partial<Record<SessionStatus, string>> = {
+  partial: "قيد الاستكمال",
+  postponed: "مؤجّلة",
+  cancelled: "ملغاة",
+};
 
 export default function AnnualPlanDetail({ id }: { id: string }) {
   const [, setLocation] = useLocation();
@@ -28,6 +43,9 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
   const [addSituationOpen, setAddSituationOpen] = useState(false);
   const [newSituation, setNewSituation] = useState({ sectionId: 0, title: "", objectives: "", content: "" });
   const [expandedSection, setExpandedSection] = useState<number | null>(null);
+  const [sessionDialogSituation, setSessionDialogSituation] = useState<{ id: number; title: string } | null>(null);
+  const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
+  const [sessionNote, setSessionNote] = useState("");
 
   if (plan && !editForm.title) {
     setEditForm({
@@ -77,7 +95,38 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
   });
 
   const toggleSituationMutation = trpc.situations.toggleCompleted.useMutation({
-    onSuccess: () => utils.sections.list.invalidate({ annualPlanId: planId }),
+    onSuccess: () => {
+      utils.sections.list.invalidate({ annualPlanId: planId });
+      utils.ai.getTeacherOSContext.invalidate();
+      toast.success("أُعيد فتح الوضعية؛ لن تُحسب منجزة حتى تسجّل نتيجتها الفعلية.");
+    },
+    onError: (error) => toast.error(error.message || "تعذر تحديث الوضعية."),
+  });
+
+  const closeSessionDialog = () => {
+    setSessionDialogSituation(null);
+    setSessionStatus("completed");
+    setSessionNote("");
+  };
+  const openSessionDialog = (situation: { id: number; title: string }) => {
+    setSessionDialogSituation(situation);
+    setSessionStatus("completed");
+    setSessionNote("");
+  };
+  const completeSessionMutation = trpc.situations.completeSession.useMutation({
+    onSuccess: (result) => {
+      utils.sections.list.invalidate({ annualPlanId: planId });
+      utils.ai.getTeacherOSContext.invalidate();
+      const successMessage: Record<SessionStatus, string> = {
+        completed: "سُجّلت الحصة مكتملة.",
+        partial: "سُجّل الإنجاز الجزئي؛ ستبقى الوضعية مفتوحة للمتابعة.",
+        postponed: "سُجّل تأجيل الحصة؛ ستظهر الوضعية في متابعة اليوم.",
+        cancelled: "سُجّل إلغاء الحصة؛ لن تُحسب ضمن الإنجاز.",
+      };
+      toast.success(successMessage[result.sessionStatus]);
+      closeSessionDialog();
+    },
+    onError: (error) => toast.error(error.message || "تعذر تسجيل نتيجة الحصة."),
   });
 
   const createLessonFromSituationMutation = trpc.sections.createLessonFromSituation.useMutation({
@@ -253,8 +302,16 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                             <Circle className="w-4 h-4 text-muted-foreground shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium">{sit.title}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-medium">{sit.title}</p>
+                              {!sit.isCompleted && sit.sessionStatus && pendingStatusLabels[sit.sessionStatus as SessionStatus] && (
+                                <Badge variant="outline" className="border-amber-400/60 bg-amber-50 text-amber-800">
+                                  {pendingStatusLabels[sit.sessionStatus as SessionStatus]}
+                                </Badge>
+                              )}
+                            </div>
                             {sit.objectives && <p className="text-xs text-muted-foreground truncate">{sit.objectives}</p>}
+                            {!sit.isCompleted && sit.completionNotes && <p className="mt-1 text-xs leading-5 text-muted-foreground">آخر ملاحظة: {sit.completionNotes}</p>}
                           </div>
                           <Button
                             variant="outline"
@@ -268,10 +325,11 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                           <Button
                             variant={sit.isCompleted ? "secondary" : "outline"}
                             size="sm"
-                            onClick={() => toggleSituationMutation.mutate({ id: sit.id, isCompleted: !sit.isCompleted })}
+                            onClick={() => sit.isCompleted ? toggleSituationMutation.mutate({ id: sit.id, isCompleted: false }) : openSessionDialog({ id: sit.id, title: sit.title })}
+                            disabled={toggleSituationMutation.isPending}
                           >
                             {sit.isCompleted ? <Circle className="w-3.5 h-3.5 ml-1 text-green-600" /> : <CheckCircle2 className="w-3.5 h-3.5 ml-1 text-muted-foreground" />}
-                            {sit.isCompleted ? "إلغاء الإنجاز" : "سجّل منجزة"}
+                            {sit.isCompleted ? "إعادة فتح" : "سجّل نتيجة الحصة"}
                           </Button>
                           {sit.isCompleted && (
                             <Button
@@ -348,6 +406,58 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
           <p className="text-muted-foreground">لا توجد مقاطع بعد. أضف المقاطع التعليمية والوضعيات.</p>
         </CardContent></Card>
       )}
+
+      <Dialog open={Boolean(sessionDialogSituation)} onOpenChange={(open) => !open && closeSessionDialog()}>
+        <DialogContent className="sm:max-w-lg" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>سجّل نتيجة الحصة</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">حدّد ما جرى في «{sessionDialogSituation?.title}». لا تُغلق الوضعية إلا عند اختيار «مكتملة».</p>
+          <div className="grid grid-cols-2 gap-2" aria-label="حالة الحصة">
+            {sessionOutcomeOptions.map((option) => {
+              const StatusIcon = option.icon;
+              const selected = option.value === sessionStatus;
+              return (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant="outline"
+                  aria-pressed={selected}
+                  onClick={() => setSessionStatus(option.value)}
+                  className={`h-auto min-h-16 justify-start gap-2 whitespace-normal px-3 py-3 text-right leading-snug ${selected ? "border-primary bg-primary/10 text-primary hover:bg-primary/15" : "border-border bg-background text-foreground hover:bg-muted"}`}
+                >
+                  <StatusIcon className="h-4 w-4 shrink-0" />
+                  <span>{option.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+          <p className="rounded-lg bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
+            {sessionOutcomeOptions.find((option) => option.value === sessionStatus)?.guidance}
+          </p>
+          <Textarea
+            value={sessionNote}
+            onChange={(event) => setSessionNote(event.target.value)}
+            maxLength={3000}
+            className="min-h-24 resize-y"
+            placeholder="ملاحظة اختيارية: ما الذي أُنجز، أو ما الذي ستستكمله في الحصة القادمة؟"
+          />
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" type="button" onClick={closeSessionDialog}>إلغاء</Button>
+            <Button
+              type="button"
+              disabled={!sessionDialogSituation || completeSessionMutation.isPending}
+              onClick={() => sessionDialogSituation && completeSessionMutation.mutate({
+                situationId: sessionDialogSituation.id,
+                sessionStatus,
+                note: sessionNote || undefined,
+              })}
+            >
+              {completeSessionMutation.isPending ? "جارٍ الحفظ…" : "حفظ نتيجة الحصة"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

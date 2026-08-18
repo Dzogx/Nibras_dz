@@ -161,6 +161,13 @@ describe("Full Pedagogical Loop E2E", () => {
 
     // Step 5: Mark situation as completed
     vi.mocked(db.toggleLearningSituationCompleted).mockResolvedValue(undefined);
+    vi.mocked(db.getLearningSituationsByUserId).mockResolvedValue([{
+      id: 1,
+      sectionId: 1,
+      situationNumber: 1,
+      title: "وضعية إدماجية: تحليل أسباب اندلاع الثورة",
+      isCompleted: false,
+    }] as any);
     await caller.situations.toggleCompleted({ id: 1, isCompleted: true });
 
     // Step 6: Create a lesson from the situation

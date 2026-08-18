@@ -1575,8 +1575,11 @@ ${rulesContext}
       await updateLearningSituation(input.id, input);
       return { success: true } as const;
     }),
-    toggleCompleted: protectedProcedure.input(z.object({ id: z.number(), isCompleted: z.boolean() })).mutation(async ({ input }) => {
-      await toggleLearningSituationCompleted(input.id, input.isCompleted, undefined, input.isCompleted ? "completed" : null);
+    toggleCompleted: protectedProcedure.input(z.object({ id: z.number(), isCompleted: z.boolean() })).mutation(async ({ ctx, input }) => {
+      const situations = await getLearningSituationsByUserId(ctx.user.id);
+      const situation = situations.find((item) => item.id === input.id);
+      if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+      await toggleLearningSituationCompleted(situation.id, input.isCompleted, undefined, input.isCompleted ? "completed" : null);
       return { success: true } as const;
     }),
     completeSession: protectedProcedure.input(z.object({

@@ -54,7 +54,8 @@ interface LessonSummary {
 
 export default function Assessment() {
   const [, setLocation] = useLocation();
-  const [preferredClassId, setPreferredClassId] = usePreferredClass();
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
+  const [preferredClassId, setPreferredClassId] = usePreferredClass(profile?.academicYear);
   const [generated, setGenerated] = useState<string>("");
   const [resourceId, setResourceId] = useState<number | null>(null);
   const [rulesInfo, setRulesInfo] = useState<{ rulesApplied: boolean; pointDistribution: { subject: string; points: number; label: string }[]; totalPoints: number; duration: string } | null>(null);
@@ -103,19 +104,15 @@ export default function Assessment() {
   );
 
   const linkedClassId = classIdFromSearch();
-  useEffect(() => {
-    const targetClassId = linkedClassId ?? (!form.classId ? preferredClassId : undefined);
-    if (targetClassId && form.classId !== targetClassId) {
-      setForm((previous) => ({ ...previous, classId: targetClassId }));
-    }
-  }, [linkedClassId, preferredClassId, form.classId, setForm]);
-
-  useEffect(() => {
-    if (form.classId) setPreferredClassId(form.classId);
-  }, [form.classId, setPreferredClassId]);
-
   const utils = trpc.useUtils();
   const { data: classesList } = trpc.classes.list.useQuery();
+  const seasonClasses = useMemo(
+    () => (classesList ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === profile?.academicYear),
+    [classesList, profile?.academicYear],
+  );
+  const activeSeasonClassId = form.classId && seasonClasses.some((classItem) => classItem.id === form.classId)
+    ? form.classId
+    : undefined;
   const { data: linkedSituation } = trpc.situations.getById.useQuery(
     { id: linkedSituationId ?? 0 },
     { enabled: Boolean(linkedSituationId) }
@@ -129,18 +126,17 @@ export default function Assessment() {
     { enabled: Boolean(linkedSection?.annualPlanId) }
   );
   const { data: selectedClass } = trpc.classes.getById.useQuery(
-    { id: form.classId ?? 0 },
-    { enabled: Boolean(form.classId) }
+    { id: activeSeasonClassId ?? 0 },
+    { enabled: Boolean(activeSeasonClassId) }
   );
-  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     {
-      classId: form.classId,
+      classId: activeSeasonClassId,
       gradeLevel: form.gradeLevel,
       subject: form.subject,
       academicYear: profile?.academicYear,
     },
-    { enabled: form.autoImport }
+    { enabled: form.autoImport && Boolean(activeSeasonClassId) }
   );
   const { data: competencyCategories } = trpc.ai.getCompetencyCategories.useQuery();
   const { data: assessmentRules } = trpc.ai.getAssessmentRules.useQuery(
@@ -149,6 +145,24 @@ export default function Assessment() {
   );
 
   const linkedSituationInitialized = useRef(false);
+
+  useEffect(() => {
+    const preferredIsInSeason = Boolean(preferredClassId && seasonClasses.some((classItem) => classItem.id === preferredClassId));
+    const targetClassId = linkedClassId ?? (!activeSeasonClassId && preferredIsInSeason ? preferredClassId : undefined);
+
+    if (linkedClassId && form.classId !== linkedClassId) {
+      setForm((previous) => ({ ...previous, classId: linkedClassId }));
+    } else if (!linkedSituation && form.classId && !activeSeasonClassId && profile?.academicYear) {
+      setForm((previous) => ({ ...previous, classId: undefined }));
+    } else if (targetClassId && form.classId !== targetClassId) {
+      setForm((previous) => ({ ...previous, classId: targetClassId }));
+    }
+  }, [activeSeasonClassId, form.classId, linkedClassId, linkedSituation, preferredClassId, profile?.academicYear, seasonClasses, setForm]);
+
+  useEffect(() => {
+    if (activeSeasonClassId && preferredClassId !== activeSeasonClassId) setPreferredClassId(activeSeasonClassId);
+  }, [activeSeasonClassId, preferredClassId, setPreferredClassId]);
+
   useEffect(() => {
     if (!linkedSituationInitialized.current && linkedSituation && linkedSection && linkedPlan) {
       linkedSituationInitialized.current = true;
@@ -405,14 +419,14 @@ export default function Assessment() {
                 </Select>
               </div>
               <div><Label>القسم</Label>
-                <Select value={form.classId ? String(form.classId) : ""} onValueChange={v => {
+                <Select value={activeSeasonClassId ? String(activeSeasonClassId) : ""} onValueChange={v => {
                   const classId = v ? parseInt(v) : undefined;
                   setForm({ ...form, classId });
                   setPreferredClassId(classId);
                 }}>
-                  <SelectTrigger><SelectValue placeholder={classesList && classesList.length > 0 ? "--" : "لا يوجد"} /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={seasonClasses.length > 0 ? "--" : "لا يوجد"} /></SelectTrigger>
                   <SelectContent>
-                    {classesList && classesList.length > 0 ? classesList.map(c => (
+                    {seasonClasses.length > 0 ? seasonClasses.map(c => (
                       <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                     )) : (
                       <div className="px-3 py-2 text-xs text-muted-foreground">أضف قسمًا من Teacher OS أولاً</div>
