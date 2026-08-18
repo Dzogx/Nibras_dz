@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks } from "lucide-react";
+import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileCode2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
@@ -249,6 +249,22 @@ export default function Assessment() {
     onError: () => toast.error("خطأ في التوليد"),
   });
 
+  const exportLatexMutation = trpc.ai.exportAssessmentLatex.useMutation({
+    onSuccess: (data) => {
+      const file = new Blob([data.texContent], { type: "application/x-tex;charset=utf-8" });
+      const objectUrl = URL.createObjectURL(file);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = data.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      toast.success("تم تنزيل قالب LaTeX. افتحه بـ XeLaTeX أو Overleaf للطباعة عالية الدقة.");
+    },
+    onError: () => toast.error("تعذر تجهيز قالب LaTeX الآن"),
+  });
+
   const handleGenerate = useCallback(() => {
     const selectedOfficialSituation = form.situationIds.length === 1
       ? teacherOSContext?.completedSituations.find(situation => situation.id === form.situationIds[0])
@@ -273,6 +289,24 @@ export default function Assessment() {
   const copyContent = () => {
     navigator.clipboard.writeText(generated);
     toast.success("تم النسخ");
+  };
+
+  const downloadLatexTemplate = () => {
+    if (!generated) return;
+    exportLatexMutation.mutate({
+      title: form.title || `اختبار في ${form.subject}`,
+      content: generated,
+      subject: form.subject,
+      gradeLevel: form.gradeLevel,
+      assessmentType: form.assessmentType as "quiz" | "exam" | "rubric" | "answerKey",
+      topic: form.topic || undefined,
+      duration: rulesInfo?.duration || form.duration || undefined,
+      totalPoints: rulesInfo?.totalPoints,
+      teacherName: profile?.displayName || undefined,
+      school: profile?.school || undefined,
+      className: selectedClass?.name || undefined,
+      assessmentDate: new Date().toISOString().slice(0, 10),
+    });
   };
 
   const printContent = () => {
@@ -621,15 +655,19 @@ export default function Assessment() {
         {/* Output Card */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <CardTitle>التقييم المُولّد</CardTitle>
               {generated && (
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button variant="outline" size="sm" onClick={copyContent}>
                     <Copy className="w-4 h-4 ml-1" />نسخ
                   </Button>
                   <Button variant="outline" size="sm" onClick={printContent}>
                     <Printer className="w-4 h-4 ml-1" />طباعة A4
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={downloadLatexTemplate} disabled={exportLatexMutation.isPending} title="ينزّل ملفاً قابلاً للفتح بـ XeLaTeX أو Overleaf">
+                    {exportLatexMutation.isPending ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <FileCode2 className="w-4 h-4 ml-1" />}
+                    تصدير LaTeX
                   </Button>
                   {resourceId && (
                     <Button size="sm" onClick={() => setLocation(`/content-library/${resourceId}`)}>
@@ -686,6 +724,7 @@ export default function Assessment() {
                   </div>
                 )}
                 <div className="print-container">
+                  <p className="mb-3 text-xs leading-5 text-muted-foreground print:hidden">للطباعة الاحترافية القابلة للتحرير: نزّل قالب LaTeX ثم افتحه بـ <span dir="ltr">XeLaTeX</span> أو <span dir="ltr">Overleaf</span>.</p>
                   <Button variant="outline" size="sm" className="print:hidden ml-2" onClick={() => setPreviewOpen(true)}>
                     <Eye className="w-4 h-4 ml-1" />
                     معاينة

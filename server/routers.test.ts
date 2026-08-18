@@ -1061,6 +1061,28 @@ describe("ai.generateAssessment with curriculum citations", () => {
   });
 });
 
+describe("ai.exportAssessmentLatex", () => {
+  beforeEach(resetMocks);
+
+  it("يعيد ملف LaTeX آمناً وجاهزاً لـ XeLaTeX دون استدعاء أي مزود ذكاء اصطناعي", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.exportAssessmentLatex({
+      title: "اختبار الفصل الأول",
+      content: "1. حدّد الموقع الجغرافي للجزائر.",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الرابعة متوسط",
+      assessmentType: "exam",
+      totalPoints: 20,
+    });
+
+    expect(result.filename).toMatch(/^nibras-assessment-\d{4}-\d{2}-\d{2}\.tex$/);
+    expect(result.compiler).toBe("xelatex");
+    expect(result.texContent).toContain("\\setmainlanguage{arabic}");
+    expect(result.texContent).toContain("اختبار الفصل الأول");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+});
+
 // ─── Teacher-edited official situation titles ───────────────────
 describe("ai.generateAssessment with teacher-edited situation titles", () => {
   beforeEach(() => {

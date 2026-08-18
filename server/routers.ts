@@ -36,6 +36,7 @@ import {
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 import { buildSeasonReadiness } from "../shared/seasonReadiness";
+import { buildAssessmentLatexDocument } from "./latex/assessmentTemplate";
 
 /**
  * يتحقق من بنية استجابة مزود الذكاء الاصطناعي وقت التشغيل.
@@ -1487,6 +1488,34 @@ ${rulesContext}
       }
 
       return { resourceId: result?.id, content, title: canonicalAssessmentTitle, topic: canonicalTopic, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد", curriculumCitations, curriculumDocsCount: curriculumDocs.length };
+    }),
+
+    /**
+     * يعيد مصدر LaTeX آمناً ومهجأً فقط. لا يجري الخادم أي عملية تجميع أو تنفيذ
+     * لمحتوى الأستاذ أو لمخرجات الذكاء الاصطناعي؛ التنزيل يتيح للأستاذ الطباعة
+     * عالية الدقة لاحقاً عبر XeLaTeX أو Overleaf.
+     */
+    exportAssessmentLatex: protectedProcedure.input(z.object({
+      title: z.string().min(1).max(200),
+      content: z.string().min(1).max(100_000),
+      subject: z.string().min(1).max(80),
+      gradeLevel: z.string().min(1).max(80),
+      assessmentType: z.enum(["quiz", "exam", "rubric", "answerKey"]),
+      topic: z.string().max(300).optional(),
+      duration: z.string().max(80).optional(),
+      totalPoints: z.number().positive().max(100).optional(),
+      teacherName: z.string().max(160).optional(),
+      school: z.string().max(200).optional(),
+      className: z.string().max(80).optional(),
+      assessmentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    }).strict()).mutation(({ input }) => {
+      const texContent = buildAssessmentLatexDocument(input);
+      const datePart = input.assessmentDate || new Date().toISOString().slice(0, 10);
+      return {
+        filename: `nibras-assessment-${datePart}.tex`,
+        texContent,
+        compiler: "xelatex" as const,
+      };
     }),
 
     // ─── National Rules API ────────────────────────────────────
