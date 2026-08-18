@@ -80,6 +80,21 @@ const sessionStatusOptions: Array<{
   },
 ];
 
+const openSessionGuidance: Partial<Record<SessionStatus, { label: string; nextStep: string }>> = {
+  partial: {
+    label: "وضعية قيد الاستكمال",
+    nextStep: "أكمل العناصر المتبقية في هذه الوضعية قبل الانتقال إلى التقويم أو الوضعية التالية.",
+  },
+  postponed: {
+    label: "حصة مؤجّلة",
+    nextStep: "أعد تقديم هذه الوضعية في أقرب حصة مناسبة؛ ما زالت هي الخطوة التالية في خطتك.",
+  },
+  cancelled: {
+    label: "حصة ملغاة",
+    nextStep: "حدّد موعداً بديلاً لهذه الوضعية قبل تجاوزها؛ لم تُحسب ضمن الإنجاز.",
+  },
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -109,12 +124,16 @@ export default function Dashboard() {
   const [sessionNote, setSessionNote] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
   const utils = trpc.useUtils();
+  const seasonClasses = useMemo(
+    () => (classes ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
+    [classes, academicYear],
+  );
   const scheduledSlot = useMemo(() => getScheduledSlotForNow(weeklySchedule), [weeklySchedule]);
-  const preferredClassId = selectedClassId && classes?.some((classItem) => classItem.id === selectedClassId)
+  const preferredClassId = selectedClassId && seasonClasses.some((classItem) => classItem.id === selectedClassId)
     ? selectedClassId
     : undefined;
-  const activeClassId = (followSchedule ? scheduledSlot?.classId : undefined) ?? preferredClassId ?? classes?.[0]?.id;
-  const activeClass = classes?.find((item) => item.id === activeClassId);
+  const activeClassId = (followSchedule ? scheduledSlot?.classId : undefined) ?? preferredClassId ?? seasonClasses[0]?.id;
+  const activeClass = seasonClasses.find((item) => item.id === activeClassId);
   const needsScheduleSetup = Boolean(activeClass && weeklySchedule && weeklySchedule.length === 0);
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
@@ -169,6 +188,9 @@ export default function Dashboard() {
   };
   const selectedSessionStatus = sessionStatusOptions.find((option) => option.value === sessionStatus)!;
   const SelectedSessionStatusIcon = selectedSessionStatus.icon;
+  const dailySituationGuidance = dailySituation?.sessionStatus
+    ? openSessionGuidance[dailySituation.sessionStatus as SessionStatus]
+    : undefined;
 
 
   return (
@@ -210,7 +232,7 @@ export default function Dashboard() {
                 <h2 className="font-bold text-lg">خطوتك التالية</h2>
               </div>
             </div>
-            {classes && classes.length > 1 && (
+            {seasonClasses.length > 1 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button size="sm" variant="outline" className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white">
@@ -220,7 +242,7 @@ export default function Dashboard() {
                 <DropdownMenuContent align="end" className="min-w-56">
                   <DropdownMenuLabel>اختيار قسم آخر</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {classes.map((classItem) => (
+                  {seasonClasses.map((classItem) => (
                     <DropdownMenuItem
                       key={classItem.id}
                       onSelect={() => {
@@ -248,7 +270,7 @@ export default function Dashboard() {
                   onClick={() => dailySituation && setLocation(readyLessonPlan ? `/content-library/${readyLessonPlan.id}` : buildQuickLessonPath(dailySituation.id))}
                 >
                   {readyLessonPlan ? <FileText className="ml-2 h-4 w-4" /> : <Sparkles className="ml-2 h-4 w-4" />}
-                  {readyLessonPlan ? "افتح مذكرة الحصة" : "حضّر مذكرة الحصة"}
+                  {readyLessonPlan ? (dailySituationGuidance ? "استكمل مذكرة الحصة" : "افتح مذكرة الحصة") : "حضّر مذكرة الحصة"}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" className="text-white hover:bg-white/10 hover:text-white"><MoreHorizontal className="ml-1 h-4 w-4" />المزيد</Button></DropdownMenuTrigger>
@@ -264,6 +286,13 @@ export default function Dashboard() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              {dailySituationGuidance && (
+                <div className="mt-4 rounded-xl border border-brand-wax-300/35 bg-white/10 px-3 py-3 text-sm text-white/90">
+                  <p className="font-semibold text-brand-wax-300">{dailySituationGuidance.label}</p>
+                  <p className="mt-1 leading-6">{dailySituationGuidance.nextStep}</p>
+                  {dailySituation?.completionNotes && <p className="mt-2 border-t border-white/15 pt-2 text-xs leading-5 text-white/75">آخر ملاحظة: {dailySituation.completionNotes}</p>}
+                </div>
+              )}
               <p className="mt-4 text-xs text-white/65">{readyLessonPlan ? "مذكرتك جاهزة لهذه الوضعية. افتحها ثم سجّل نتيجة الحصة بعد تنفيذها." : "ابدأ بالمذكرة، ثم سجّل نتيجة الحصة. تظهر الإجراءات التالية عند الحاجة."}</p>
             </div>
           ) : needsScheduleSetup ? (

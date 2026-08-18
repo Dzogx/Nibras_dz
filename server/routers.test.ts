@@ -481,6 +481,35 @@ describe("ai.getTeacherOSContext", () => {
     expect(result.currentSectionProgress).toEqual({ completed: 1, total: 2 });
   });
 
+  it("keeps the latest open session status and note in the daily teacher context", async () => {
+    (db.getLessons as any).mockResolvedValue([]);
+    (db.getAnnualPlans as any).mockResolvedValue([
+      { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2026/2027" },
+    ]);
+    (db.getAnnualPlanSections as any).mockResolvedValue([
+      { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
+    ]);
+    (db.getLearningSituations as any).mockResolvedValue([
+      {
+        id: 101,
+        situationNumber: 1,
+        title: "قراءة الوثيقة التاريخية",
+        isCompleted: false,
+        sessionStatus: "postponed",
+        completionNotes: "تأجلت الحصة بسبب نشاط المؤسسة.",
+      },
+    ]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.getTeacherOSContext({ classId: 1, academicYear: "2026/2027" });
+
+    expect(result.nextSituation).toMatchObject({
+      id: 101,
+      sessionStatus: "postponed",
+      completionNotes: "تأجلت الحصة بسبب نشاط المؤسسة.",
+    });
+  });
+
   it("orders completed official situations by completion date for the remediation activity", async () => {
     (db.getLessons as any).mockResolvedValue([]);
     (db.getAnnualPlans as any).mockResolvedValue([

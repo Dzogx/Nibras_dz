@@ -1336,6 +1336,8 @@ ${rulesContext}
                   title: firstIncomplete.title,
                   sectionNumber: section.sectionNumber,
                   situationNumber: firstIncomplete.situationNumber,
+                  sessionStatus: firstIncomplete.sessionStatus ?? null,
+                  completionNotes: firstIncomplete.completionNotes ?? null,
                 };
               }
             }

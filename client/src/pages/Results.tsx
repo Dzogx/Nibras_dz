@@ -1,5 +1,5 @@
 import { trpc } from "@/lib/trpc";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,12 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, BarChart3, TrendingDown, Lightbulb, Loader2, Trash2, AlertTriangle, NotebookPen } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { usePreferredClass } from "@/hooks/usePreferredClass";
 
 export default function Results() {
   const [, setLocation] = useLocation();
   const classIdFromSearch = typeof window === "undefined" ? null : Number(new URLSearchParams(window.location.search).get("classId")) || null;
   const remediationFromSearch = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("action") === "remediation";
   const [selectedClassId, setSelectedClassId] = useState<number | null>(classIdFromSearch);
+  const [preferredClassId, setPreferredClassId] = usePreferredClass();
   const [addOpen, setAddOpen] = useState(false);
   const [remediationOpen, setRemediationOpen] = useState(false);
   const [remediationSituationId, setRemediationSituationId] = useState<number | null>(null);
@@ -37,10 +39,17 @@ export default function Results() {
 
   const { data: classes } = trpc.classes.list.useQuery();
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
+  const seasonClasses = useMemo(
+    () => (classes ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === profile?.academicYear),
+    [classes, profile?.academicYear],
+  );
 
   useEffect(() => {
     if (classIdFromSearch && selectedClassId !== classIdFromSearch) setSelectedClassId(classIdFromSearch);
-  }, [classIdFromSearch, selectedClassId]);
+    if (!classIdFromSearch && !selectedClassId && preferredClassId && seasonClasses.some((classItem) => classItem.id === preferredClassId)) {
+      setSelectedClassId(preferredClassId);
+    }
+  }, [classIdFromSearch, preferredClassId, seasonClasses, selectedClassId]);
 
   const { data: results } = trpc.results.list.useQuery(
     { classId: selectedClassId! },
@@ -121,13 +130,16 @@ export default function Results() {
         <Card>
           <CardContent className="p-6">
             <h2 className="text-lg font-semibold mb-4">اختر القسم</h2>
-            {classes && classes.length > 0 ? (
+            {seasonClasses.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {classes.map(c => (
+                {seasonClasses.map(c => (
                   <Card
                     key={c.id}
                     className="cursor-pointer hover:border-primary transition-colors"
-                    onClick={() => setSelectedClassId(c.id)}
+                    onClick={() => {
+                      setSelectedClassId(c.id);
+                      setPreferredClassId(c.id);
+                    }}
                   >
                     <CardContent className="p-4 text-center">
                       <p className="font-medium">{c.name}</p>
@@ -149,7 +161,7 @@ export default function Results() {
                 تغيير القسم
               </Button>
               <h2 className="text-lg font-semibold">
-                {classes?.find(c => c.id === selectedClassId)?.name || "القسم"}
+                {seasonClasses.find(c => c.id === selectedClassId)?.name || "القسم"}
               </h2>
             </div>
             <Dialog open={addOpen} onOpenChange={setAddOpen}>
