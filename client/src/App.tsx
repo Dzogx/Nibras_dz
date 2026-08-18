@@ -24,6 +24,7 @@ import AnswerPage from "./pages/AnswerPage";
 import Brand from "./pages/Brand";
 import SeasonSetup from "./pages/SeasonSetup";
 import IntegrativeSituation from "./pages/IntegrativeSituation";
+import WeeklyPlan from "./pages/WeeklyPlan";
 
 
 function Router() {
@@ -40,6 +41,9 @@ function Router() {
       </Route>
       <Route path="/season-setup">
         {() => <DashboardLayout><SeasonSetup /></DashboardLayout>}
+      </Route>
+      <Route path="/weekly-plan">
+        {() => <DashboardLayout><WeeklyPlan /></DashboardLayout>}
       </Route>
       <Route path="/annual-plans">
         {() => <DashboardLayout><AnnualPlans /></DashboardLayout>}

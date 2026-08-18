@@ -34,6 +34,7 @@ import {
   Settings,
   GraduationCap,
   BarChart3,
+  CalendarDays,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -42,6 +43,7 @@ import { Button } from "./ui/button";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
+  { icon: CalendarDays, label: "الأسبوع", path: "/weekly-plan" },
   { icon: FileText, label: "التخطيط", path: "/annual-plans" },
   { icon: Library, label: "التقويم", path: "/assessment" },
   { icon: Library, label: "المكتبة", path: "/content-library" },
@@ -49,8 +51,8 @@ const menuItems = [
 
 const mobileQuickActions = [
   { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
+  { icon: CalendarDays, label: "الأسبوع", path: "/weekly-plan" },
   { icon: FileText, label: "التخطيط", path: "/annual-plans" },
-  { icon: Library, label: "تقويم", path: "/assessment" },
   { icon: Library, label: "المكتبة", path: "/content-library" },
 ];
 
@@ -189,7 +191,7 @@ function DashboardLayoutContent({
 
   return (
     <>
-      <div className="relative" ref={sidebarRef}>
+      <div className="contents md:relative" ref={isMobile ? undefined : sidebarRef}>
         <Sidebar
           collapsible="icon"
           side="right"
@@ -278,19 +280,18 @@ function DashboardLayoutContent({
             </DropdownMenu>
           </SidebarFooter>
         </Sidebar>
-        <div
+        {!isMobile && <div
           className={`absolute top-0 left-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);
           }}
           style={{ zIndex: 50 }}
-        />
+        />}
       </div>
 
-      <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40">
+      <SidebarInset className="min-w-0">
+          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 md:hidden">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex items-center gap-3">
@@ -302,11 +303,9 @@ function DashboardLayoutContent({
               </div>
             </div>
           </div>
-        )}
         <main className="flex-1 p-4 pb-24 md:p-6">{children}</main>
-        {isMobile && (
           <nav
-            className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-4 border-t bg-background/95 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(24,34,47,0.08)] backdrop-blur"
+            className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-4 border-t bg-background/95 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(24,34,47,0.08)] backdrop-blur md:hidden"
             aria-label="إجراءات الحصة السريعة"
           >
             {mobileQuickActions.map((action) => {
@@ -324,7 +323,6 @@ function DashboardLayoutContent({
               );
             })}
           </nav>
-        )}
       </SidebarInset>
     </>
   );
