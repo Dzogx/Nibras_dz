@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, getScheduledSlotForNow } from "../shared/quick-click";
+import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, findReadyLessonPlan, getScheduledSlotForNow } from "../shared/quick-click";
 
 describe("مسار النقرات السريعة", () => {
   it("يحمل معرّف الوضعية إلى مولّد المذكرة لاسترجاع عنوانها الرسمي", () => {
@@ -24,5 +24,16 @@ describe("مسار النقرات السريعة", () => {
     expect(getScheduledSlotForNow(entries, new Date(2026, 7, 17, 9, 15))?.classId).toBe(2);
     expect(getScheduledSlotForNow(entries, new Date(2026, 7, 17, 7, 30))?.classId).toBe(1);
     expect(getScheduledSlotForNow(entries, new Date(2026, 7, 17, 10, 0))).toBeUndefined();
+  });
+
+  it("يفتح مذكرة الوضعية الجاهزة للقسم نفسه دون إعادة إنشائها", () => {
+    const resources = [
+      { id: 1, type: "lessonPlan", classId: 2, metadata: { situationId: 11 } },
+      { id: 2, type: "lessonPlan", classId: 3, metadata: { situationId: 11 } },
+      { id: 3, type: "activity", classId: 2, metadata: { situationId: 11 } },
+    ];
+
+    expect(findReadyLessonPlan(resources, 2, 11)?.id).toBe(1);
+    expect(findReadyLessonPlan(resources, 2, 12)).toBeUndefined();
   });
 });

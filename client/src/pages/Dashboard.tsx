@@ -21,7 +21,7 @@ import { useLocation } from "wouter";
 import { useMemo, useState } from "react";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 import { toast } from "sonner";
-import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, getScheduledSlotForNow } from "@shared/quick-click";
+import { buildQuickAssessmentPath, buildQuickIntegrativeSituationPath, buildQuickLessonPath, findReadyLessonPlan, getScheduledSlotForNow } from "@shared/quick-click";
 import {
   Select,
   SelectContent,
@@ -45,10 +45,10 @@ export default function Dashboard() {
   const { data: lessons, isLoading: lessonsLoading } = trpc.lessons.list.useQuery();
   const { data: situations } = trpc.situations.listPending.useQuery();
   const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery();
-  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery();
-  const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: profile } = trpc.profile.get.useQuery();
   const academicYear = profile?.academicYear || "2025-2026";
+  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery({ academicYear });
+  const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery({ academicYear });
 
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
@@ -66,15 +66,6 @@ export default function Dashboard() {
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
   const utils = trpc.useUtils();
-  const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
-    {
-      classId: selectedClassId ?? classes?.[0]?.id ?? -1,
-    },
-    {
-      enabled: Boolean(selectedClassId ?? classes?.[0]?.id),
-    }
-  );
-
   const scheduledSlot = useMemo(() => getScheduledSlotForNow(weeklySchedule), [weeklySchedule]);
   const preferredClassId = selectedClassId && classes?.some((classItem) => classItem.id === selectedClassId)
     ? selectedClassId
@@ -83,12 +74,25 @@ export default function Dashboard() {
   const activeClass = classes?.find((item) => item.id === activeClassId);
   const needsScheduleSetup = Boolean(activeClass && weeklySchedule && weeklySchedule.length === 0);
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
+  const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
+    {
+      classId: activeClassId ?? -1,
+      academicYear,
+    },
+    {
+      enabled: Boolean(activeClassId),
+    }
+  );
+
   const dailySection = teacherOSContext?.currentSection;
   const dailySituation = teacherOSContext?.nextSituation;
   const lastCompletedSituation = teacherOSContext?.completedSituations?.[0];
   const contextualSituation = dailySituation ?? lastCompletedSituation;
   const currentSectionProgress = teacherOSContext?.currentSectionProgress ?? teacherOSContext?.sectionProgress;
   const hasDailySession = Boolean(activeClass && dailySituation);
+  const readyLessonPlan = useMemo(() => {
+    return findReadyLessonPlan(resources, activeClassId, dailySituation?.id);
+  }, [activeClassId, dailySituation?.id, resources]);
   const completeSessionMutation = trpc.situations.completeSession.useMutation({
     onSuccess: async (result) => {
       await Promise.all([
@@ -176,8 +180,12 @@ export default function Dashboard() {
               <h3 className="mt-3 text-xl font-bold leading-relaxed md:text-2xl">{dailySituation?.title}</h3>
               <p className="mt-2 text-sm text-white/80">المقطع {dailySection?.number}: {dailySection?.title}</p>
               <div className="mt-6 flex flex-wrap items-center gap-2">
-                <Button className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => dailySituation && setLocation(buildQuickLessonPath(dailySituation.id))}>
-                  <Sparkles className="ml-2 h-4 w-4" />حضّر مذكرة الحصة
+                <Button
+                  className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
+                  onClick={() => dailySituation && setLocation(readyLessonPlan ? `/content-library/${readyLessonPlan.id}` : buildQuickLessonPath(dailySituation.id))}
+                >
+                  {readyLessonPlan ? <FileText className="ml-2 h-4 w-4" /> : <Sparkles className="ml-2 h-4 w-4" />}
+                  {readyLessonPlan ? "افتح مذكرة الحصة" : "حضّر مذكرة الحصة"}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" className="text-white hover:bg-white/10 hover:text-white"><MoreHorizontal className="ml-1 h-4 w-4" />المزيد</Button></DropdownMenuTrigger>
@@ -193,7 +201,7 @@ export default function Dashboard() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
-              <p className="mt-4 text-xs text-white/65">ابدأ بالمذكرة، ثم سجّل الإنجاز بعد الحصة. تظهر الإجراءات التالية عند الحاجة.</p>
+              <p className="mt-4 text-xs text-white/65">{readyLessonPlan ? "مذكرتك جاهزة لهذه الوضعية. افتحها ثم سجّل الإنجاز بعد الحصة." : "ابدأ بالمذكرة، ثم سجّل الإنجاز بعد الحصة. تظهر الإجراءات التالية عند الحاجة."}</p>
             </div>
           ) : needsScheduleSetup ? (
             <div className="pt-7">

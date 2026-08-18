@@ -1249,7 +1249,9 @@ ${rulesContext}
       classId: z.number().optional(),
       gradeLevel: z.string().optional(),
       subject: z.string().optional(),
+      academicYear: z.string().min(4).max(16).optional(),
     })).query(async ({ ctx, input }) => {
+      const planFilters = input.academicYear ? { academicYear: input.academicYear } : undefined;
       // Auto-import: get completed lessons from Teacher OS
       const lessons = await getLessons(ctx.user.id, {
         classId: input.classId,
@@ -1301,7 +1303,7 @@ ${rulesContext}
       let annualProgressPercent = 0;
       try {
         if (input.classId) {
-          const plans = await getAnnualPlans(ctx.user.id);
+          const plans = await getAnnualPlans(ctx.user.id, planFilters);
           const classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
             const sections = await getAnnualPlanSections(classPlan.id);
@@ -1361,11 +1363,20 @@ ${rulesContext}
       let schedulePace: { status: 'ahead' | 'on_track' | 'behind' | 'not_started'; elapsedWeeks: number; expectedPercent: number; actualPercent: number; note: string } | null = null;
       try {
         if (input.classId && totalSituations > 0) {
-          const plans = await getAnnualPlans(ctx.user.id);
+          const plans = await getAnnualPlans(ctx.user.id, planFilters);
           const classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
-            // بداية التدريس حسب التدرج السنوي المعتمد (5 أكتوبر 2026) — تُحدَّث عند صدور الرزنامة الرسمية
-            const termStart = new Date('2026-10-05T00:00:00Z');
+            // لا نربط متابعة الأستاذ بسنة جامدة: بداية التدريس تُشتق من موسم الخطة نفسه.
+            // المرجع الحالي للتدرج المعتمد هو أول اثنين من أكتوبر، مع الإبقاء على المؤشر
+            // تقديرياً إلى أن تتوفر رزنامة رسمية مفصلة قابلة للحفظ في النظام.
+            const startYearMatch = classPlan.academicYear?.match(/^(\d{4})/);
+            const startYear = startYearMatch ? Number(startYearMatch[1]) : NaN;
+            if (!Number.isFinite(startYear)) {
+              throw new Error("Academic year is unavailable for pace estimate");
+            }
+            const octoberFirst = new Date(Date.UTC(startYear, 9, 1));
+            const daysToMonday = (8 - octoberFirst.getUTCDay()) % 7;
+            const termStart = new Date(Date.UTC(startYear, 9, 1 + daysToMonday));
             const now = new Date();
             const elapsedMs = Math.max(0, now.getTime() - termStart.getTime());
             const elapsedWeeks = Math.floor(elapsedMs / (7 * 24 * 3600 * 1000));
@@ -1395,7 +1406,7 @@ ${rulesContext}
       const completedSituationsList: any[] = [];
       try {
         if (input.classId) {
-          const plans = await getAnnualPlans(ctx.user.id);
+          const plans = await getAnnualPlans(ctx.user.id, planFilters);
           const classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
             const sections = await getAnnualPlanSections(classPlan.id);

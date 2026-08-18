@@ -468,12 +468,12 @@ describe("ai.getTeacherOSContext", () => {
       ]);
 
     const caller = appRouter.createCaller(createMockContext());
-    const result = await caller.ai.getTeacherOSContext({ classId: 1 });
+    const result = await caller.ai.getTeacherOSContext({ classId: 1, academicYear: "2022/2023" });
 
     // getAnnualPlans is invoked three times inside getTeacherOSContext: section progress,
     // calendar-pace estimate, and the completed-situations list
     expect(db.getAnnualPlans).toHaveBeenCalledTimes(3);
-    expect(db.getAnnualPlans).toHaveBeenCalledWith(1);
+    expect(db.getAnnualPlans).toHaveBeenCalledWith(1, { academicYear: "2022/2023" });
     expect(result.currentSection).toBeTruthy();
     expect(result.currentSection.title).toBe("الوثائق التاريخية");
     expect(result.nextSituation.title).toBe("وضعية 2");
@@ -546,7 +546,7 @@ describe("ai.getTeacherOSContext", () => {
     try {
       (db.getLessons as any).mockResolvedValue([]);
       (db.getAnnualPlans as any).mockResolvedValue([
-        { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2022/2023" },
+        { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2026/2027" },
       ]);
       (db.getAnnualPlanSections as any).mockResolvedValue([
         { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
@@ -563,6 +563,34 @@ describe("ai.getTeacherOSContext", () => {
         expect(result.schedulePace.expectedPercent).toBe(0);
         expect(result.schedulePace.status).toBe("on_track");
       }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("derives the pace calendar from the plan's academic year instead of a fixed season", async () => {
+    // Regression: a 2027/2028 plan must not be marked as late in December 2026
+    // merely because a previous season's October date was hard-coded.
+    vi.setSystemTime(new Date("2026-12-07T10:00:00Z"));
+    try {
+      (db.getLessons as any).mockResolvedValue([]);
+      (db.getAnnualPlans as any).mockResolvedValue([
+        { id: 90001, classId: 1, subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2027/2028" },
+      ]);
+      (db.getAnnualPlanSections as any).mockResolvedValue([
+        { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
+      ]);
+      (db.getLearningSituations as any).mockResolvedValue([
+        { id: 101, situationNumber: 1, title: "وضعية 1", isCompleted: false },
+      ]);
+
+      const caller = appRouter.createCaller(createMockContext());
+      const result = await caller.ai.getTeacherOSContext({ classId: 1 });
+
+      expect(result.schedulePace).toMatchObject({
+        expectedPercent: 0,
+        status: "on_track",
+      });
     } finally {
       vi.useRealTimers();
     }

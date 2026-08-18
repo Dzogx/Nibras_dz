@@ -134,7 +134,12 @@ export default function Assessment() {
   );
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
-    { classId: form.classId, gradeLevel: form.gradeLevel, subject: form.subject },
+    {
+      classId: form.classId,
+      gradeLevel: form.gradeLevel,
+      subject: form.subject,
+      academicYear: profile?.academicYear,
+    },
     { enabled: form.autoImport }
   );
   const { data: competencyCategories } = trpc.ai.getCompetencyCategories.useQuery();

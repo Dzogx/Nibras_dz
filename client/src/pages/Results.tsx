@@ -36,6 +36,7 @@ export default function Results() {
   });
 
   const { data: classes } = trpc.classes.list.useQuery();
+  const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
 
   useEffect(() => {
     if (classIdFromSearch && selectedClassId !== classIdFromSearch) setSelectedClassId(classIdFromSearch);
@@ -52,7 +53,7 @@ export default function Results() {
   );
 
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
-    { classId: selectedClassId! },
+    { classId: selectedClassId!, academicYear: profile?.academicYear },
     { enabled: !!selectedClassId }
   );
   const completedSituations = teacherOSContext?.completedSituations ?? [];

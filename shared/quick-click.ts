@@ -49,3 +49,28 @@ export function getScheduledSlotForNow<T extends WeeklyScheduleSlot>(
     .sort((first, second) => first.periodIndex - second.periodIndex)
     .find((entry) => asMinutes(entry.endTime) > minute);
 }
+
+type LessonPlanResourceLink = {
+  type: string;
+  classId: number | null;
+  metadata: unknown;
+};
+
+/**
+ * تعيد مذكرة الوضعية المحفوظة للقسم نفسه، كي تقود بطاقة اليوم إلى المورد الجاهز
+ * بدلاً من اقتراح توليده مرة أخرى.
+ */
+export function findReadyLessonPlan<T extends LessonPlanResourceLink>(
+  resources: T[] | undefined,
+  classId: number | undefined,
+  situationId: number | undefined,
+): T | undefined {
+  if (!classId || !situationId) return undefined;
+
+  return resources?.find((resource) => {
+    const metadata = resource.metadata as { situationId?: number | string } | null;
+    return resource.type === "lessonPlan"
+      && resource.classId === classId
+      && Number(metadata?.situationId) === situationId;
+  });
+}
