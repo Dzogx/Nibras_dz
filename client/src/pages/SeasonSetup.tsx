@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { CalendarDays, CheckCircle2, ChevronLeft, ClipboardList, Clock3, Copy, GraduationCap, Plus, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
@@ -12,23 +12,32 @@ import { toast } from "sonner";
 const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"] as const;
 const GRADE_LEVELS = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
 const SUBJECTS = ["التاريخ والجغرافيا", "الجغرافيا", "التربية المدنية", "التاريخ والجغرافيا والتربية المدنية"];
+const SCHEDULE_SUBJECTS = ["التاريخ", "الجغرافيا", "التربية المدنية"] as const;
 const DEFAULT_PERIODS = [
   { index: 1, startTime: "08:00", endTime: "09:00" },
-  { index: 2, startTime: "09:00", endTime: "10:00" },
-  { index: 3, startTime: "10:00", endTime: "11:00" },
+  { index: 2, startTime: "09:00", endTime: "09:55" },
+  { index: 3, startTime: "10:05", endTime: "11:00" },
   { index: 4, startTime: "11:00", endTime: "12:00" },
-  { index: 5, startTime: "13:00", endTime: "14:00" },
-  { index: 6, startTime: "14:00", endTime: "15:00" },
-  { index: 7, startTime: "15:00", endTime: "16:00" },
-  { index: 8, startTime: "16:00", endTime: "17:00" },
+  { index: 5, startTime: "14:00", endTime: "15:00" },
+  { index: 6, startTime: "15:00", endTime: "15:55" },
+  { index: 7, startTime: "16:05", endTime: "17:00" },
 ];
+const BREAKS_AFTER_PERIOD: Record<number, string> = {
+  2: "استراحة صباحية · 09:55–10:05",
+  6: "استراحة مسائية · 15:55–16:05",
+};
 
 type Period = (typeof DEFAULT_PERIODS)[number];
-type SlotDraft = { classId?: number; room: string };
+type ScheduleSubject = (typeof SCHEDULE_SUBJECTS)[number];
+type SlotDraft = { classId?: number; subject?: ScheduleSubject; room: string };
 type ClassDraft = { name: string; gradeLevel: string; subject: string; studentCount: string };
 
 function slotKey(day: string, periodIndex: number) {
   return `${day}-${periodIndex}`;
+}
+
+function isScheduleSubject(subject: string | null | undefined): subject is ScheduleSubject {
+  return SCHEDULE_SUBJECTS.includes(subject as ScheduleSubject);
 }
 
 export default function SeasonSetup() {
@@ -76,6 +85,7 @@ export default function SeasonSetup() {
     savedSchedule.forEach((entry) => {
       nextSchedule[slotKey(entry.dayOfWeek, entry.periodIndex)] = {
         classId: entry.classId,
+        subject: isScheduleSubject(entry.subject) ? entry.subject : "التاريخ",
         room: entry.room || "",
       };
       const period = nextPeriods.find((item) => item.index === entry.periodIndex);
@@ -123,6 +133,22 @@ export default function SeasonSetup() {
   });
 
   const scheduledCount = Object.values(schedule).filter((entry) => entry.classId).length;
+  const scheduledSubjectsByClass = useMemo(() => {
+    const subjectSets = new Map<number, Set<ScheduleSubject>>();
+    Object.values(schedule).forEach((entry) => {
+      if (!entry.classId || !entry.subject) return;
+      const subjects = subjectSets.get(entry.classId) ?? new Set<ScheduleSubject>();
+      subjects.add(entry.subject);
+      subjectSets.set(entry.classId, subjects);
+    });
+    return subjectSets;
+  }, [schedule]);
+
+  const suggestSubjectForClass = (classId: number) => {
+    const usedSubjects = scheduledSubjectsByClass.get(classId) ?? new Set<ScheduleSubject>();
+    return SCHEDULE_SUBJECTS.find((subject) => !usedSubjects.has(subject)) ?? SCHEDULE_SUBJECTS[0];
+  };
+
   const updateSlot = (day: string, periodIndex: number, update: Partial<SlotDraft>) => {
     const key = slotKey(day, periodIndex);
     setSchedule((current) => ({
@@ -141,6 +167,15 @@ export default function SeasonSetup() {
   };
 
   const saveSchedule = () => {
+    const incompleteClass = seasonClasses.find((classItem) => {
+      const scheduledSubjects = scheduledSubjectsByClass.get(classItem.id) ?? new Set<ScheduleSubject>();
+      return SCHEDULE_SUBJECTS.some((subject) => !scheduledSubjects.has(subject));
+    });
+    if (incompleteClass) {
+      const missingSubjects = SCHEDULE_SUBJECTS.filter((subject) => !(scheduledSubjectsByClass.get(incompleteClass.id) ?? new Set<ScheduleSubject>()).has(subject));
+      toast.error(`${incompleteClass.name}: أضف حصة أسبوعية لـ${missingSubjects.join(" و")} قبل الحفظ.`);
+      return;
+    }
     const entries = DAYS.flatMap((day) => periods.flatMap((period) => {
       const entry = schedule[slotKey(day, period.index)];
       if (!entry?.classId) return [];
@@ -148,6 +183,7 @@ export default function SeasonSetup() {
         classId: entry.classId,
         dayOfWeek: day,
         periodIndex: period.index,
+        subject: entry.subject ?? "التاريخ",
         startTime: period.startTime,
         endTime: period.endTime,
         room: entry.room.trim() || undefined,
@@ -207,8 +243,8 @@ export default function SeasonSetup() {
 
             <div className="space-y-2" aria-live="polite">
               {classesLoading ? <p className="text-sm text-muted-foreground">جارٍ تحميل الأقسام…</p> : seasonClasses.length === 0 ? <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">أضف أقسامك أولاً، ثم ضَعها في جدول الخدمة.</p> : seasonClasses.map((classItem) => (
-                <div key={classItem.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-                  <div className="min-w-0"><p className="font-semibold">{classItem.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{classItem.gradeLevel} · {classItem.studentCount || "—"} تلميذاً</p></div>
+	                  <div key={classItem.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+	                    <div className="min-w-0"><p className="font-semibold">{classItem.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{classItem.gradeLevel} · {classItem.studentCount || "—"} تلميذاً</p><p className="mt-1 text-xs text-muted-foreground">الحصص الأسبوعية: {scheduledSubjectsByClass.get(classItem.id)?.size || 0}/3 مواد</p></div>
                   {linkedPlanClassIds.has(classItem.id) ? <span className="shrink-0 rounded-md bg-emerald-100 px-2 py-1 text-xs text-emerald-800">الخطة الصفية جاهزة</span> : <Button variant="outline" size="sm" onClick={() => setLocation("/annual-plans")}>
                     <Copy className="ml-1.5 h-3.5 w-3.5" />نسخ من المرجع الرسمي
                   </Button>}
@@ -220,8 +256,8 @@ export default function SeasonSetup() {
         </Card>
 
         <Card className="overflow-hidden">
-          <CardHeader className="border-b bg-muted/25 pb-4">
-            <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">2. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>انقر خلية فارغة، واختر القسم والقاعة. يمكنك تعديل أوقات الفترات عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
+	          <CardHeader className="border-b bg-muted/25 pb-4">
+	            <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">2. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>لكل قسم ثلاث حصص: تاريخ وجغرافيا وتربية مدنية. التوقيت الافتراضي يتضمن الاستراحتين ويمكن تعديله عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
             {previousScheduleSeasons.length > 0 && (
               <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/15 bg-primary/[0.035] p-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs leading-5 text-muted-foreground">لديك جدول محفوظ من موسم سابق. انسخه إلى هذا الموسم ثم راجع الأقسام والأوقات قبل المتابعة.</p>
@@ -244,24 +280,26 @@ export default function SeasonSetup() {
                 <div className="grid grid-cols-[112px_repeat(5,minmax(138px,1fr))] gap-2 text-center text-xs">
                   <div className="flex items-center justify-center rounded-lg bg-muted font-semibold text-muted-foreground">الفترة</div>
                   {DAYS.map((day) => <div key={day} className="rounded-lg bg-brand-ink-900 px-2 py-2 font-semibold text-white">{day}</div>)}
-                  {periods.map((period, periodIndex) => (
-                    <>
-                      <div key={`time-${period.index}`} className="rounded-lg border bg-muted/40 p-2 text-right">
+	                  {periods.map((period, periodIndex) => (
+	                    <Fragment key={period.index}>
+	                      {period.index === 5 && <div className="col-span-6 rounded-lg border border-primary/15 bg-primary/[0.045] px-3 py-2 text-right font-semibold text-primary">الفترة المسائية · 14:00–17:00</div>}
+	                      <div key={`time-${period.index}`} className="rounded-lg border bg-muted/40 p-2 text-right">
                         <div className="flex items-center gap-1 font-semibold"><Clock3 className="h-3.5 w-3.5" />الحصة {period.index}</div>
                         <div className="mt-1 flex items-center gap-1"><Input aria-label={`بداية الحصة ${period.index}`} type="time" value={period.startTime} onChange={(event) => setPeriods((current) => current.map((item, index) => index === periodIndex ? { ...item, startTime: event.target.value } : item))} className="h-7 px-1 text-[10px]" /><span>–</span><Input aria-label={`نهاية الحصة ${period.index}`} type="time" value={period.endTime} onChange={(event) => setPeriods((current) => current.map((item, index) => index === periodIndex ? { ...item, endTime: event.target.value } : item))} className="h-7 px-1 text-[10px]" /></div>
                       </div>
                       {DAYS.map((day) => {
                         const entry = schedule[slotKey(day, period.index)];
                         return <div key={slotKey(day, period.index)} className={`rounded-lg border p-2 text-right transition-colors ${entry?.classId ? "border-primary/25 bg-primary/[0.035]" : "bg-background"}`}>
-                          <Select value={entry?.classId?.toString() || "empty"} onValueChange={(value) => value === "empty" ? clearSlot(day, period.index) : updateSlot(day, period.index, { classId: Number(value) })}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="فارغة" /></SelectTrigger>
-                            <SelectContent><SelectItem value="empty">فارغة</SelectItem>{seasonClasses.map((classItem) => <SelectItem key={classItem.id} value={classItem.id.toString()}>{classItem.name}</SelectItem>)}</SelectContent>
-                          </Select>
-                          {entry?.classId && <Input aria-label={`قاعة ${day} الحصة ${period.index}`} value={entry.room} onChange={(event) => updateSlot(day, period.index, { room: event.target.value })} placeholder="القاعة" className="mt-1.5 h-7 text-xs" />}
-                        </div>;
-                      })}
-                    </>
-                  ))}
+	                          <Select value={entry?.classId?.toString() || "empty"} onValueChange={(value) => value === "empty" ? clearSlot(day, period.index) : updateSlot(day, period.index, { classId: Number(value), subject: entry?.subject ?? suggestSubjectForClass(Number(value)) })}>
+	                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="فارغة" /></SelectTrigger>
+	                            <SelectContent><SelectItem value="empty">فارغة</SelectItem>{seasonClasses.map((classItem) => <SelectItem key={classItem.id} value={classItem.id.toString()}>{classItem.name}</SelectItem>)}</SelectContent>
+	                          </Select>
+	                          {entry?.classId && <><Select value={entry.subject || "التاريخ"} onValueChange={(subject) => updateSlot(day, period.index, { subject: subject as ScheduleSubject })}><SelectTrigger className="mt-1.5 h-7 text-xs" aria-label={`مادة ${day} الحصة ${period.index}`}><SelectValue /></SelectTrigger><SelectContent>{SCHEDULE_SUBJECTS.map((subject) => <SelectItem key={subject} value={subject}>{subject}</SelectItem>)}</SelectContent></Select><Input aria-label={`قاعة ${day} الحصة ${period.index}`} value={entry.room} onChange={(event) => updateSlot(day, period.index, { room: event.target.value })} placeholder="القاعة" className="mt-1.5 h-7 text-xs" /></>}
+	                        </div>;
+	                      })}
+	                      {BREAKS_AFTER_PERIOD[period.index] && <div className="col-span-6 rounded-lg border border-dashed border-brand-wax-300 bg-brand-wax-50 px-3 py-2 text-center font-medium text-brand-ink-800">{BREAKS_AFTER_PERIOD[period.index]}</div>}
+	                    </Fragment>
+	                  ))}
                 </div>
               </div>
             </div>

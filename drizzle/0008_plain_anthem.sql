@@ -1,0 +1,1 @@
+ALTER TABLE `weeklyScheduleEntries` ADD `subject` varchar(32) DEFAULT 'التاريخ' NOT NULL;

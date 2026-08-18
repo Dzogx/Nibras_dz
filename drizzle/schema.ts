@@ -127,6 +127,7 @@ export const weeklyScheduleEntries = mysqlTable("weeklyScheduleEntries", {
   academicYear: varchar("academicYear", { length: 16 }).notNull(),
   dayOfWeek: mysqlEnum("dayOfWeek", ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"]).notNull(),
   periodIndex: int("periodIndex").notNull(),
+  subject: varchar("subject", { length: 32 }).notNull().default("التاريخ"),
   startTime: varchar("startTime", { length: 5 }).notNull(),
   endTime: varchar("endTime", { length: 5 }).notNull(),
   room: varchar("room", { length: 64 }),

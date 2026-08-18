@@ -268,14 +268,20 @@ export const appRouter = router({
       entries: z.array(z.object({
         classId: z.number().int().positive(),
         dayOfWeek: z.enum(["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"]),
-        periodIndex: z.number().int().min(1).max(8),
+        periodIndex: z.number().int().min(1).max(7),
+        subject: z.enum(["التاريخ", "الجغرافيا", "التربية المدنية"]),
         startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "صيغة الوقت هي HH:MM"),
         endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "صيغة الوقت هي HH:MM"),
         room: z.string().max(64).optional(),
       })),
     })).mutation(async ({ ctx, input }) => {
-      const ownedClassIds = new Set((await getClasses(ctx.user.id)).map(item => item.id));
+      const teacherClasses = await getClasses(ctx.user.id);
+      const ownedClassIds = new Set(teacherClasses.map(item => item.id));
+      const seasonClassIds = teacherClasses
+        .filter((item) => !item.academicYear || item.academicYear === input.academicYear)
+        .map((item) => item.id);
       const occupiedSlots = new Set<string>();
+      const classSubjectSlots = new Set<string>();
 
       for (const entry of input.entries) {
         if (!ownedClassIds.has(entry.classId)) {
@@ -289,6 +295,23 @@ export const appRouter = router({
           throw new TRPCError({ code: "BAD_REQUEST", message: "لا يمكن تسجيل حصتين في الفترة نفسها." });
         }
         occupiedSlots.add(slotKey);
+        const classSubjectKey = `${entry.classId}-${entry.subject}`;
+        if (classSubjectSlots.has(classSubjectKey)) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: "لكل قسم حصة أسبوعية واحدة فقط في كل مادة." });
+        }
+        classSubjectSlots.add(classSubjectKey);
+      }
+
+      for (const classId of seasonClassIds) {
+        const missingSubjects = ["التاريخ", "الجغرافيا", "التربية المدنية"].filter(
+          (subject) => !classSubjectSlots.has(`${classId}-${subject}`),
+        );
+        if (missingSubjects.length > 0) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `يجب إدراج حصة أسبوعية لكل مادة للقسم، والمادة الناقصة: ${missingSubjects.join("، ")}.`,
+          });
+        }
       }
 
       return await replaceWeeklyScheduleEntries(ctx.user.id, input.academicYear, input.entries);
@@ -312,10 +335,11 @@ export const appRouter = router({
       const ownedClassIds = new Set((await getClasses(ctx.user.id)).map((item) => item.id));
       const validEntries = sourceEntries
         .filter((entry) => ownedClassIds.has(entry.classId))
-        .map(({ classId, dayOfWeek, periodIndex, startTime, endTime, room }) => ({
+        .map(({ classId, dayOfWeek, periodIndex, subject, startTime, endTime, room }) => ({
           classId,
           dayOfWeek,
           periodIndex,
+          subject,
           startTime,
           endTime,
           room: room || undefined,
@@ -1356,7 +1380,7 @@ ${rulesContext}
       try {
         if (input.classId) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          const classPlan = plans.find(p => p.classId === input.classId);
+          const classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
           if (classPlan) {
             const sections = await getAnnualPlanSections(classPlan.id);
             const sectionProgressList: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
@@ -1418,7 +1442,7 @@ ${rulesContext}
       try {
         if (input.classId && totalSituations > 0) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          const classPlan = plans.find(p => p.classId === input.classId);
+          const classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
           if (classPlan) {
             // لا نربط متابعة الأستاذ بسنة جامدة: بداية التدريس تُشتق من موسم الخطة نفسه.
             // المرجع الحالي للتدرج المعتمد هو أول اثنين من أكتوبر، مع الإبقاء على المؤشر
@@ -1461,7 +1485,7 @@ ${rulesContext}
       try {
         if (input.classId) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          const classPlan = plans.find(p => p.classId === input.classId);
+          const classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
           if (classPlan) {
             const sections = await getAnnualPlanSections(classPlan.id);
             for (const section of sections) {

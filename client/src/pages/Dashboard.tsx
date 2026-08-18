@@ -135,11 +135,13 @@ export default function Dashboard() {
   const activeClassId = (followSchedule ? scheduledSlot?.classId : undefined) ?? preferredClassId ?? seasonClasses[0]?.id;
   const activeClass = seasonClasses.find((item) => item.id === activeClassId);
   const needsScheduleSetup = Boolean(activeClass && weeklySchedule && weeklySchedule.length === 0);
-  const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId);
+  const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId && (!scheduledSlot?.subject || plan.subject === scheduledSlot.subject))
+    ?? annualPlans?.find((plan) => plan.classId === activeClassId);
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     {
       classId: activeClassId ?? -1,
       academicYear,
+      subject: scheduledSlot?.subject,
     },
     {
       enabled: Boolean(activeClassId),
@@ -260,7 +262,7 @@ export default function Dashboard() {
 
           {hasDailySession ? (
             <div className="pt-7">
-              <p className="text-sm text-white/70">{activeClass?.name} · {activePlan?.subject || activeClass?.gradeLevel}</p>
+              <p className="text-sm text-white/70">{activeClass?.name} · {scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}</p>
               {scheduledSlot && followSchedule && <p className="mt-2 flex items-center gap-2 text-xs text-white/80"><Clock className="h-3.5 w-3.5" />حصة اليوم {scheduledSlot.startTime}–{scheduledSlot.endTime}{scheduledSlot.room ? ` · القاعة ${scheduledSlot.room}` : ""}</p>}
               <h3 className="mt-3 text-xl font-bold leading-relaxed md:text-2xl">{dailySituation?.title}</h3>
               <p className="mt-2 text-sm text-white/80">المقطع {dailySection?.number}: {dailySection?.title}</p>

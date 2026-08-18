@@ -161,8 +161,8 @@ describe("weeklySchedule", () => {
   it("copies a previous schedule after keeping only the teacher's existing classes", async () => {
     (db.getClasses as any).mockResolvedValue([{ id: 7 }, { id: 8 }]);
     (db.getWeeklyScheduleEntries as any).mockResolvedValue([
-      { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, startTime: "08:00", endTime: "09:00", room: "12" },
-      { classId: 99, dayOfWeek: "الاثنين", periodIndex: 2, startTime: "09:00", endTime: "10:00", room: null },
+      { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, subject: "التاريخ", startTime: "08:00", endTime: "09:00", room: "12" },
+      { classId: 99, dayOfWeek: "الاثنين", periodIndex: 2, subject: "الجغرافيا", startTime: "09:00", endTime: "09:55", room: null },
     ]);
     (db.replaceWeeklyScheduleEntries as any).mockResolvedValue({ count: 1 });
     const caller = appRouter.createCaller(createMockContext());
@@ -176,10 +176,42 @@ describe("weeklySchedule", () => {
       classId: 7,
       dayOfWeek: "الأحد",
       periodIndex: 1,
+      subject: "التاريخ",
       startTime: "08:00",
       endTime: "09:00",
       room: "12",
     }]);
+  });
+
+  it("يحفظ مادة كل حصة ويرفض تكرار المادة نفسها للقسم في الأسبوع", async () => {
+    (db.getClasses as any).mockResolvedValue([{ id: 7 }]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.weeklySchedule.save({
+      academicYear: "2026-2027",
+      entries: [
+        { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, subject: "التاريخ", startTime: "08:00", endTime: "09:00" },
+        { classId: 7, dayOfWeek: "الاثنين", periodIndex: 2, subject: "التاريخ", startTime: "09:00", endTime: "09:55" },
+      ],
+    })).rejects.toMatchObject({ code: "BAD_REQUEST", message: "لكل قسم حصة أسبوعية واحدة فقط في كل مادة." });
+    expect(db.replaceWeeklyScheduleEntries).not.toHaveBeenCalled();
+  });
+
+  it("يتحقق من إدراج التاريخ والجغرافيا والتربية المدنية لكل قسم في الموسم", async () => {
+    (db.getClasses as any).mockResolvedValue([{ id: 7, academicYear: "2026-2027" }]);
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(caller.weeklySchedule.save({
+      academicYear: "2026-2027",
+      entries: [
+        { classId: 7, dayOfWeek: "الأحد", periodIndex: 1, subject: "التاريخ", startTime: "08:00", endTime: "09:00" },
+        { classId: 7, dayOfWeek: "الاثنين", periodIndex: 2, subject: "الجغرافيا", startTime: "09:00", endTime: "09:55" },
+      ],
+    })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: "يجب إدراج حصة أسبوعية لكل مادة للقسم، والمادة الناقصة: التربية المدنية.",
+    });
+    expect(db.replaceWeeklyScheduleEntries).not.toHaveBeenCalled();
   });
 
   it("refuses copying a schedule into the same season", async () => {
