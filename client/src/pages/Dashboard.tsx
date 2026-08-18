@@ -2,11 +2,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import {
   BookOpen,
-  GraduationCap,
   ClipboardList,
-  Library,
   Sparkles,
-  Eye,
   ArrowLeft,
   Target,
   Plus,
@@ -40,20 +37,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-const statCards = [
-  { icon: GraduationCap, label: "الأقسام", path: "/classes", color: "bg-brand-ink-100 text-brand-ink-700" },
-  { icon: ClipboardList, label: "الدروس", path: "/lessons", color: "bg-brand-copper-100 text-brand-copper-700" },
-  { icon: FileText, label: "الخطط السنوية", path: "/annual-plans", color: "bg-brand-wax-100 text-brand-wax-800" },
-  { icon: Library, label: "الموارد المُولّدة", path: "/content-library", color: "bg-brand-copper-100 text-brand-copper-800" },
-];
-
-const quickActions = [
-  { icon: FileText, label: "إدارة الخطط", path: "/annual-plans", color: "bg-brand-ink-800", iconColor: "text-brand-ink-50" },
-  { icon: BarChart3, label: "سجّل النتائج", path: "/results", color: "bg-brand-copper-700", iconColor: "text-copper-50" },
-  { icon: Eye, label: "مراجعة كمفتش", path: "/inspector", color: "bg-brand-ink-700", iconColor: "text-brand-wax-300" },
-  { icon: BookOpen, label: "بحث في المنهج", path: "/curriculum", color: "bg-brand-wax-500", iconColor: "text-brand-ink-950" },
-];
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -186,18 +169,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {needsScheduleSetup && (
-            <div className="mt-5 flex flex-col gap-2 rounded-xl border border-brand-wax-300/40 bg-brand-wax-300/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-2 text-white/90">
-                <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-wax-300" />
-                <span>أضف جدول خدمتك مرة واحدة ليقترح نبراس الحصة تلقائياً.</span>
-              </div>
-              <Button size="sm" variant="outline" className="shrink-0 border-brand-wax-300/60 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setLocation("/season-setup")}>
-                إعداد الجدول
-              </Button>
-            </div>
-          )}
-
           {hasDailySession ? (
             <div className="pt-7">
               <p className="text-sm text-white/70">{activeClass?.name} · {activePlan?.subject || activeClass?.gradeLevel}</p>
@@ -223,6 +194,13 @@ export default function Dashboard() {
                 </DropdownMenu>
               </div>
               <p className="mt-4 text-xs text-white/65">ابدأ بالمذكرة، ثم سجّل الإنجاز بعد الحصة. تظهر الإجراءات التالية عند الحاجة.</p>
+            </div>
+          ) : needsScheduleSetup ? (
+            <div className="pt-7">
+              <p className="text-sm text-white/75">التهيئة الأولى</p>
+              <h3 className="mt-2 text-xl font-bold">أضف جدول خدمتك الأسبوعي</h3>
+              <p className="mt-2 text-sm text-white/75">أدخله مرة واحدة؛ بعدها يقترح نبراس حصة اليوم تلقائياً.</p>
+              <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Clock className="ml-2 h-4 w-4" />إعداد جدولي الأسبوعي</Button>
             </div>
           ) : activeClass ? (
             <div className="pt-7">
@@ -268,53 +246,29 @@ export default function Dashboard() {
         </DialogContent>
       </Dialog>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <Card
-            key={card.label}
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => setLocation(card.path)}
-          >
-            <CardContent className="p-4">
-              <div className={`inline-flex items-center justify-center w-10 h-10 rounded-xl ${card.color} mb-3`}>
-                <card.icon className="w-5 h-5" />
-              </div>
-              <p className="text-2xl font-bold min-h-[2rem]">
-                {isLoadingStats ? (
-                  <span className="inline-block w-12 h-3 bg-muted rounded-full animate-pulse" />
-                ) : (
-                  card.label === "الأقسام" ? classes?.length ?? 0 :
-                  card.label === "الدروس" ? lessons?.length ?? 0 :
-                  card.label === "الخطط السنوية" ? annualPlans?.length ?? 0 :
-                  resources?.length ?? 0
-                )}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">{card.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-lg font-semibold mb-3">أدوات إضافية</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {quickActions.map((action) => (
-            <Button
-              key={action.label}
-              variant="outline"
-              className="h-auto py-4 flex flex-col items-center gap-2 border transition-all shadow-sm hover:shadow-md"
-              onClick={() => setLocation(action.path)}
-            >
-              <div className={`w-10 h-10 rounded-xl ${action.color} flex items-center justify-center`}>
-                <action.icon className={`w-5 h-5 ${action.iconColor}`} />
-              </div>
-              <span className="text-sm font-medium">{action.label}</span>
-            </Button>
-          ))}
-        </div>
-      </div>
+      {/* المتابعة الثانوية لا تنافس خطوة الحصة. تفتح عند الحاجة فقط. */}
+      <details className="group rounded-xl border bg-card shadow-sm">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <div>
+            <h2 className="font-semibold">متابعة أوسع</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">التقدم والخطط والموارد الأخيرة — افتحها عند الحاجة.</p>
+          </div>
+          <span className="rounded-lg border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors group-open:border-primary/30 group-open:text-primary">عرض الملخص</span>
+        </summary>
+        <div className="space-y-5 border-t p-4 md:p-5">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "الأقسام", value: classes?.length ?? 0, path: "/classes" },
+              { label: "الدروس", value: lessons?.length ?? 0, path: "/lessons" },
+              { label: "الخطط", value: annualPlans?.length ?? 0, path: "/annual-plans" },
+              { label: "الموارد", value: resources?.length ?? 0, path: "/content-library" },
+            ].map((item) => (
+              <Button key={item.label} variant="outline" className="h-auto justify-between px-3 py-3 text-right" onClick={() => setLocation(item.path)}>
+                <span className="text-xs text-muted-foreground">{item.label}</span>
+                <span className="text-lg font-bold text-foreground">{isLoadingStats ? "—" : item.value}</span>
+              </Button>
+            ))}
+          </div>
 
       {/* Recent Activity */}
       <div className="grid md:grid-cols-2 gap-4">
@@ -453,10 +407,6 @@ export default function Dashboard() {
                   <p className="text-xs text-brand-copper-800 font-medium mb-1">الخطوة التالية في حصتك</p>
                   <p className="text-sm font-medium">{teacherOSContext.nextSituation.title}</p>
                   <p className="text-xs text-muted-foreground mb-2">حضّر المذكرة، ثم سجّلها منجزة بعد التنفيذ.</p>
-                  <Button size="sm" variant="secondary" className="w-full gap-1" onClick={() => setLocation(`/lesson-generator?situationId=${teacherOSContext.nextSituation!.id}`)}>
-                    <BookOpen className="w-3.5 h-3.5" />
-                    افتح مذكرة هذه الحصة
-                  </Button>
                 </div>
               ) : (
                 <p className="text-sm text-brand-copper-700">اكتمل هذا المقطع. انتقل إلى الخطة لمراجعة الخطوة التالية.</p>
@@ -533,6 +483,8 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+        </div>
+      </details>
     </div>
   );
 }
