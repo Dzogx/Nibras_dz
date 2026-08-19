@@ -6,7 +6,7 @@
  */
 
 export const ASSESSMENT_PRINT_THEMES = {
-  nibras: { label: "هوية نبراس", ink: "17324D", light: "EAF2F3", accent: "B6752B" },
+  nibras: { label: "حيادي", ink: "17324D", light: "EAF2F3", accent: "B6752B" },
   official: { label: "رسمي اقتصادي", ink: "25364B", light: "F2F4F7", accent: "52677E" },
   mono: { label: "أبيض وأسود", ink: "000000", light: "F4F4F4", accent: "000000" },
 } as const;
@@ -27,10 +27,6 @@ export type AssessmentLatexInput = {
   school?: string;
   className?: string;
   assessmentDate?: string;
-  /** رقم إصدار محفوظ في مكتبة المحتوى؛ يظهر في أسفل ورقة التقويم فقط. */
-  serialNumber?: string;
-  /** رابط تحقق عام ASCII؛ يُشفّر داخل رمز QR ولا يعرض محتوى الإجابة. */
-  verifyUrl?: string;
 };
 
 function escapeLatex(value: string): string {
@@ -115,20 +111,19 @@ function subjectNote(subject: string, totalPoints?: number): string {
   return totalPoints ? `المجموع: ${totalPoints} نقطة.` : "";
 }
 
+
+/** حيادي: وثيقة التقويم رسمية ولا تحمل اسم المنصة في تذييلها. */
+function assessmentFooterLabel(theme: (typeof ASSESSMENT_PRINT_THEMES)[keyof typeof ASSESSMENT_PRINT_THEMES]): string {
+  return theme === ASSESSMENT_PRINT_THEMES.mono ? "أبيض وأسود" : "تقويم تحصيلي";
+}
+
+
+/** حيادي: وثيقة التقويم رسمية ولا تحمل اسم المنصة في تذييلها. */
+
 function escapeForComment(value: string): string {
   return value.replace(/[\r\n%]/g, " ").trim();
 }
 
-/** لا تمرر حزمة qrcode إلا رابط تحقق HTTP(S) مكوّناً من محارف آمنة فقط. */
-function isSafeQrUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    const allowedCharacters = new RegExp("^[A-Za-z0-9._~:/?=+-]+$");
-    return (parsed.protocol === "https:" || parsed.protocol === "http:") && allowedCharacters.test(value);
-  } catch {
-    return false;
-  }
-}
 
 export function buildAssessmentLatexDocument(input: AssessmentLatexInput): string {
   const theme = ASSESSMENT_PRINT_THEMES[input.printTheme ?? "nibras"];
@@ -140,21 +135,7 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
   const date = input.assessmentDate ? formatInline(input.assessmentDate) : ".... / .... / ........";
   const duration = input.duration ? formatInline(input.duration) : "................................";
   const points = input.totalPoints ? `${input.totalPoints} نقطة` : "................................";
-  const canShowVerificationQr = (input.assessmentType === "quiz" || input.assessmentType === "exam")
-    && Boolean(input.serialNumber)
-    && Boolean(input.verifyUrl)
-    && isSafeQrUrl(input.verifyUrl!);
-  const verificationQr = canShowVerificationQr
-    ? `
-\\vspace{0.55em}
-\\begin{english}
-\\NibrasQrCode{${input.verifyUrl}}{\\scriptsize\\ttfamily\\hspace{0.6em}${escapeLatex(input.serialNumber!)}}
-\\end{english}`
-    : "";
-  // الشعار الرسمي المزدوج: «نبراس» بخط Amiri و«NIBRAS» بخط Latin Modern Roman،
-  // بينهما خط رفيع عمودي، على خط أساسي واحد — نفس هوية واجهة المنصة.
-  // الفاصل العمودي يوضع داخل math mode مستقل حتى لا يبقى الوضع الرياضي مفتوحاً داخل النص العربي.
-  const brandLockup = `\\textcolor{NibrasInk}{\\NibrasArabic{نبراس}}\\NibrasSep\\NibrasLatin{NIBRAS}`;
+  // وثيقة رسمية تُقدَّم للمؤسسة والتلاميذ: لا تحمل أي إشارة لاسم المنصة.
   const studentBlock = input.assessmentType === "answerKey" || input.assessmentType === "rubric"
     ? ""
     : `
@@ -171,37 +152,18 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\usepackage{fontspec}
 \\usepackage{xcolor}
 \\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage}
-\\usepackage{qrcode}
 \\usepackage{polyglossia}
+\\definecolor{NibrasInk}{HTML}{${theme.ink}}
+\\definecolor{NibrasLight}{HTML}{${theme.light}}
 \\setmainlanguage{arabic}
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
 \\newfontfamily\\englishfont{Latin Modern Roman}
-% خط الشعار المزدوج المعتمد: عربي Amiri ولاتيني Latin Modern Roman على خط أساسي واحد.
-\\newfontfamily\\nibrasArabicFont[Script=Arabic,Scale=1.25]{Amiri}
-\\newfontfamily\\nibrasLatinFont[LetterSpace=18]{Latin Modern Roman}
-\\newcommand{\\NibrasArabic}[1]{{\\nibrasArabicFont #1}}
-\\newcommand{\\NibrasLatin}[1]{\\begin{english}{\\nibrasLatinFont #1}\\end{english}}
-% الخط الفاصل الرفيع العمودي بين الكلمتين — بديل نصي عن math mode لتفادي تعارض اتجاه RTL.
-\\newcommand{\\NibrasSep}{\\;\\rule{0.4pt}{0.9em}\\;}
-\\definecolor{NibrasInk}{HTML}{${theme.ink}}
-\\definecolor{NibrasLight}{HTML}{${theme.light}}
-\\definecolor{NibrasAccent}{HTML}{${theme.accent}}
-% تمنع هذه الحاوية المحلية تحويل عدادات qrcode إلى أرقام عربية أثناء الحساب.
-\\makeatletter
-\\newcommand{\\NibrasQrCode}[1]{%
-  \\begingroup
-  \\let\\@arabic\\xpg@save@arabic
-  \\qrcode[height=1.2cm]{#1}%
-  \\endgroup
-}
-\\makeatother
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{0.45em}
 \\renewcommand{\\arraystretch}{1.45}
 \\pagestyle{fancy}
 \\fancyhf{}
-\\fancyhead[R]{\\small ${brandLockup}}
 \\fancyhead[L]{\\small ${assessmentLabel(input.assessmentType)}}
 \\fancyfoot[C]{\\small صفحة \\thepage\\ من \\pageref{LastPage}}
 \\fancyfoot[R]{\\small وثيقة تربوية قابلة للتحرير}
@@ -210,8 +172,7 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\begin{center}
 {\\large\\bfseries الجمهورية الجزائرية الديمقراطية الشعبية}\\\\
 وزارة التربية الوطنية\\\\[0.6em]
-{\\color{NibrasInk}\\LARGE\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[0.15em]
-{\\small\\color{NibrasAccent}\\hfill ${brandLockup}}\\\\[0.2em]
+{\\normalsize ${theme.label}}\\\\[0.35em]{\\color{NibrasInk}\\LARGE\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[0.15em]
 {\\large\\bfseries ${title}}
 \\end{center}
 
@@ -234,8 +195,7 @@ ${markdownToLatex(input.content)}
 
 \\vfill
 \\begin{center}
-\\small${brandLockup}\\\\[0.4em]
-\\textcolor{NibrasInk}{${theme.label} — المجموع: ${points}}${verificationQr}
+\\textcolor{NibrasInk}{${assessmentFooterLabel(theme)} — المجموع: ${points}}
 \\end{center}
 \\end{document}
 `;

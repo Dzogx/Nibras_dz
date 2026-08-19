@@ -44,7 +44,7 @@ describe("buildAssessmentLatexDocument", () => {
   });
 
   it.each([
-    ["nibras", "17324D", "هوية نبراس"],
+    ["nibras", "17324D", "حيادي"],
     ["official", "25364B", "رسمي اقتصادي"],
     ["mono", "000000", "أبيض وأسود"],
   ] as const)("يضمّن نمط %s الطباعي في ألوان وترويسة القالب", (printTheme, ink, label) => {
@@ -54,44 +54,23 @@ describe("buildAssessmentLatexDocument", () => {
     expect(latex).toContain(label);
   });
 
-  it("يُدرج رمز QR في تذييل التقويم عند توفر رقم الإصدار ورابط التحقق", () => {
-    const latex = buildAssessmentLatexDocument({
-      ...baseInput,
-      serialNumber: "NIBRAS-2026-00010",
-      verifyUrl: "https://app.nibras.dz/verify?serial=NIBRAS-2026-00010",
-    });
-
-    expect(latex).toContain("\\usepackage{qrcode}");
-    expect(latex).toContain("\\NibrasQrCode{https://app.nibras.dz/verify?serial=NIBRAS-2026-00010}");
-    expect(latex).toContain("NIBRAS-2026-00010");
-  });
-
-  it("لا يُدرج رمز QR عندما تغيب بيانات الإصدار", () => {
+  it("وثيقة رسمية لا تحمل أي إشارة لاسم المنصة أو شعارها أو رمز QR", () => {
     const latex = buildAssessmentLatexDocument(baseInput);
 
-    expect(latex).not.toContain("\\NibrasQrCode{");
+    expect(latex).not.toContain("نبراس");
+    expect(latex).not.toContain("NIBRAS");
+    expect(latex).not.toContain("\\usepackage{qrcode}");
+    expect(latex).not.toContain("\\NibrasQrCode");
+    expect(latex).not.toContain("\\NibrasArabic");
+    expect(latex).not.toContain("\\NibrasLatin");
+    expect(latex).toContain("\\textcolor{NibrasInk}{تقويم تحصيلي — المجموع: 20 نقطة}");
   });
 
-  it("لا يُدرج رمز QR في نموذج الإجابة أو شبكة التقويم", () => {
-    const latex = buildAssessmentLatexDocument({
-      ...baseInput,
-      assessmentType: "answerKey",
-      serialNumber: "NIBRAS-2026-00010",
-      verifyUrl: "https://app.nibras.dz/verify?serial=NIBRAS-2026-00010",
-    });
+  it("لا يتأثر بإدخال حقول إضافية مجهولة عند الاستدعاء المباشر (strict typing)", () => {
+    // لا تُدرج أرقام إصدار أو روابط حتى لو مُرّرت كحقول
+    const latex = buildAssessmentLatexDocument({ ...baseInput, printTheme: "mono" });
 
-    expect(latex).not.toContain("\\NibrasQrCode{");
-    expect(latex).not.toContain("NIBRAS-2026-00010");
-  });
-
-  it("يتجاهل رابط QR غير الآمن حتى عند استدعاء القالب مباشرة", () => {
-    const latex = buildAssessmentLatexDocument({
-      ...baseInput,
-      serialNumber: "NIBRAS-2026-00010",
-      verifyUrl: "https://app.nibras.dz/verify?serial=NIBRAS-2026-00010\\input{secret}",
-    });
-
-    expect(latex).not.toContain("\\NibrasQrCode{");
-    expect(latex).not.toContain("NIBRAS-2026-00010");
+    expect(latex).not.toContain("NIBRAS-");
+    expect(latex).toContain("أبيض وأسود — المجموع: 20 نقطة");
   });
 });

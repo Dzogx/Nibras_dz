@@ -206,9 +206,8 @@ export default function Assessment() {
     duration: rulesInfo?.duration || form.duration || undefined,
     date: selectedClass?.academicYear ? `الموسم الدراسي ${selectedClass.academicYear}` : undefined,
     extra: rulesInfo ? `المجموع: ${rulesInfo.totalPoints} نقطة` : undefined,
-    serialNumber: currentResource?.serialNumber || undefined,
     examEndsAt: form.examEndsAt || null,
-  }), [form, selectedClass, profile, rulesInfo, currentResource?.serialNumber]);
+  }), [form, selectedClass, profile, rulesInfo]);
 
   // Auto-import completed lessons and competencies when Teacher OS context loads
   useEffect(() => {
@@ -325,10 +324,6 @@ export default function Assessment() {
     school: profile?.school || undefined,
     className: selectedClass?.name || undefined,
     assessmentDate: new Date().toISOString().slice(0, 10),
-    serialNumber: currentResource?.serialNumber || undefined,
-    verifyUrl: currentResource?.serialNumber && typeof window !== "undefined"
-      ? `${window.location.origin}/verify?serial=${encodeURIComponent(currentResource.serialNumber)}`
-      : undefined,
   });
 
   const downloadReadyPdf = () => {

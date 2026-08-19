@@ -17,8 +17,6 @@ const latex = ts.buildAssessmentLatexDocument({
   school: "متوسطة الشهيد ...",
   className: "4م2",
   assessmentDate: "15 / 11 / 2026",
-  serialNumber: "NIBRAS-2026-00001",
-  verifyUrl: "https://nibras-app-a46b7e8e.manus.space/verify/NIBRAS-2026-00001",
 });
 writeFileSync("/tmp/nibras-tex/sample.tex", latex);
 console.log(latex.length, "bytes written");
