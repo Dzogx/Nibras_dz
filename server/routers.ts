@@ -16,6 +16,7 @@ import {
   recomputeClassGradesEvaluation, getStudentGradesAnalytics, exportBackupExcel, listGeneratedAssessments,
   getGradebookByClass, getGradebookFilters, upsertGradebookEntry,
   sumContinuousScore, deleteGradebookForClass, deleteGradebookEntry,
+  getGradebookRoster, saveClassRoster,
   monthlySummary,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
   createCompensatorySession, getCompensatorySessionsBySituation, getUpcomingCompensatorySessions, updateCompensatorySessionStatus,
@@ -542,6 +543,13 @@ export const appRouter = router({
             notes: "نُقلت من وثيقة حجز النقاط الرسمية",
           });
         }
+        // صب أسماء التلاميذ المستوردين كروستر جاهز في دفتر التنقيط (مستقل عن المادة):
+        // يضاف التلاميذ الجدد ويُحدّث الموجودون دون تكرار، ويُثبّت الترتيب حسب الملف.
+        await saveClassRoster(
+          ctx.user.id,
+          mapping.classId,
+          rows.map((s) => ({ matricule: s.matricule, fullName: s.fullName })),
+        );
         accepted.push(mapping.sheetFogCode);
       }
       return { saved: accepted };
@@ -556,6 +564,19 @@ export const appRouter = router({
         return await getStudentGradesByClass(ctx.user.id, input.classId);
       }
       return await getStudentGradesFilters(ctx.user.id);
+    }),
+    /**
+     * قائمة تلاميذ القسم في دفتر التنقيط (روستر مستقل عن المادة).
+     * تُصبّ الأسماء تلقائيًا عند استيراد ملف الرقمنة وتُعرض في الدفتر
+     * كصفوف جاهزة للتنقيط حتى قبل أول إدخال.
+     */
+    roster: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+    })).query(async ({ ctx, input }) => {
+      const classes = await getClasses(ctx.user.id);
+      const owned = classes.find((item) => item.id === input.classId);
+      if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      return await getGradebookRoster(ctx.user.id, input.classId);
     }),
     deleteGroup: protectedProcedure.input(z.object({
       classId: z.number().int().positive(),
@@ -605,10 +626,11 @@ export const appRouter = router({
      * (exam/quiz) لنفس المادة والمستوى حتى لو لم تُربط بالقسم نفسه.
      */
     linkedAssessments: protectedProcedure.input(z.object({
-      classId: z.number().int().positive(),
-      subject: z.string().min(2).max(128),
-      term: z.number().int().min(1).max(4).optional(),
+      classId: z.number().int().positive().nullable(),
+      subject: z.string().min(2).max(128).nullable(),
+      term: z.number().int().min(1).max(4).nullable().optional(),
     })).query(async ({ ctx, input }) => {
+      if (!input.classId || !input.subject) return [];
       const classes = await getClasses(ctx.user.id);
       const owned = classes.find((item) => item.id === input.classId);
       if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });

@@ -76,8 +76,10 @@ export default function Gradebook() {
     { enabled: !!classes && !!subject },
   );
 
-  const roster = trpc.studentResults.list.useQuery(
-    { classId: classes?.id },
+  // رoster دفتر التنقيط: قائمة تلاميذ القسم المستقلة عن المادة،
+  // تُصبّ تلقائيًا عند استيراد ملف الرقمنة وتُعرض كصفوف جاهزة للتنقيط.
+  const roster = trpc.studentResults.roster.useQuery(
+    { classId: classes?.id ?? 0 },
     { enabled: !!classes, staleTime: 5 * 60 * 1000 },
   );
 
@@ -90,7 +92,7 @@ export default function Gradebook() {
           attendance: "", activity: "", continuous: "", quiz: "", assessment: "", notes: "",
         }))
       : [];
-    // عند عدم وجود إدخالات: أدرج كل تلاميذ القسم من سجل الرقمنة كصفوف فارغة جاهزة للإدخال.
+    // عند عدم وجود إدخالات: أدرج كل تلاميذ القسم من رoster دفتر التنقيط (المصبوب من استيراد الرقمنة) كصفوف فارغة جاهزة للإدخال.
     if (list.data.length === 0) return rosterRows;
     // دمج الإدخالات مع roster: يبدأ بأسماء الروفستر المحفوظة (بترتيب roster) ويُدمج عليها إدخالات إضافية.
     const byName = new Map<string, RowDraft>(

@@ -13,6 +13,8 @@ const mockDb = vi.hoisted(() => ({
   upsertGradebookEntry: vi.fn(),
   exportBackupExcel: vi.fn(),
   monthlySummary: vi.fn(),
+  getGradebookRoster: vi.fn(),
+    saveClassRoster: vi.fn(),
 }));
 
 vi.mock("./db", async (importOriginal) => {
@@ -89,6 +91,8 @@ beforeEach(() => {
     buffer: Buffer.from("PK", "latin1"),
   }));
   mockDb.monthlySummary.mockImplementation(async () => []);
+  mockDb.getGradebookRoster.mockImplementation(async () => []);
+  mockDb.saveClassRoster.mockImplementation(async () => ({ addedCount: 1, updatedCount: 0 }));
 });
 
 describe("db-mock enforcement", () => {
@@ -161,6 +165,12 @@ describe("studentResults router", () => {
     // المعادلة الرسمية: (نشاط + فرض + اختبار×3) / 5 = (16 + 14 + 15×3) / 5 = 15.0
     expect(gradedRows[0].computedAverage).toBeCloseTo(15.0, 1);
     expect(gradedRows[0].position).toBe(1);
+    // أسماء التلاميذ تُصبّ تلقائيًا كروستر في دفتر التنقيط عند الاستيراد
+    expect(mockDb.saveClassRoster).toHaveBeenCalledTimes(1);
+    const rosterCall = mockDb.saveClassRoster.mock.calls[0] as any[];
+    expect(rosterCall[0]).toBe(1);
+    expect(rosterCall[1]).toBe(7);
+    expect(rosterCall[2]).toEqual([{ matricule: "1234567890", fullName: "عبيدلي الهاشمي" }]);
 
     const outsider = createCaller(2);
     await expect(outsider.caller.studentResults.saveImport({ mappings: [mapping] })).rejects.toThrow();
@@ -223,6 +233,14 @@ describe("studentResults router", () => {
     await expect(outsider.caller.studentResults.exportBackup({ classId: 7 })).rejects.toThrow();
   });
 
+  it("roster يرجع قائمة تلاميذ دفتر التنقيط ويحمي الملكية", async () => {
+    const { caller } = createCaller();
+    expect(Array.isArray(await caller.studentResults.roster({ classId: 7 }))).toBe(true);
+    expect(mockDb.getGradebookRoster).toHaveBeenCalledWith(1, 7);
+    const outsider = createCaller(2);
+    await expect(outsider.caller.studentResults.roster({ classId: 7 })).rejects.toThrow();
+  });
+
   it("gradebook.monthlySummary يستدعي دالة التجميع للفصل والقسم المملوكين", async () => {
     const { caller } = createCaller();
     const result = await caller.gradebook.monthlySummary({
@@ -244,3 +262,5 @@ describe("studentResults router", () => {
     ).rejects.toThrow();
   });
 });
+
+

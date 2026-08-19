@@ -21,6 +21,7 @@ import {
   InsertStudentGrade,
   gradebookEntries,
   InsertGradebookEntry,
+  gradebookRoster,
   InsertAnnualPlanSection,
   InsertLearningSituation,
   InsertAssessmentResult,
@@ -1064,6 +1065,71 @@ export async function deleteGradebookEntry(id: number, userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(gradebookEntries).where(and(eq(gradebookEntries.id, id), eq(gradebookEntries.userId, userId)));
+}
+
+// ─── رoster قائمة تلاميذ دفتر التنقيط (مستقلة عن المادة والفصل) ───────────
+
+/**
+ * قائمة تلاميذ القسم المحفوظين في دفتر التنقيط بترتيبهم المستقر.
+ */
+export async function getGradebookRoster(userId: number, classId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select()
+    .from(gradebookRoster)
+    .where(and(eq(gradebookRoster.userId, userId), eq(gradebookRoster.classId, classId)))
+    .orderBy(asc(gradebookRoster.sortOrder), asc(gradebookRoster.fullName));
+}
+
+/**
+ * صب قائمة تلاميذ مستوردة من ملف الرقمنة في رoster دفتر التنقيط.
+ * upsert على رقم التعريف (matricule) إن وُجد، وإلا على الاسم:
+ * يُحدّث الاسم إن تغيّر، يُضاف تلميذ جديد، ويُثبّت الترتيب حسب ترتيب الملف.
+ * يعيد عدد التلاميذ المضافين الجدد (غير الموجودين سابقًا).
+ */
+export async function saveClassRoster(
+  userId: number,
+  classId: number,
+  students: { matricule: string | null | undefined; fullName: string }[],
+): Promise<{ addedCount: number; updatedCount: number }> {
+  const db = await getDb();
+  if (!db) return { addedCount: 0, updatedCount: 0 };
+  let addedCount = 0;
+  let updatedCount = 0;
+  for (let i = 0; i < students.length; i += 1) {
+    const s = students[i];
+    if (!s || !s.fullName) continue;
+    const name = s.fullName.trim();
+    const matricule = s.matricule ? String(s.matricule).trim() : null;
+    const existing =
+      (matricule
+        ? await db.select().from(gradebookRoster).where(and(eq(gradebookRoster.userId, userId), eq(gradebookRoster.classId, classId), eq(gradebookRoster.matricule, matricule)))
+        : null) ?? [];
+    let row = existing.length > 0 ? existing[0] : null;
+    if (!row && matricule === null) {
+      // لا يوجد matricule: مطابقة بالاسم
+      const byName = await db.select().from(gradebookRoster).where(and(eq(gradebookRoster.userId, userId), eq(gradebookRoster.classId, classId), eq(gradebookRoster.fullName, name)));
+      row = byName.length > 0 ? byName[0] : null;
+    }
+    if (row) {
+      await db
+        .update(gradebookRoster)
+        .set({ fullName: name, matricule: matricule ?? row.matricule, sortOrder: i, updatedAt: new Date() })
+        .where(eq(gradebookRoster.id, row.id));
+      updatedCount += 1;
+    } else {
+      await db.insert(gradebookRoster).values({
+        userId,
+        classId,
+        matricule,
+        fullName: name,
+        sortOrder: i,
+      });
+      addedCount += 1;
+    }
+  }
+  return { addedCount, updatedCount };
 }
 
 export type MonthlySummaryRow = {

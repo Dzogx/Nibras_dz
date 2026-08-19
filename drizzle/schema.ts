@@ -433,3 +433,18 @@ export const gradebookEntries = mysqlTable("gradebookEntries", {
 
 export type GradebookEntry = typeof gradebookEntries.$inferSelect;
 export type InsertGradebookEntry = typeof gradebookEntries.$inferInsert;
+
+// قائمة تلاميذ القسم في دفتر التنقيط (روستر مستقل عن المادة والفصل):
+// تُصبّ الأسماء تلقائيًا عند استيراد ملف الرقمنة ليبدأ الأستاذ التنقيط فورًا.
+export const gradebookRoster = mysqlTable("gradebookRoster", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId").notNull(),
+  matricule: varchar("matricule", { length: 64 }),
+  fullName: varchar("fullName", { length: 255 }).notNull(),
+  sortOrder: int("sortOrder").notNull().default(0),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type GradebookRosterRow = typeof gradebookRoster.$inferSelect;
+export type InsertGradebookRosterRow = typeof gradebookRoster.$inferInsert;

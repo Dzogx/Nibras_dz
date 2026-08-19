@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { skipToken } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,9 @@ export default function StudentResults() {
     [seasonClasses, selectedFilters],
   );
   const { data: linkedAssessments } = trpc.studentResults.linkedAssessments.useQuery(
-    { classId: selectedFilters!.classId, subject: selectedFilters!.subject, term: selectedFilters!.term },
+    selectedFilters && selectedClass
+      ? { classId: selectedFilters.classId, subject: selectedFilters.subject, term: selectedFilters.term }
+      : skipToken,
     {
       enabled: !!selectedFilters && !!selectedClass,
       staleTime: 60_000,
@@ -100,6 +103,7 @@ export default function StudentResults() {
       setImportStep("saved");
       toast.success(`حُفظت نقاط ${data?.saved?.length ?? 0} أفواج بنجاح`);
       utils.studentResults.list.invalidate({ classId: selectedClassId ?? undefined });
+      utils.studentResults.roster.invalidate();
       utils.studentResults.analytics.invalidate();
       setTimeout(() => {
         setImportDialogOpen(false);
@@ -674,6 +678,7 @@ export default function StudentResults() {
             <div className="text-center py-6">
               <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500 mb-3" />
               <p className="font-semibold">تم حفظ النقاط بنجاح</p>
+              <p className="text-sm text-muted-foreground">أُضيفت أسماء التلاميذ تلقائيًا إلى دفتر التنقيط — يمكنك التنقيط فورًا دون إعادة إدخال الأسماء.</p>
               <p className="text-sm text-muted-foreground mt-1">يمكنك الآن عرض جدول النقاط والتحليل من صفحة نتائج التلاميذ.</p>
             </div>
           )}
