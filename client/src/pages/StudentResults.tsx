@@ -32,6 +32,7 @@ export default function StudentResults() {
   const [sheets, setSheets] = useState<any[]>([]);
   const [mappings, setMappings] = useState<any[]>([]);
   const [studentFilter, setStudentFilter] = useState("");
+  const [printOpen, setPrintOpen] = useState(false);
 
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const { data: classes } = trpc.classes.list.useQuery();
@@ -275,7 +276,7 @@ export default function StudentResults() {
                         value={studentFilter}
                         onChange={(e) => setStudentFilter(e.target.value)}
                       />
-                      <Button variant="outline" size="sm" onClick={() => window.print()}>
+                      <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
                         <Printer className="w-4 h-4 ml-2" />طباعة الجدول
                       </Button>
                     </div>
@@ -568,6 +569,71 @@ export default function StudentResults() {
               <p className="text-sm text-muted-foreground mt-1">يمكنك الآن عرض جدول النقاط والتحليل من صفحة نتائج التلاميذ.</p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* معاينة/طباعة جدول نقاط الفوج — وثيقة رسمية محايدة بلا إشارة للمنصة */}
+      <Dialog open={printOpen} onOpenChange={setPrintOpen}>
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-hidden p-0 flex flex-col">
+          <DialogHeader className="px-5 pt-4 pb-2">
+            <DialogTitle className="text-right">{`معاينة كشف النقاط — ${selectedFilters?.subject ?? ""} · الفصل ${selectedFilters?.term ?? ""}`}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 px-5 pb-4 flex flex-col gap-3">
+            <style>{`.print-sheet * { margin: 0; padding: 0; box-sizing: border-box; } .print-sheet table td, .print-sheet table th { border: 1px solid #222; padding: 1.6mm 2mm; font-size: 10pt; text-align: center; }`}</style>
+            <div className="print-sheet flex-1 min-h-[50vh] overflow-auto border rounded bg-white p-5 text-[10.5pt]">
+              <div style={{ borderBottom: "2px solid #111", paddingBottom: "3mm", marginBottom: "3mm" }}>
+                <table style={{ width: "100%", border: "none" }}><tbody>
+                  <tr>
+                    <td style={{ border: "none", verticalAlign: "top", width: "33%" }}>
+                      <div>الجمهورية الجزائرية الديمقراطية الشعبية</div>
+                      <div>وزارة التربية الوطنية</div>
+                    </td>
+                    <td style={{ border: "none", verticalAlign: "top", width: "34%", textAlign: "center" }}>
+                      <div style={{ fontWeight: "bold" }}>كشف نقاط التلاميذ</div>
+                      <div>{selectedFilters?.subject ?? ""} — السنة الدراسية</div>
+                      <div>الفصل {selectedFilters?.term ?? ""}</div>
+                    </td>
+                    <td style={{ border: "none", verticalAlign: "top", width: "33%", textAlign: "center" }}>
+                      <div>عدد التلاميذ: {filteredGrades?.length ?? 0}</div>
+                    </td>
+                  </tr>
+                </tbody></table>
+              </div>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ background: "#f0f0f0" }}>الترتيب</th>
+                    <th style={{ background: "#f0f0f0" }}>الاسم واللقب</th>
+                    <th style={{ background: "#f0f0f0" }}>النشاطات<br/>/20</th>
+                    <th style={{ background: "#f0f0f0" }}>الفرض الكتابي<br/>/20</th>
+                    <th style={{ background: "#f0f0f0" }}>الاختبار الفصلي<br/>/20</th>
+                    <th style={{ background: "#f0f0f0" }}>المعدل /20</th>
+                    <th style={{ background: "#f0f0f0" }}>التقدير</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(filteredGrades ?? []).map((g: any, idx: number) => (
+                    <tr key={g.id}>
+                      <td>{idx + 1}</td>
+                      <td style={{ textAlign: "right" }}>{g.fullName}</td>
+                      <td>{g.activityScore ?? ""}</td>
+                      <td>{g.examQuizScore ?? ""}</td>
+                      <td>{g.finalExamScore ?? ""}</td>
+                      <td style={{ fontWeight: "bold" }}>{g.computedAverage != null ? Number(g.computedAverage).toFixed(2) : ""}</td>
+                      <td>{g.officialEvaluation ?? ""}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div style={{ marginTop: "10mm", display: "flex", justifyContent: "space-between", fontSize: "10pt" }}>
+                <div>إمضاء الأستاذ(ة)</div>
+                <div>إمضاء مدير(ة) المؤسسة</div>
+              </div>
+            </div>
+            <Button onClick={() => window.print()}>
+              <Printer className="w-4 h-4 ml-2" />طباعة الآن (Ctrl+P)
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
