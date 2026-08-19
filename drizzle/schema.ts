@@ -261,6 +261,10 @@ export const aiResources = mysqlTable("aiResources", {
   serialNumber: varchar("serialNumber", { length: 32 }),
   answerRevealAt: bigint("answerRevealAt", { mode: "number" }),
   examEndsAt: bigint("examEndsAt", { mode: "number" }),
+  // فهرسة فوترسبية للمادة والمستوى — ضرورية لاقتراح التقويمات التحصيلية الموحدة
+  // للمستوى (استوديو التقييم ← نتائج التلاميذ / دفتر التنقيط)
+  subject: varchar("subject", { length: 128 }),
+  gradeLevel: varchar("gradeLevel", { length: 128 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

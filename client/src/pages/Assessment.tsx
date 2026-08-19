@@ -590,6 +590,14 @@ export default function Assessment() {
                   <SelectContent>{assessmentTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+              {form.assessmentType === "exam" && (
+                <div className="col-span-2 rounded-lg border border-dashed border-amber-400/60 bg-amber-50 dark:bg-amber-950/30 p-3 text-xs leading-relaxed text-amber-800 dark:text-amber-200">
+                  <p className="font-semibold flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" />التقويم التحصيلي وثيقة موحّدة لكل المستوى</p>
+                  <p className="mt-1">
+                    ورقة التقويم التحصيلي واحدة لكل المستوى ({form.gradeLevel}) — نفس التوزيع الوزاري ونفس الورقة لجميع أقسام المستوى. اترك القسم الحالي لترويسة الطباعة، ثم اطبع نسخة لكل الأقسام من مكتبة المحتوى بعد التوليد.
+                  </p>
+                </div>
+              )}
               <div><Label>المدة (تلقائي من القواعد)</Label>
                 <Input value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} placeholder="ساعة ونصف" />
               </div>

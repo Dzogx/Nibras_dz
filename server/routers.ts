@@ -13,7 +13,7 @@ import {
   getClasses, getClassById, createClass, updateClass, deleteClass, parseImportExcelWorkbook,
   parseRakmnaExcelWorkbook, computeTermAverage, termAverageEvaluation,
   getStudentGradesByClass, getStudentGradesFilters, saveStudentGradesRows, deleteStudentGradesForClass, deleteStudentGrade,
-  recomputeClassGradesEvaluation, getStudentGradesAnalytics, exportBackupExcel,
+  recomputeClassGradesEvaluation, getStudentGradesAnalytics, exportBackupExcel, listGeneratedAssessments,
   getGradebookByClass, getGradebookFilters, upsertGradebookEntry,
   sumContinuousScore, deleteGradebookForClass, deleteGradebookEntry,
   monthlySummary,
@@ -598,6 +598,21 @@ export const appRouter = router({
         if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
       }
       return await exportBackupExcel(ctx.user.id, input.classId ?? null);
+    }),
+    /**
+     * التقويمات التحصيلية المولّدة من استوديو التقييم والمرشّحة للقسم.
+     * التقويم التحصيلي وثيقة موحّدة لكل المستوى؛ لذا تُعرض كل تقويمات
+     * (exam/quiz) لنفس المادة والمستوى حتى لو لم تُربط بالقسم نفسه.
+     */
+    linkedAssessments: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+      subject: z.string().min(2).max(128),
+      term: z.number().int().min(1).max(4).optional(),
+    })).query(async ({ ctx, input }) => {
+      const classes = await getClasses(ctx.user.id);
+      const owned = classes.find((item) => item.id === input.classId);
+      if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      return await listGeneratedAssessments(ctx.user.id, input.classId, input.subject, input.term ?? 0);
     }),
   }),
 
@@ -1780,6 +1795,8 @@ ${rulesContext}
         classId: input.classId,
         type: input.assessmentType,
         title: canonicalAssessmentTitle,
+        subject: input.subject,
+        gradeLevel: input.gradeLevel,
         content,
         metadata,
         tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel, ...(input.useNationalRules ? ["تقويم وطني"] : [])],

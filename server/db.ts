@@ -857,7 +857,7 @@ export async function exportBackupExcel(userId: number, classId: number | null):
     const sheetName = `${g.subject}-${g.term}`.slice(0, 31);
     // ترويسة متوافقة مع محوّل الاستيراد: كل صف يمثّل تلميذًا بالأسهم المتطابقة
     const sheetRows = [
-      ["التعريف", "الاسم واللقب", "النشاطات", "الفرض الكتابي", "الاختبار الفصلي"],
+      ["التعريف", "الاسم واللقب", "النشاطات", "الفرض الكتابي", "التقويم التحصيلي (الاختبار الفصلي)"],
       ...g.rows.map((r) => [r.matricule, r.fullName, r.activityScore, r.examQuizScore, r.finalExamScore]),
     ];
     const ws = XLSX.utils.aoa_to_sheet(sheetRows);
@@ -869,6 +869,37 @@ export async function exportBackupExcel(userId: number, classId: number | null):
   const className = rows[0]?.classId ? `القسم-${rows[0].classId}` : "كل-الأقسام";
   return { filename: `نسخة-احتياطية-نقاط-${className}-${new Date().toISOString().slice(0, 10)}.xlsx`, buffer: buf };
 }
+/**
+ * التقويمات التحصيلية المولّدة من استوديو التقييم والمرشّحة لقسم/مستوى معيّن.
+ * التقويم التحصيلي وثيقة موحّدة لكل المستوى: نعرض كل تقويمات النوع exam/quiz
+ * لنفس المادة والمستوى (وإن لم تُربط بالقسم نفسه) ليقترح النظام ربطها بنتائج الرقمنة.
+ */
+export async function listGeneratedAssessments(userId: number, classId: number, subject: string, term: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const cls = await getClassById(classId);
+  if (!cls) return [];
+  const rows = await db
+    .select({
+      id: aiResources.id,
+      title: aiResources.title,
+      type: aiResources.type,
+      classId: aiResources.classId,
+      createdAt: aiResources.createdAt,
+    })
+    .from(aiResources)
+    .where(
+      and(
+        eq(aiResources.userId, userId),
+        eq(aiResources.subject as any, subject),
+        or(eq(aiResources.type, "exam" as any), eq(aiResources.type, "quiz" as any)),
+        eq(aiResources.gradeLevel as any, cls.gradeLevel),
+      ),
+    )
+    .orderBy(desc(aiResources.createdAt));
+  return rows;
+}
+
 export async function getStudentGradesFilters(userId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -1453,7 +1484,7 @@ export async function getStudentGradesAnalytics(userId: number, classId: number,
       if (examShare != null && examShare < 1.5) {
         weaknessType = "exam";
         recommendation =
-          "الضعف مركّز في الاختبار. أعد معه الوضعيات التعليمية المنجزة ودرّبه على نمط وثائق التقويم التحصيلي (الإجابة عن الأسئلة المركبة والوضعية الإدماجية) قبل حصة الاستدراك.";
+          "الضعف مركّز في التقويم التحصيلي (الاختبار الفصلي). أعد معه الوضعيات التعليمية المنجزة ودرّبه على نمط وثيقة التقويم التحصيلي الموحّدة للمستوى (الإجابة عن الأسئلة المركبة والوضعية الإدماجية) قبل حصة الاستدراك.";
       } else if (r.finalExamScore == null && continuousPart < 8) {
         weaknessType = "continuous";
         recommendation =
@@ -1461,11 +1492,11 @@ export async function getStudentGradesAnalytics(userId: number, classId: number,
       } else if (examShare != null && examShare >= 2.4) {
         weaknessType = "continuous";
         recommendation =
-          "نقطة الاختبار مقبولة لكن التقويم المستمر يخفض المعدل. تابع مشاركته الصّفية وأنشطته اليومية وسجّلها بانتظام في دفتر التنقيط.";
+          "نقطة التقويم التحصيلي مقبولة لكن التقويم المستمر يخفض المعدل. تابع مشاركته الصّفية وأنشطته اليومية وسجّلها بانتظام في دفتر التنقيط.";
       } else {
         weaknessType = "general";
         recommendation =
-          "الضعف عام عبر المحصلات (التقويم المستمر والاختبار). أدرجه في مجموعة الاستدراك، وأعد معه أساسيات الوضعيات غير المتقنة مع أنشطة تعويضية مبسطة وفق منهاج المادة.";
+          "الضعف عام عبر المحصلات (التقويم المستمر والتقويم التحصيلي). أدرجه في مجموعة الاستدراك، وأعد معه أساسيات الوضعيات غير المتقنة مع أنشطة تعويضية مبسطة وفق منهاج المادة.";
       }
       weakStudents.push({
         id: r.id,

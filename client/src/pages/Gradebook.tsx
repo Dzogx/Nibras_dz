@@ -38,7 +38,7 @@ import {
 /**
  * دفتر التنقيط — وثيقة الأستاذ اليومية وفق الوثيقة الوزارية 2025-2026.
  * لكل تلميذ: الانضباط والمواظبة (/10) + إنجاز الأنشطة (/10) = التقويم المستمر (/20)،
- * ثم الفرض الكتابي (/20) والاختبار الفصلي (/20). لا تحسب المنصة المعدلات الفصلية
+ * ثم الفرض الكتابي (/20) والتقويم التحصيلي — الاختبار الفصلي (/20). لا تحسب المنصة المعدلات الفصلية
  * والسنوية — الرقمنة الرسمية هي المسؤولة عنها.
  */
 
@@ -226,7 +226,7 @@ export default function Gradebook() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">دفتر التنقيط</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            علامة التقويم المستمر (/20 = انضباط ومواظبة /10 + إنجاز الأنشطة /10)، الفرض الكتابي /20، والاختبار الفصلي /20 — المعدلات الفصلية والسنوية تُحسب في الرقمنة.
+            علامة التقويم المستمر (/20 = انضباط ومواظبة /10 + إنجاز الأنشطة /10)، الفرض الكتابي /20، والتقويم التحصيلي (الاختبار الفصلي) /20 — المعدلات الفصلية والسنوية تُحسب في الرقمنة.
           </p>
         </div>
       </div>
@@ -395,7 +395,7 @@ function EntriesTable({
             <TableHead className="w-24 text-center">إنجاز الأنشطة /10</TableHead>
             <TableHead className="w-24 text-center">التقويم المستمر /20</TableHead>
             <TableHead className="w-20 text-center">الفرض /20</TableHead>
-            <TableHead className="w-20 text-center">الاختبار /20</TableHead>
+            <TableHead className="w-20 text-center">التقويم التحصيلي /20</TableHead>
             <TableHead className="w-48">ملاحظات نوعية</TableHead>
           </TableRow>
         </TableHeader>
@@ -650,7 +650,7 @@ td.name { text-align: right; }
 <td class="center"><div>عدد التلاميذ: ${rows.length}</div></td>
 </tr></table></div>
 <table class="sheet"><thead><tr>
-<th>الترتيب</th><th>الاسم واللقب</th><th>الانضباط والمواظبة<br>/10</th><th>إنجاز الأنشطة<br>/10</th><th>التقويم المستمر<br>/20</th><th>الفرض الكتابي<br>/20</th><th>الاختبار الفصلي<br>/20</th><th>ملاحظات نوعية</th>
+<th>الترتيب</th><th>الاسم واللقب</th><th>الانضباط والمواظبة<br>/10</th><th>إنجاز الأنشطة<br>/10</th><th>التقويم المستمر<br>/20</th><th>الفرض الكتابي<br>/20</th><th>التقويم التحصيلي (الاختبار الفصلي)<br>/20</th><th>ملاحظات نوعية</th>
 </tr></thead><tbody>
 ${rows.map((row, i) => `
 <tr><td>${i + 1}</td><td class="name">${row.studentName}</td>

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Upload, BarChart3, TrendingDown, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2, Printer, Download } from "lucide-react";
+import { Users, Upload, BarChart3, TrendingDown, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2, Printer, Download, Link2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 
@@ -57,6 +57,19 @@ export default function StudentResults() {
 
   const [preferredClassId, setPreferredClassId] = usePreferredClass(profile?.academicYear);
   void preferredClassId;
+
+  // التقويمات التحصيلية المولّدة من استوديو التقييم لنفس المادة والمستوى (وثيقة موحّدة)
+  const selectedClass = useMemo(
+    () => (seasonClasses ?? []).find((c) => c.id === selectedFilters?.classId),
+    [seasonClasses, selectedFilters],
+  );
+  const { data: linkedAssessments } = trpc.studentResults.linkedAssessments.useQuery(
+    { classId: selectedFilters!.classId, subject: selectedFilters!.subject, term: selectedFilters!.term },
+    {
+      enabled: !!selectedFilters && !!selectedClass,
+      staleTime: 60_000,
+    },
+  );
 
   const importMut = trpc.studentResults.parseExcel.useMutation({
     onSuccess: (data) => {
@@ -315,6 +328,35 @@ export default function StudentResults() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
+                {/* التقويم التحصيلي وثيقة موحّدة للمستوى: عرض التقويمات المولّدة من المنصة المقترحة للربط */}
+                {linkedAssessments && linkedAssessments.length > 0 && (
+                  <div className="mt-4 rounded-lg border border-dashed border-primary/40 bg-primary/5 p-3">
+                    <p className="text-xs font-semibold mb-2 flex items-center gap-1.5 text-primary">
+                      <Layers className="w-3.5 h-3.5" />
+                      التقويم التحصيلي المولّد من المنصة (وثيقة موحّدة للمستوى)
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {linkedAssessments.map((a: any) => (
+                        <Button
+                          key={a.id}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          asChild
+                        >
+                          <a href={`/content-library/${a.id}`}>
+                            <Link2 className="w-3.5 h-3.5 ml-1" />
+                            {a.title}
+                          </a>
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      نفس ورقة التقويم التحصيلي تُستخدم لكل أفواج المستوى {selectedClass?.gradeLevel}. افتح التقويم من هنا لتحميله أو طباعته لكل الأقسام.
+                    </p>
+                  </div>
+                )}
+
                 <Tabs defaultValue="grades">
                   <TabsList>
                     <TabsTrigger value="grades">نقاط التلاميذ</TabsTrigger>
@@ -345,7 +387,7 @@ export default function StudentResults() {
                               <th className="py-2 px-2 font-medium">الاسم واللقب</th>
                               <th className="py-2 px-2 font-medium">النشاطات /20</th>
                               <th className="py-2 px-2 font-medium">الفرض /20</th>
-                              <th className="py-2 px-2 font-medium">الاختبار /20</th>
+                              <th className="py-2 px-2 font-medium">التقويم التحصيلي<span className="block text-xs font-normal text-muted-foreground">(الاختبار الفصلي)</span>/20</th>
                               <th className="py-2 px-2 font-medium">المعدل /20</th>
                               <th className="py-2 px-2 font-medium">التقدير</th>
                               <th className="py-2 px-2 font-medium"></th>
@@ -454,7 +496,7 @@ export default function StudentResults() {
                                       <span className="text-red-500 font-semibold">{w.computedAverage?.toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                      {w.weaknessType === "exam" && "تعثر مركّز في الاختبار"}
+                                      {w.weaknessType === "exam" && "تعثر مركّز في التقويم التحصيلي (الاختبار الفصلي)"}
                                       {w.weaknessType === "continuous" && "تعثر في التقويم المستمر"}
                                       {w.weaknessType === "general" && "تعثر عام عبر المحصلات"}
                                     </p>
@@ -485,7 +527,7 @@ export default function StudentResults() {
                                 <p className="text-xl font-semibold">{analytics.averageQuiz.toFixed(1)}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground">الاختبارات</p>
+                                <p className="text-xs text-muted-foreground">التقويم التحصيلي</p>
                                 <p className="text-xl font-semibold">{analytics.averageExam.toFixed(1)}</p>
                               </div>
                             </div>
@@ -672,7 +714,7 @@ export default function StudentResults() {
                     <th style={{ background: "#f0f0f0" }}>الاسم واللقب</th>
                     <th style={{ background: "#f0f0f0" }}>النشاطات<br/>/20</th>
                     <th style={{ background: "#f0f0f0" }}>الفرض الكتابي<br/>/20</th>
-                    <th style={{ background: "#f0f0f0" }}>الاختبار الفصلي<br/>/20</th>
+                    <th style={{ background: "#f0f0f0" }}>التقويم التحصيلي<br/>(الاختبار الفصلي)<br/>/20</th>
                     <th style={{ background: "#f0f0f0" }}>المعدل /20</th>
                     <th style={{ background: "#f0f0f0" }}>التقدير</th>
                   </tr>

@@ -91,6 +91,22 @@ beforeEach(() => {
   mockDb.monthlySummary.mockImplementation(async () => []);
 });
 
+describe("db-mock enforcement", () => {
+  it("getDb الحقيقي يرمي في بيئة الاختبار ما لم تُعيَّن علامة السماح", async () => {
+    (globalThis as any).__NIBRAS_DB_MOCK_ENFORCED = false;
+    vi.resetModules();
+    const { getDb } = await import("./db");
+    let threw = false;
+    try {
+      await getDb();
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
+    (globalThis as any).__NIBRAS_DB_MOCK_ENFORCED = undefined;
+  });
+});
+
 describe("studentResults router", () => {
   it("parseExcel يعود بمجموعة الورقات ويستخرج النقاط", async () => {
     const { caller } = createCaller();
