@@ -27,9 +27,9 @@ export default function Home() {
       <div className="nibras-glow-pattern min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <img
-            src="/manus-storage/nibras-monogram-192_8769c116.png"
-            alt="شعار نبراس"
-            className="w-16 h-16 rounded-xl mx-auto mb-4 animate-pulse"
+            src="/manus-storage/nibras-bilingual-lockup_8f848dcc.png"
+            alt="نبراس | NIBRAS"
+            className="h-14 w-auto mx-auto mb-4 animate-pulse"
           />
         </div>
       </div>
@@ -42,13 +42,10 @@ export default function Home() {
       <section className="nibras-glow-pattern">
         <div className="max-w-4xl mx-auto px-6 py-16 md:py-24 text-center">
           <img
-            src="/manus-storage/nibras-monogram_793cba79.svg"
-            alt="شعار نبراس"
-            className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6"
+            src="/manus-storage/nibras-bilingual-lockup_8f848dcc.png"
+            alt="نبراس | NIBRAS"
+            className="h-24 md:h-32 w-auto mx-auto mb-6"
           />
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-brand-ink-950" style={{ fontFamily: "var(--font-display)" }}>
-            نبراس
-          </h1>
           <p className="mt-4 text-lg md:text-xl text-muted-foreground leading-relaxed">
             مساعد التدريس الذكي لأستاذ الاجتماعيات في التعليم المتوسط الجزائري
           </p>

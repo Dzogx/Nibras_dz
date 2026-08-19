@@ -14,12 +14,18 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+// الشعار المعتمد: الكتابة المزدوجة «نبراس | NIBRAS» بخطي Amiri وLatin Modern Roman والفاصل العمودي.
 const LOGO = {
-  svg: "/manus-storage/nibras-monogram_793cba79.svg",
-  png512: "/manus-storage/nibras-monogram-512_5c8e2bcd.png",
-  png192: "/manus-storage/nibras-monogram-192_8769c116.png",
-  png96: "/manus-storage/nibras-monogram-96_b470af5b.png",
-  mono512: "/manus-storage/nibras-monogram-mono_89bba2d4.svg",
+  svg: "/manus-storage/nibras-bilingual-lockup_5621b048.svg",
+  png512: "/manus-storage/nibras-bilingual-sheet_71fab7ea.png",
+  png192: "/manus-storage/favicon-192_847cdf6d.png",
+  png96: "/manus-storage/nibras-bilingual-lockup-transparent_e9d0a47e.png",
+  mono512: "/manus-storage/nibras-bilingual-lockup-white_6208256f.svg",
+};
+const HORIZONTAL_LOCKUP = {
+  color: "/manus-storage/nibras-bilingual-lockup_8f848dcc.png",
+  white: "/manus-storage/nibras-bilingual-lockup-white_8f58c423.png",
+  transparent: "/manus-storage/nibras-bilingual-lockup-transparent_e9d0a47e.png",
 };
 
 const colors = [
@@ -29,11 +35,7 @@ const colors = [
   { name: "Sand (الرمل — الأرضيات)", group: "sand", shades: [900, 700, 500, 300, 200, 100, 50] },
 ];
 
-const HORIZONTAL = {
-  light: "/manus-storage/nibras-horizontal-light_3bf07d22.svg",
-  mono: "/manus-storage/nibras-horizontal-mono_aef085dd.svg",
-  white: "/manus-storage/nibras-horizontal-white_8b116e51.svg",
-};
+
 
 const pipeline = [
   { icon: ClipboardList, label: "التخطيط", desc: "الخطط السنوية والمقاطع والوضعيات وفق المنهاج الرسمي" },
@@ -58,10 +60,7 @@ export default function Brand() {
       {/* Hero */}
       <section className="nibras-glow-pattern border-b border-border">
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-20 text-center">
-          <img src={LOGO.svg} alt="شعار نبراس" className="w-24 h-24 md:w-28 md:h-28 mx-auto mb-6 drop-shadow-sm" />
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight text-brand-ink-950" style={{ fontFamily: "var(--font-display)" }}>
-            نبراس
-          </h1>
+          <img src={HORIZONTAL_LOCKUP.color} alt="نبراس | NIBRAS" className="h-24 md:h-32 w-auto mx-auto mb-6 drop-shadow-sm" />
           <p className="mt-3 text-lg text-muted-foreground">
             <span className="text-brand-ink-800 font-semibold">NIBRAS</span> — منصّة إنتاج تربوي ومساعد يومي
             لأستاذ الاجتماعيات في التعليم المتوسط الجزائري
@@ -126,16 +125,16 @@ export default function Brand() {
           </h2>
           <div className="grid md:grid-cols-3 gap-4 mb-6">
             <Card>
-              <CardHeader><CardTitle className="text-base">النسخة الملونة</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">العلامة الملونة (SVG/PNG)</CardTitle></CardHeader>
               <CardContent className="flex flex-col items-center gap-3 pb-6">
                 <img src={LOGO.png512} alt="شعار 512" className="w-24 h-24 rounded-2xl bg-muted/50 p-2" />
                 <img src={LOGO.png96} alt="شعار 96" className="w-12 h-12 rounded-lg" />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">أحادي اللون (monochrome)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">النسخة البيضاء (خلفيات داكنة)</CardTitle></CardHeader>
               <CardContent className="flex flex-col items-center gap-3 pb-6">
-                <img src={LOGO.mono512} alt="شعار أحادي" className="w-24 h-24 rounded-2xl bg-muted/50 p-2" />
+                <img src={HORIZONTAL_LOCKUP.white} alt="النسخة البيضاء" className="w-24 h-auto rounded-2xl bg-brand-ink-950 p-2" />
                 <img src={LOGO.svg} alt="شعار SVG" className="w-12 h-12" />
               </CardContent>
             </Card>
@@ -148,24 +147,24 @@ export default function Brand() {
               </CardContent>
             </Card>
           </div>
-          <h3 className="text-lg font-bold text-brand-ink-900 mb-3">النسخ الأفقية — Wordmark</h3>
+          <h3 className="text-lg font-bold text-brand-ink-900 mb-3">الكتابة المزدوجة المعتمدة — نبراس | NIBRAS</h3>
           <div className="grid md:grid-cols-3 gap-4">
             <Card>
-              <CardHeader><CardTitle className="text-base">النسخة الملونة (خلفية فاتحة)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">على خلفية فاتحة</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-center gap-4 pb-6">
-                <img src={HORIZONTAL.light} alt="النسخة الأفقية الملونة" className="h-16 w-auto" />
+                <img src={HORIZONTAL_LOCKUP.color} alt="النسخة الأفقية الملونة" className="h-16 w-auto" />
               </CardContent>
             </Card>
             <Card>
-              <CardHeader><CardTitle className="text-base">أحادي (طباعة)</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">النسخة الشفافة</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-center gap-4 pb-6">
-                <img src={HORIZONTAL.mono} alt="النسخة الأفقية الأحادية" className="h-16 w-auto" />
+                <img src={HORIZONTAL_LOCKUP.transparent} alt="النسخة الشفافة" className="h-16 w-auto" />
               </CardContent>
             </Card>
             <Card className="bg-brand-ink-950">
               <CardHeader><CardTitle className="text-base text-brand-ink-100">أبيض (خلفية داكنة)</CardTitle></CardHeader>
               <CardContent className="flex items-center justify-center gap-4 pb-6">
-                <img src={HORIZONTAL.white} alt="النسخة الأفقية البيضاء" className="h-16 w-auto" />
+                <img src={HORIZONTAL_LOCKUP.white} alt="النسخة الأفقية البيضاء" className="h-16 w-auto" />
               </CardContent>
             </Card>
           </div>
@@ -285,7 +284,7 @@ export default function Brand() {
             هوية المخرجات التربوية (A4)
           </h2>
           <div className="nibras-identity-bar mb-3 rounded-xl h-24 flex items-center px-6">
-            <img src={LOGO.png96} alt="" className="w-14 h-14 rounded-lg bg-white/90 p-0.5 -mt-2" />
+            <img src={HORIZONTAL_LOCKUP.color} alt="" className="h-12 w-auto bg-white/90 rounded-md p-0.5" />
             <div className="mr-4 text-white">
               <p className="font-black text-lg" style={{ fontFamily: "var(--font-display)" }}>شريط هوية نبراس</p>
               <p className="text-xs opacity-90">يظهر أعلى الترويسة الرسمية في كل وثيقة مطبوعة</p>

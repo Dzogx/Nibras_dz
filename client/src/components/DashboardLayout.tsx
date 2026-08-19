@@ -86,13 +86,10 @@ export default function DashboardLayout({
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="text-center space-y-3">
             <img
-              src="/manus-storage/nibras-monogram-192_8769c116.png"
-              alt="شعار نبراس"
-              className="w-20 h-20 rounded-2xl mb-4 shadow-lg"
+              src="/manus-storage/nibras-bilingual-lockup_8f848dcc.png"
+              alt="نبراس | NIBRAS"
+              className="h-16 w-auto mb-2"
             />
-            <h1 className="text-2xl font-bold tracking-tight">
-              نبراس
-            </h1>
             <p className="text-sm text-muted-foreground">
               مساعد التدريس الذكي لمعلمي الدراسات الاجتماعية
             </p>
@@ -211,13 +208,10 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <img
-                    src="/manus-storage/nibras-monogram-192_8769c116.png"
-                    alt="شعار نبراس"
-                    className="h-8 w-8 rounded-lg shrink-0"
+                    src="/manus-storage/nibras-bilingual-lockup_8f848dcc.png"
+                    alt="نبراس | NIBRAS"
+                    className="h-8 w-auto shrink-0"
                   />
-                  <span className="font-bold tracking-tight text-lg">
-                    نبراس
-                  </span>
                 </div>
               ) : null}
             </div>

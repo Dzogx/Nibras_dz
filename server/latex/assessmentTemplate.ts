@@ -145,11 +145,16 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
     && Boolean(input.verifyUrl)
     && isSafeQrUrl(input.verifyUrl!);
   const verificationQr = canShowVerificationQr
-    ? `\\\\[0.55em]
+    ? `
+\\vspace{0.55em}
 \\begin{english}
 \\NibrasQrCode{${input.verifyUrl}}{\\scriptsize\\ttfamily\\hspace{0.6em}${escapeLatex(input.serialNumber!)}}
 \\end{english}`
     : "";
+  // الشعار الرسمي المزدوج: «نبراس» بخط Amiri و«NIBRAS» بخط Latin Modern Roman،
+  // بينهما خط رفيع عمودي، على خط أساسي واحد — نفس هوية واجهة المنصة.
+  // الفاصل العمودي يوضع داخل math mode مستقل حتى لا يبقى الوضع الرياضي مفتوحاً داخل النص العربي.
+  const brandLockup = `\\textcolor{NibrasInk}{\\NibrasArabic{نبراس}}\\NibrasSep\\NibrasLatin{NIBRAS}`;
   const studentBlock = input.assessmentType === "answerKey" || input.assessmentType === "rubric"
     ? ""
     : `
@@ -172,6 +177,13 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
 \\newfontfamily\\englishfont{Latin Modern Roman}
+% خط الشعار المزدوج المعتمد: عربي Amiri ولاتيني Latin Modern Roman على خط أساسي واحد.
+\\newfontfamily\\nibrasArabicFont[Script=Arabic,Scale=1.25]{Amiri}
+\\newfontfamily\\nibrasLatinFont[LetterSpace=18]{Latin Modern Roman}
+\\newcommand{\\NibrasArabic}[1]{{\\nibrasArabicFont #1}}
+\\newcommand{\\NibrasLatin}[1]{\\begin{english}{\\nibrasLatinFont #1}\\end{english}}
+% الخط الفاصل الرفيع العمودي بين الكلمتين — بديل نصي عن math mode لتفادي تعارض اتجاه RTL.
+\\newcommand{\\NibrasSep}{\\;\\rule{0.4pt}{0.9em}\\;}
 \\definecolor{NibrasInk}{HTML}{${theme.ink}}
 \\definecolor{NibrasLight}{HTML}{${theme.light}}
 \\definecolor{NibrasAccent}{HTML}{${theme.accent}}
@@ -189,7 +201,7 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\renewcommand{\\arraystretch}{1.45}
 \\pagestyle{fancy}
 \\fancyhf{}
-\\fancyhead[R]{\\small \\textcolor{NibrasInk}{نبراس | NIBRAS}}
+\\fancyhead[R]{\\small ${brandLockup}}
 \\fancyhead[L]{\\small ${assessmentLabel(input.assessmentType)}}
 \\fancyfoot[C]{\\small صفحة \\thepage\\ من \\pageref{LastPage}}
 \\fancyfoot[R]{\\small وثيقة تربوية قابلة للتحرير}
@@ -199,7 +211,7 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 {\\large\\bfseries الجمهورية الجزائرية الديمقراطية الشعبية}\\\\
 وزارة التربية الوطنية\\\\[0.6em]
 {\\color{NibrasInk}\\LARGE\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[0.15em]
-{\\small\\color{NibrasAccent} ${theme.label}}\\\\[0.2em]
+{\\small\\color{NibrasAccent}\\hfill ${brandLockup}}\\\\[0.2em]
 {\\large\\bfseries ${title}}
 \\end{center}
 
@@ -222,7 +234,8 @@ ${markdownToLatex(input.content)}
 
 \\vfill
 \\begin{center}
-\\small\\textcolor{NibrasInk}{نبراس — قالب طباعي احترافي | المجموع: ${points}}${verificationQr}
+\\small${brandLockup}\\\\[0.4em]
+\\textcolor{NibrasInk}{${theme.label} — المجموع: ${points}}${verificationQr}
 \\end{center}
 \\end{document}
 `;

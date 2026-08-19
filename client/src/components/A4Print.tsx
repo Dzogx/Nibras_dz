@@ -20,7 +20,8 @@ const NIBRAS_BASE_URL = (() => {
   return "";
 })();
 
-export const LOGO_URL = "/manus-storage/nibras-monogram_793cba79.svg";
+export const LOGO_URL = "/manus-storage/nibras-bilingual-lockup_5621b048.svg";
+// نسخة الشعار المزدوج باللغتين: «نبراس» بخط Amiri و«NIBRAS» بخط Latin Modern Roman، بينهما خط رفيع عمودي.
 
 export interface PrintMeta {
   /** عنوان الوثيقة، مثل: "مذكرة بيداغوجية" أو "اختبار فصلي في التاريخ والجغرافيا" */
