@@ -138,9 +138,28 @@ export default function StudentResults() {
   }, [grades, selectedFilters, studentFilter]);
 
   const filteredGroups = useMemo(() => {
+    // filtersData ترجع صفوف تلاميذ (صف لكل تلميذ)؛ نجمعها حسب (المادة، الفصل)
     const raw = (filtersData ?? []) as any[];
-    if (!studentFilter.trim()) return raw;
-    return raw;
+    if (raw.length === 0) return raw;
+    const isAggregated = raw[0] && "count" in raw[0] && !("fullName" in raw[0]);
+    if (isAggregated) return raw;
+    const grouped = new Map<string, { classId: number; subject: string; term: number; count: number }>();
+    for (const row of raw) {
+      const key = `${row.classId}|${row.subject}|${row.term}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        grouped.set(key, { classId: row.classId, subject: row.subject, term: row.term, count: 1 });
+      }
+    }
+    let result = Array.from(grouped.values());
+    if (studentFilter.trim()) {
+      result = result.filter((g) =>
+        raw.some((r) => r.classId === g.classId && r.subject === g.subject && r.term === g.term && (r.fullName.includes(studentFilter) || String(r.matricule).includes(studentFilter))),
+      );
+    }
+    return result;
   }, [filtersData, studentFilter]);
 
   const openImport = () => {
