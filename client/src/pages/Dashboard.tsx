@@ -16,6 +16,8 @@ import {
   CalendarClock,
   CalendarPlus,
   XCircle,
+  Compass,
+  Printer,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -137,6 +139,11 @@ export default function Dashboard() {
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
+  const [strategySituationId, setStrategySituationId] = useState<number | null>(null);
+  const strategyQuery = trpc.situations.suggestStrategy.useQuery(
+    { id: strategySituationId ?? 0 },
+    { enabled: Boolean(strategySituationId) },
+  );
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [rescheduleContext, setRescheduleContext] = useState<{
     situationId: number;
@@ -278,6 +285,59 @@ export default function Dashboard() {
     if (!firstSuggestionKey) setSelectedRescheduleKey(null);
   }, [rescheduleOpen, rescheduleSuggestions, selectedRescheduleKey]);
 
+
+  function escapeHtml(s: string) {
+    return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
+
+  const strategy = strategyQuery.data;
+  const strategyPrintHtml = useMemo(() => {
+    const sit = strategyQuery.data ? dailySituation : null;
+    if (!strategy || !sit) return null;
+    const total = strategy.phases.reduce((acc, phase) => acc + phase.minutes, 0);
+    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
+<style>
+  @page{size:A4;margin:16mm 14mm;}
+  *{box-sizing:border-box;}
+  body{font-family:"Amiri","Noto Naskh Arabic",serif;color:#1a1a1a;font-size:12pt;}
+  .hdr{text-align:center;border-bottom:3px double #14324a;padding-bottom:8px;margin-bottom:14px;}
+  .hdr .l1{font-size:11pt;font-weight:bold;}
+  .hdr .l2{font-size:13pt;font-weight:bold;margin-top:2px;}
+  .hdr .l3{font-size:10pt;color:#444;margin-top:2px;}
+  h1{font-size:15pt;margin:10px 0 4px;color:#14324a;}
+  h2{font-size:13pt;margin:14px 0 6px;color:#14324a;border-bottom:1px solid #cbbf6c;padding-bottom:3px;}
+  table{width:100%;border-collapse:collapse;margin:8px 0;font-size:10.5pt;}
+  th,td{border:1px solid #999;padding:5px 7px;text-align:right;vertical-align:top;}
+  th{background:#eef1f5;}
+  .note{background:#faf7ec;border:1px solid #e5dcaf;padding:7px 9px;border-radius:6px;margin-top:8px;}
+  .meta{font-size:10.5pt;color:#333;margin:4px 0;}
+  .footer{margin-top:18px;font-size:9.5pt;color:#666;border-top:1px solid #ccc;padding-top:5px;text-align:center;}
+  @media print{.no-print{display:none;}}
+</style></head><body>
+  <div class="hdr">
+    <div class="l1">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+    <div class="l2">وزارة التربية الوطنية</div>
+    <div class="l3">مذكرة استراتيجية تسيير الحصة</div>
+  </div>
+  <h1>استراتيجية تسيير الحصة: ${escapeHtml(strategy.name)}</h1>
+  <p class="meta">الوضعية: <strong>${escapeHtml(sit.title)}</strong></p>
+  ${dailySection ? `<p class="meta">المقطع ${escapeHtml(String(dailySection.number))}: ${escapeHtml(dailySection.title)}</p>` : ""}
+  <p class="meta">نوع الاستراتيجية: ${escapeHtml(strategy.kind === "learning" ? "وضعية تعلمية (تعلم نشط)" : strategy.kind === "integrative" ? "وضعية إدماجية" : "تقويم")} · المدة الإجمالية: ${total} دقيقة</p>
+  <p class="note">منطق الاختيار: ${escapeHtml(strategy.rationale)}</p>
+  <h2>مراحل التسيير</h2>
+  <table>
+    <thead><tr><th>المرحلة</th><th>المدة</th><th>دور الأستاذ</th><th>دور التلميذ</th></tr></thead>
+    <tbody>${strategy.phases.map((phase) => `
+      <tr><td><strong>${escapeHtml(phase.stage)}</strong></td><td>${phase.minutes} د</td><td>${escapeHtml(phase.teacherRole)}</td><td>${escapeHtml(phase.studentRole)}</td></tr>`).join("")}
+    </tbody>
+  </table>
+  ${strategy.phases.some((phase) => phase.tips) ? `<h2>ملاحظات كل مرحلة</h2><ul>${strategy.phases.map((phase) => (phase.tips ? `<li><strong>${escapeHtml(phase.stage)}:</strong> ${escapeHtml(phase.tips)}</li>` : "")).filter(Boolean).join("")}</ul>` : ""}
+  <h2>نصائح تربوية عامة</h2>
+  <ul>${strategy.generalTips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>
+  <p class="note">في حال عدم كفاية الوقت لإتمام المراحل، يُكمل الأستاذ ما أمكن ثم يؤجل بقية المراحل للحصة الموالية عبر خيار «سجّل نتيجة الحصة».</p>
+  <div class="footer">وثيقة عمل تربوية — تُعدّ داخل الحصص التعليمية وتُقدّم عند الحاجة.</div>
+</body></html>`;
+  }, [strategy, strategyQuery.data, dailySituation, dailySection]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -438,6 +498,7 @@ export default function Dashboard() {
                       )}
                     </div>
                     {item.nextSituation ? (
+                      <>
                       <button
                         type="button"
                         className="block w-full rounded-lg bg-muted/60 px-3 py-2 text-right text-sm hover:bg-muted transition-colors"
@@ -446,6 +507,14 @@ export default function Dashboard() {
                         <span className="block text-[11px] text-muted-foreground">الوضعية التالية</span>
                         <span className="block font-medium mt-0.5">{item.nextSituation.title}</span>
                       </button>
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-end gap-1.5 rounded-lg border border-amber-400/50 bg-amber-50/70 px-3 py-1.5 text-right text-xs font-medium text-amber-800 hover:bg-amber-50 transition-colors"
+                        onClick={() => setStrategySituationId(item.nextSituation!.id)}
+                      >
+                        <Compass className="h-3.5 w-3.5" />استراتيجية التسيير
+                      </button>
+                      </>
                     ) : (
                       <p className="rounded-lg bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">لا توجد وضعية متبقية في الخطة.</p>
                     )}
@@ -633,11 +702,10 @@ export default function Dashboard() {
               <Button key={item.label} variant="outline" className="h-auto justify-between px-3 py-3 text-right" onClick={() => setLocation(item.path)}>
                 <span className="text-xs text-muted-foreground">{item.label}</span>
                 <span className="text-lg font-bold text-foreground">{isLoadingStats ? "—" : item.value}</span>
-              </Button>
+                            </Button>
             ))}
           </div>
-
-      {/* Recent Activity */}
+          {/* Recent Activity */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-3">
@@ -747,6 +815,8 @@ export default function Dashboard() {
           </CardContent>
                 </Card>
       ) : null}
+        </div>
+      </details>
       {/* متابعة مختصرة: مكان الأستاذ في المقطع، لا عداد تقني بعيد عن الحصة */}
       <Card className="border-brand-copper-200 bg-brand-copper-50/40">
         <CardHeader className="pb-3">
@@ -850,8 +920,111 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
-        </div>
-      </details>
+
+      {/* حوار بطاقة استراتيجية تسيير الحصة */}
+    <Dialog open={strategySituationId !== null} onOpenChange={(open) => !open && setStrategySituationId(null)}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Compass className="h-5 w-5 text-brand-wax-600" />
+            استراتيجية تسيير الحصة
+          </DialogTitle>
+          <DialogDescription>
+            اقتراح تربوي مبنٍ على نوع الوضعية والمادة، وفق بيداغوجيات التعلم النشط — يُقرأ في الحافلة أو قبل الحصة ولا يُقحم في مذكرة رسمية.
+          </DialogDescription>
+        </DialogHeader>
+        {strategyQuery.isLoading ? (
+          <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
+            <span className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" /> جارٍ تحليل الوضعية واستخراج الاستراتيجية المناسبة…
+          </div>
+        ) : strategy ? (
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-bold text-foreground">{strategy.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {strategy.kind === "learning" ? "وضعية تعلمية" : strategy.kind === "integrative" ? "وضعية إدماجية" : "تقويم"}
+                {" · "}{strategy.totalMinutes} دقيقة · {dailySituation?.title}
+              </p>
+            </div>
+            <div className="rounded-lg bg-accent/50 p-3 text-sm leading-6">
+              <span className="font-semibold text-accent-foreground">لماذا هذه الاستراتيجية؟ </span>
+              <span className="text-foreground/85">{strategy.rationale}</span>
+            </div>
+            <div className="rounded-lg border text-sm">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-muted/60 text-right text-xs">
+                    <th className="p-2">المرحلة</th>
+                    <th className="p-2 w-16">المدة</th>
+                    <th className="p-2">دور الأستاذ</th>
+                    <th className="p-2">دور التلميذ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {strategy.phases.map((phase, index) => (
+                    <tr key={index} className="border-b last:border-b-0 align-top">
+                      <td className="p-2 font-semibold whitespace-nowrap">{phase.stage}</td>
+                      <td className="p-2 text-center whitespace-nowrap">{phase.minutes} د</td>
+                      <td className="p-2 leading-5 text-foreground/85">{phase.teacherRole}</td>
+                      <td className="p-2 leading-5 text-foreground/85">{phase.studentRole}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {strategy.phases.some((phase) => phase.tips) && (
+              <div>
+                <p className="text-xs font-bold text-muted-foreground mb-1.5">ملاحظات لكل مرحلة</p>
+                <ul className="space-y-1">
+                  {strategy.phases.map((phase, index) =>
+                    phase.tips ? (
+                      <li key={index} className="text-xs leading-5 text-foreground/80">
+                        <span className="font-semibold">{phase.stage}:</span> {phase.tips}
+                      </li>
+                    ) : null,
+                  )}
+                </ul>
+              </div>
+            )}
+            <div>
+              <p className="text-xs font-bold text-muted-foreground mb-1.5">نصائح تربوية عامة</p>
+              <ul className="space-y-1">
+                {strategy.generalTips.map((tip, index) => (
+                  <li key={index} className="flex gap-1.5 text-xs leading-5 text-foreground/80">
+                    <span className="text-brand-wax-600 mt-0.5">●</span>
+                    {tip}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            تعذر اقتراح استراتيجية — تحقق أن الوضعية مرتبطة بخطة سنوية مكتملة.
+          </p>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setStrategySituationId(null)}>إغلاق</Button>
+          <Button
+            disabled={!strategyPrintHtml}
+            onClick={() => {
+              if (!strategyPrintHtml) return;
+              const win = window.open("", "_blank");
+              if (win) {
+                win.document.write(strategyPrintHtml);
+                win.document.close();
+                win.focus();
+                win.print();
+              } else {
+                toast.error("يُرجى السماح بالنوافذ المنبثقة لعرض نسخة الطباعة.");
+              }
+            }}
+          >
+            <Printer className="ml-2 h-4 w-4" />اطبع بطاقة الاستراتيجية
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }

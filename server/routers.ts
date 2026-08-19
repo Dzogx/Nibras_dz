@@ -31,6 +31,10 @@ import {
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
 } from "./db";
 import {
+  suggestStrategyForSituation,
+  formatStrategyForLesson,
+} from "./strategies";
+import {
   getAssessmentRule,
   getAllRules,
   getExamStructure,
@@ -2320,6 +2324,20 @@ ${rulesContext}
         }
       }
 
+      let strategyContent = "";
+      try {
+        const plan = section ? await getAnnualPlanById(section.annualPlanId) : null;
+        const strategy = suggestStrategyForSituation({
+          title: situation.title,
+          content: situation.content || "",
+          subject: plan?.subject || subject,
+          gradeLevel: plan?.gradeLevel || gradeLevel,
+        });
+        strategyContent = formatStrategyForLesson(strategy);
+      } catch {
+        strategyContent = "";
+      }
+
       const lesson = await createLesson({
         userId: ctx.user.id,
         classId: input.classId,
@@ -2328,8 +2346,12 @@ ${rulesContext}
         gradeLevel,
         unitTitle: section?.title || "",
         objectives: situation.objectives || "",
-        content: situation.content || "",
-        plan: situation.content || "",
+        content: strategyContent
+          ? `${strategyContent}\n\n---\n\nمحتوى الوضعية:\n${situation.content || ""}`
+          : situation.content || "",
+        plan: strategyContent
+          ? `${strategyContent}\n\n---\n\nمحتوى الوضعية:\n${situation.content || ""}`
+          : situation.content || "",
         tags: JSON.stringify({ sourceSituation: situation.id, sourceSection: situation.sectionId }),
       } as any);
 
@@ -2348,6 +2370,21 @@ ${rulesContext}
     }),
     getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       return await getLearningSituationById(input.id);
+    }),
+    // اقتراح استراتيجية التسيير المناسبة لوضعية: الاستراتيجية + مراحل الحصة الموقوتة + النصائح
+    suggestStrategy: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+      const situation = await getLearningSituationById(input.id);
+      if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
+      // حراسة الملكية عبر القسم
+      const section = await getAnnualPlanSectionById(situation.sectionId);
+      if (!section || section.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
+      const plan = await getAnnualPlanById(section.annualPlanId);
+      return suggestStrategyForSituation({
+        title: situation.title,
+        content: situation.content || "",
+        subject: plan?.subject || "",
+        gradeLevel: plan?.gradeLevel || "",
+      });
     }),
     create: protectedProcedure.input(z.object({
       sectionId: z.number(),

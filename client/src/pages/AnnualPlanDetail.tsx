@@ -5,10 +5,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle, Landmark } from "lucide-react";
+import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle, Landmark, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
@@ -44,6 +44,15 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
   const [newSituation, setNewSituation] = useState({ sectionId: 0, title: "", objectives: "", content: "" });
   const [expandedSection, setExpandedSection] = useState<number | null>(null);
   const [sessionDialogSituation, setSessionDialogSituation] = useState<{ id: number; title: string } | null>(null);
+  const [strategySituationId, setStrategySituationId] = useState<number | null>(null);
+  const strategiesBySection = useMemo(
+    () => (sections || []).flatMap((section) => section.situations || []),
+    [sections]
+  );
+  const strategyQuery = trpc.situations.suggestStrategy.useQuery(
+    { id: strategySituationId ?? 0 },
+    { enabled: strategySituationId !== null && strategySituationId > 0 }
+  );
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
   const [sessionNote, setSessionNote] = useState("");
 
@@ -320,6 +329,15 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                           <Button
                             variant="outline"
                             size="sm"
+                            className={isReferencePlan ? "hidden" : "border-amber-400/60 text-amber-800"}
+                            onClick={() => setStrategySituationId(sit.id)}
+                          >
+                            <Compass className="w-3.5 h-3.5 ml-1" />
+                            استراتيجية التسيير
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             className={isReferencePlan ? "hidden" : undefined}
                             onClick={() => createLessonFromSituationMutation.mutate({ situationId: sit.id, classId: plan?.classId || undefined })}
                             disabled={createLessonFromSituationMutation.isPending}
@@ -464,6 +482,183 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ─── بطاقة استراتيجية تسيير الحصة ─────────────────────────── */}
+      <Dialog open={strategySituationId !== null} onOpenChange={(open) => { if (!open) setStrategySituationId(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Compass className="w-5 h-5 text-amber-600" />
+              بطاقة استراتيجية تسيير الحصة
+              <span className="text-sm font-normal text-muted-foreground">
+                {strategiesBySection.find((s) => s.id === strategySituationId)?.title}
+              </span>
+            </DialogTitle>
+          </DialogHeader>
+          {strategyQuery.isLoading ? (
+            <div className="py-8 text-center text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mx-auto" /></div>
+          ) : strategyQuery.error ? (
+            <div className="py-4 text-center text-destructive">تعذر اقتراح الاستراتيجية — تحقق من بيانات الوضعية.</div>
+          ) : strategyQuery.data ? (
+            <div className="space-y-4 text-right">
+              <div className="rounded-lg border border-amber-400/60 bg-amber-50 p-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-amber-900">{strategyQuery.data.name}</span>
+                  <Badge variant="outline" className="text-xs text-amber-800 border-amber-400/60">
+                    {strategyQuery.data.kind === "integrative" ? "وضعية إدماجية" : "وضعية تعلّمية"}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs text-amber-800 border-amber-400/60">
+                    {strategyQuery.data.totalMinutes} دقيقة
+                  </Badge>
+                </div>
+                <p className="text-sm text-amber-900/80 mt-2 leading-6">{strategyQuery.data.rationale}</p>
+              </div>
+              {strategyQuery.data.phases.length > 0 && (
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60">
+                      <tr>
+                        <th className="px-3 py-2 text-right font-medium">المرحلة</th>
+                        <th className="px-3 py-2 text-right font-medium">المدة</th>
+                        <th className="px-3 py-2 text-right font-medium">دور الأستاذ</th>
+                        <th className="px-3 py-2 text-right font-medium">دور التلميذ</th>
+                        <th className="px-3 py-2 text-right font-medium">ملاحظة</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {strategyQuery.data.phases.map((phase, idx) => (
+                        <tr key={idx}>
+                          <td className="px-3 py-2 font-medium whitespace-nowrap">{phase.stage}</td>
+                          <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{phase.minutes} د</td>
+                          <td className="px-3 py-2 leading-5">{phase.teacherRole}</td>
+                          <td className="px-3 py-2 leading-5">{phase.studentRole}</td>
+                          <td className="px-3 py-2 leading-5 text-muted-foreground">{phase.tips}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {strategyQuery.data.generalTips.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold mb-1">توصيات تسيير إضافية</p>
+                  <ul className="space-y-1 text-sm text-muted-foreground list-disc pr-5">
+                    {strategyQuery.data.generalTips.map((tip, idx) => <li key={idx}>{tip}</li>)}
+                  </ul>
+                </div>
+              )}
+              <div className="flex justify-start gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const sit = strategiesBySection.find((s) => s.id === strategySituationId);
+                    const html = buildStrategyPrintHtml({
+                      title: sit?.title || "",
+                      strategyName: strategyQuery.data!.name,
+                      kindLabel: strategyQuery.data!.kind === "integrative" ? "وضعية إدماجية" : "وضعية تعلّمية",
+                      totalMinutes: strategyQuery.data!.totalMinutes,
+                      rationale: strategyQuery.data!.rationale,
+                      phases: strategyQuery.data!.phases,
+                      generalTips: strategyQuery.data!.generalTips,
+                      subject: plan?.subject || "",
+                      gradeLevel: plan?.gradeLevel || "",
+                    });
+                    const iframe = document.createElement("iframe");
+                    iframe.style.cssText = "position:fixed;top:-10000px;left:-10000px;width:0;height:0;";
+                    document.body.appendChild(iframe);
+                    const doc = iframe.contentDocument!;
+                    doc.open();
+                    doc.write(html);
+                    doc.close();
+                    setTimeout(() => {
+                      try { iframe.contentWindow!.print(); } catch (e) { /* blocked */ }
+                      setTimeout(() => document.body.removeChild(iframe), 1500);
+                    }, 400);
+                    toast.success("جاري فتح بطاقة الاستراتيجية للطباعة");
+                  }}
+                >
+                  <FileText className="w-4 h-4 ml-1" />طباعة بطاقة التسيير
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+// ─── قالب طباعة بطاقة استراتيجية التسيير (حيادي، ترويسة وزارية) ─────
+interface StrategyPrintInput {
+  title: string;
+  strategyName: string;
+  kindLabel: string;
+  totalMinutes: number;
+  rationale: string;
+  phases: Array<{ stage: string; minutes: number; teacherRole: string; studentRole: string; tips: string }>;
+  generalTips: string[];
+  subject: string;
+  gradeLevel: string;
+}
+
+function buildStrategyPrintHtml(input: StrategyPrintInput): string {
+  const now = new Date().toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" });
+  const subjectLabel =
+    input.subject === "جغرافيا" ? "الجغرافيا" : input.subject === "تربية مدنية" ? "التربية المدنية" : input.subject || "التاريخ";
+  return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<style>
+  @page { size: A4 portrait; margin: 15mm 14mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "Amiri", "Noto Naskh Arabic", serif; color: #111827; font-size: 11pt; line-height: 1.7; }
+  .header { text-align: center; border-bottom: 2px solid #1f2937; padding-bottom: 8px; margin-bottom: 14px; }
+  .header .line1 { font-size: 10.5pt; font-weight: bold; }
+  .header .line2 { font-size: 10pt; }
+  .meta { display: flex; justify-content: space-between; font-size: 10pt; margin-bottom: 10px; }
+  h1 { font-size: 13pt; text-align: center; margin: 10px 0 6px; }
+  h2 { font-size: 11.5pt; margin: 12px 0 6px; border-right: 3px solid #d97706; padding-right: 8px; }
+  .card { border: 1px solid #d1d5db; border-radius: 6px; padding: 10px 12px; margin: 6px 0 12px; background: #fffbeb; }
+  .card .kind { font-weight: bold; color: #92400e; }
+  table { width: 100%; border-collapse: collapse; font-size: 10pt; margin: 8px 0 12px; }
+  th { background: #f3f4f6; border: 1px solid #9ca3af; padding: 5px 8px; text-align: right; }
+  td { border: 1px solid #d1d5db; padding: 5px 8px; vertical-align: top; text-align: right; }
+  ul { padding-right: 18px; }
+  li { margin-bottom: 2px; }
+  .footer { margin-top: 18px; display: flex; justify-content: space-between; font-size: 10pt; }
+  .footer div { min-width: 30%; }
+  .sig { border-top: 1px solid #111827; padding-top: 4px; margin-top: 26px; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="line1">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+    <div class="line1">وزارة التربية الوطنية</div>
+    <div class="line2">${input.subject ? `مادة: ${subjectLabel}` : "المادة: علوم اجتماعية"} ${input.gradeLevel ? `— ${input.gradeLevel}` : ""}</div>
+  </div>
+  <div class="meta">
+    <div>التاريخ: ${now}</div>
+    <div>الوضعية: ${input.title || "—"}</div>
+  </div>
+  <h1>بطاقة استراتيجية تسيير الحصة</h1>
+  <div class="card">
+    <span class="kind">${input.kindLabel}</span> — الاستراتيجية المقترحة: <strong>${input.strategyName}</strong> (المدة الإجمالية: ${input.totalMinutes} دقيقة)
+    <div style="margin-top:6px;">لماذا هذه الاستراتيجية؟ ${input.rationale}</div>
+  </div>
+  <h2>مراحل التسيير الزمني</h2>
+  <table>
+    <thead><tr><th>المرحلة</th><th>المدة</th><th>دور الأستاذ</th><th>دور التلميذ</th><th>ملاحظة</th></tr></thead>
+    <tbody>
+      ${input.phases.map(p => `<tr><td>${p.stage}</td><td style="white-space:nowrap">${p.minutes} د</td><td>${p.teacherRole}</td><td>${p.studentRole}</td><td>${p.tips}</td></tr>`).join("")}
+    </tbody>
+  </table>
+  ${input.generalTips.length > 0 ? `<h2>توصيات تسيير إضافية</h2><ul>${input.generalTips.map(t => `<li>${t}</li>`).join("")}</ul>` : ""}
+  <div class="footer">
+    <div class="sig">إمضاء الأستاذ</div>
+    <div class="sig">إمضاء مدير المؤسسة</div>
+  </div>
+</body>
+</html>`;
 }
