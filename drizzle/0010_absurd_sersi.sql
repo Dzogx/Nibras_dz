@@ -1,0 +1,20 @@
+CREATE TABLE `studentGrades` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`classId` int NOT NULL,
+	`subject` varchar(64) NOT NULL,
+	`term` int NOT NULL,
+	`fogCode` varchar(32),
+	`matricule` varchar(32) NOT NULL,
+	`fullName` varchar(256) NOT NULL,
+	`birthDate` varchar(16),
+	`activityScore` double,
+	`examQuizScore` double,
+	`finalExamScore` double,
+	`computedAverage` double,
+	`officialEvaluation` varchar(64),
+	`position` int,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `studentGrades_id` PRIMARY KEY(`id`)
+);

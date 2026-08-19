@@ -1,4 +1,4 @@
-import { eq, desc, and, or, like, sql } from "drizzle-orm";
+import { eq, asc, desc, and, or, like, sql, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -17,11 +17,15 @@ import {
   annualPlanSections,
   learningSituations,
   assessmentResults,
+  studentGrades,
+  InsertStudentGrade,
   InsertAnnualPlanSection,
   InsertLearningSituation,
   InsertAssessmentResult,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
+// xlsx تُستورد هنا مباشرة: نمط ESM ثابت متوافق مع الخادم والاختبارات معًا.
+import * as XLSX from "xlsx";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -815,6 +819,45 @@ export async function getAIResourceBySerial(serialNumber: string) {
   const result = await db.select().from(aiResources).where(eq(aiResources.serialNumber, serialNumber)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
+// ─── Student Grades (نتائج التلاميذ من ملف الرقمنة) ─────────
+export async function getStudentGradesByClass(userId: number, classId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db.select().from(studentGrades).where(and(eq(studentGrades.userId, userId), eq(studentGrades.classId, classId))).orderBy(desc(studentGrades.computedAverage));
+}
+export async function getStudentGradesFilters(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select({
+      id: studentGrades.id,
+      classId: studentGrades.classId,
+      subject: studentGrades.subject,
+      term: studentGrades.term,
+      fogCode: studentGrades.fogCode,
+      count: count(),
+    })
+    .from(studentGrades)
+    .where(eq(studentGrades.userId, userId))
+    .groupBy(studentGrades.classId, studentGrades.subject, studentGrades.term, studentGrades.fogCode);
+  return rows;
+}
+export async function saveStudentGradesRows(data: InsertStudentGrade[]) {
+  const db = await getDb();
+  if (!db) return 0;
+  await db.insert(studentGrades).values(data);
+  return data.length;
+}
+export async function deleteStudentGradesForClass(userId: number, classId: number, subject: string, term: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(studentGrades).where(and(eq(studentGrades.userId, userId), eq(studentGrades.classId, classId), eq(studentGrades.subject, subject), eq(studentGrades.term, term)));
+}
+export async function deleteStudentGrade(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(studentGrades).where(and(eq(studentGrades.id, id), eq(studentGrades.userId, userId)));
+}
 
 // ─── Excel Import (استيراد الأقسام والجدول) ───────────────────
 /**
@@ -826,8 +869,6 @@ export async function getAIResourceBySerial(serialNumber: string) {
  *  - ورقة «الجدول»: القسم | اليوم | الحصة | المادة | من | إلى
  */
 export function parseImportExcelWorkbook(buffer: Buffer) {
-  // xlsx يستورد فقط عند توفرها؛ نستعمل require لتفادي تحميلها في الاختبارات الصامتة
-  const XLSX = require("xlsx") as typeof import("xlsx");
   // ملف Excel (.xlsx) هو أرشيف ZIP؛ الملفات النصية أو التالفة تعطي نتائج مضللة عند تمريرها دون حراسة.
   if (buffer.length < 4 || !(buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04)) {
     throw new Error("الملف ليس أرشيف Excel (.xlsx) صالحاً.");
@@ -885,4 +926,271 @@ export function parseImportExcelWorkbook(buffer: Buffer) {
   }
 
   return { classes: parsedClasses, schedule: parsedSchedule, issues };
+}
+
+/**
+ * تحليل وثيقة حجز النقاط الرسمية (الرقمنة) — xlsx من منصة صبّ النقاط.
+ * البنية الرسمية: كل ورقة = فوج × مادة؛ الصف 5 يحمل نص الوصف
+ * (الفصل والسنة والفوج التربوي والمادة)، والصف 8 يحمل أسماء الأعمدة
+ * العربية، ويليها صفوف التلاميذ (رقم التعريف، اللقب، الاسم، تاريخ الميلاد،
+ * معدل تقويم النشاطات، الفرض، الاختبار).
+ */
+export function parseRakmnaExcelWorkbook(buffer: Buffer) {
+  if (buffer.length < 4 || !(buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04)) {
+    throw new Error("الملف ليس أرشيف Excel (.xlsx) صالحاً.");
+  }
+  const workbook = XLSX.read(buffer, { type: "buffer", cellStyles: false });
+  const normalize = (value: unknown) => String(value ?? "").trim();
+
+  const TERM_RE = /الفصل\s*(الأول|الثاني|الثالث|الرابع)/;
+  const YEAR_RE = /(\d{4})\s*[\-–—]\s*(\d{2,4})/;
+  const FOG_RE = /الفوج\s*التربوي\s*:\s*(.+?)(?=مادة|$)/;
+  const SUBJECT_MAP: Record<string, string> = {
+    "التربية المدنية": "التربية المدنية",
+    "التاريخ والجغرافيا": "التاريخ والجغرافيا",
+    "التاريخ": "التاريخ",
+    "الجغرافيا": "الجغرافيا",
+  };
+
+  const parsedSheets: {
+    sheetName: string;
+    fogCode: string;
+    term: number | null;
+    academicYear: string | null;
+    fogLabel: string | null;
+    gradeLevel: string | null;
+    fogName: string | null;
+    subject: string | null;
+    students: {
+      matricule: string;
+      fullName: string;
+      birthDate: string | null;
+      activityScore: number | null;
+      examQuizScore: number | null;
+      finalExamScore: number | null;
+    }[];
+    rowErrors: string[];
+  }[] = [];
+  const issues: string[] = [];
+
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, blankrows: false }) as unknown[][];
+    if (rows.length < 2) continue;
+
+    // الترويسة الرسمية (صف 5 في الملف الخام) قد تتحول مواقعها عند حذف الصفوف الفارغة؛
+    // نبحث عنها في أول 12 صفًا بدلًا من موقع ثابت.
+    let headerRowIndex = -1;
+    for (let i = 0; i < Math.min(rows.length, 12); i++) {
+      const cellText = String(rows[i]?.[0] ?? "");
+      if (cellText.includes("حجز النقاط") || cellText.includes("النقاط")) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+    if (headerRowIndex < 0) {
+      issues.push(`الورقة «${sheetName}»: ليست وثيقة حجز نقاط (لا تحتوي ترويسة «حجز النقاط»).`);
+      continue;
+    }
+    const row5 = String(rows[headerRowIndex]?.[0] ?? "");
+
+    const termMatch = row5.match(TERM_RE);
+    const term = termMatch
+      ? termMatch[1] === "الأول" ? 1 : termMatch[1] === "الثاني" ? 2 : termMatch[1] === "الثالث" ? 3 : 4
+      : null;
+    const yearMatch = row5.match(YEAR_RE);
+    const academicYear = yearMatch ? `${yearMatch[1]}-${yearMatch[2]}` : null;
+    const fogMatch = row5.match(FOG_RE);
+    const fogLabel = fogMatch ? normalize(fogMatch[1]) : null;
+    const subjectMatch = /مادة\s*:\s*(.+)/.exec(row5);
+    const rawSubject = subjectMatch ? normalize(subjectMatch[1]) : "";
+    const subject = SUBJECT_MAP[rawSubject] ?? (rawSubject ? null : null);
+    if (rawSubject && !subject) issues.push(`الورقة «${sheetName}»: المادة «${rawSubject}» غير مفهومة.`);
+
+    // استخراج المستوى والرقم من بطاقة الفوج: «ثانية  متوسط    4»
+    let gradeLevel: string | null = null;
+    let fogName: string | null = null;
+    if (fogLabel) {
+      // ترتيب البدائل مهم: «الثالثة» قبل «الثانية» و«الرابعة» قبل «الرابعة/الثانية».
+      // وثيقة حجز النقاط تكتب الفوج أحيانًا «ثانية  متوسط    3» (بلا لام التعريف)
+      // وأحيانًا «الأولى متوسط»، لذا نجعل «الـ» التعريفية اختيارية.
+      const levelMatch = fogLabel.match(/(ال)?(أولى|ثانية|ثالثة|رابعة)\s+متوسط/) ?? fogLabel.match(/(ال)?(أولى|ثانية|ثالثة|رابعة)متوسط/);
+      if (levelMatch) {
+        gradeLevel = `السنة ${levelMatch[1] ?? ""}${levelMatch[2]} متوسط`;
+      }
+      fogName = fogLabel.replace(/متوسط.*$/, "").trim();
+    }
+
+    // البحث عن صف أسماء الأعمدة العربية (بعد ترويسة الحجز)
+    let headerRowIdx = -1;
+    for (let i = headerRowIndex + 1; i < Math.min(rows.length, headerRowIndex + 10); i++) {
+      const rowText = (rows[i] ?? []).map(normalize).join(" ");
+      if (rowText.includes("رقم التعريف") && (rowText.includes("النشاطات") || rowText.includes("الفرض"))) {
+        headerRowIdx = i;
+        break;
+      }
+    }
+    if (headerRowIdx < 0) {
+      issues.push(`الورقة «${sheetName}»: لم يُعثر على صف أسماء الأعمدة (رقم التعريف/النشاطات/الفرض/الاختبار).`);
+      continue;
+    }
+
+    const students: NonNullable<(typeof parsedSheets)[number]["students"]> = [];
+    const rowErrors: string[] = [];
+    for (let i = headerRowIdx + 1; i < rows.length; i++) {
+      const row = rows[i] as unknown[];
+      if (!row || row.length === 0) continue;
+      const matricule = normalize(row[0]);
+      if (!/^\d{10,20}$/.test(matricule)) continue;
+      const lastName = normalize(row[1]);
+      const firstName = normalize(row[2]);
+      if (!lastName || !firstName) {
+        rowErrors.push(`الصف ${i + 1}: اللقب/الاسم ناقص.`);
+        continue;
+      }
+      const clamp = (raw: unknown): number | null => {
+        const v = Number(raw);
+        return Number.isFinite(v) ? Math.min(20, Math.max(0, v)) : null;
+      };
+      students.push({
+        matricule,
+        fullName: `${lastName} ${firstName}`,
+        birthDate: normalize(row[3]) || null,
+        activityScore: clamp(row[4]),
+        examQuizScore: clamp(row[5]),
+        finalExamScore: clamp(row[6]),
+      });
+    }
+    if (students.length === 0) {
+      rowErrors.push(`الورقة «${sheetName}»: لا صفوف تلاميذ صالحة.`);
+    }
+    if (rowErrors.length) issues.push(...rowErrors.map((e) => `الورقة «${sheetName}»: ${e}`));
+
+    parsedSheets.push({
+      sheetName,
+      fogCode: sheetName.trim(),
+      term,
+      academicYear,
+      fogLabel,
+      gradeLevel,
+      fogName,
+      subject,
+      students,
+      rowErrors,
+    });
+  }
+  return { sheets: parsedSheets, issues };
+}
+
+/**
+ * حساب المعدل الفصلي وفق المعادلة الرسمية للرقمنة في التعليم المتوسط:
+ * المعدل = (معدل النشاطات + الفرض×1 + الاختبار×3) / 5
+ */
+export function computeTermAverage(activity: number | null, quiz: number | null, exam: number | null): number | null {
+  if (quiz == null || exam == null) return null;
+  const activityPart = activity ?? 0;
+  const avg = (activityPart + quiz + exam * 3) / 5;
+  return Math.round(avg * 100) / 100;
+}
+
+/**
+ * التقدير اللفظي الرسمي المقابل للمعدل (نفس مقاييس الرقمنة).
+ */
+export function termAverageEvaluation(avg: number): string {
+  if (avg >= 16) return "ممتاز";
+  if (avg >= 14) return "جيد جداً";
+  if (avg >= 12) return "جيد";
+  if (avg >= 10) return "متوسط";
+  if (avg >= 7) return "ضعيف";
+  return "ضعيف جداً";
+}
+
+/**
+ * يعيد ملء التقدير اللفظي الرسمي (officialEvaluation) لجميع نقاط القسم
+ * وفق مقاييس الرقمنة، ويحدّث المواقف (position) بترتيب تنازلي حسب المعدل.
+ */
+export async function recomputeClassGradesEvaluation(userId: number, classId: number) {
+  const db = await getDb();
+  if (!db) return;
+  const rows = await db
+    .select()
+    .from(studentGrades)
+    .where(and(eq(studentGrades.userId, userId), eq(studentGrades.classId, classId)))
+    .orderBy(desc(studentGrades.computedAverage), asc(studentGrades.fullName));
+  let position = 0;
+  for (const row of rows) {
+    if (row.computedAverage == null) continue;
+    position += 1;
+    await db
+      .update(studentGrades)
+      .set({
+        officialEvaluation: termAverageEvaluation(row.computedAverage),
+        position,
+      })
+      .where(eq(studentGrades.id, row.id));
+  }
+}
+
+/**
+ * تحليل إحصائي لنقاط تلاميذ قسم (وفق مقاييس الرقمنة): المتوسط العام، أعلى/أدنى،
+ * عدد الناجحين والراسبين، توزع التقديرات، ومتوسط كل محصلة.
+ */
+export async function getStudentGradesAnalytics(userId: number, classId: number, subject: string | null, term: number | null) {
+  const db = await getDb();
+  if (!db) return null;
+  const filters = [eq(studentGrades.userId, userId), eq(studentGrades.classId, classId)];
+  if (subject) filters.push(eq(studentGrades.subject, subject));
+  if (term) filters.push(eq(studentGrades.term, term));
+  const rows = await db
+    .select()
+    .from(studentGrades)
+    .where(and(...filters))
+    .orderBy(desc(studentGrades.computedAverage));
+  if (rows.length === 0) return null;
+  const withAverage = rows.filter((r) => r.computedAverage != null);
+  const sums = { average: 0, activity: 0, quiz: 0, exam: 0 };
+  let maxRow = withAverage[0];
+  let minRow = withAverage[0];
+  for (const r of withAverage) {
+    sums.average += r.computedAverage!;
+    sums.activity += r.activityScore ?? 0;
+    sums.quiz += r.examQuizScore ?? 0;
+    sums.exam += r.finalExamScore ?? 0;
+    if (maxRow && r.computedAverage! > maxRow.computedAverage!) maxRow = r;
+    if (minRow && r.computedAverage! < minRow.computedAverage!) minRow = r;
+  }
+  const n = withAverage.length;
+  const classAverage = Math.round((sums.average / n) * 100) / 100;
+  const distribution: Record<string, number> = {
+    "ممتاز": 0,
+    "جيد جداً": 0,
+    "جيد": 0,
+    "متوسط": 0,
+    "ضعيف": 0,
+    "ضعيف جداً": 0,
+  };
+  let weakCount = 0;
+  const weakStudents: { id: number; fullName: string; matricule: string; computedAverage: number; subject: string; term: number }[] = [];
+  for (const r of withAverage) {
+    const ev = termAverageEvaluation(r.computedAverage!);
+    if (distribution[ev] != null) distribution[ev] += 1;
+    if (r.computedAverage! < 10) {
+      weakCount += 1;
+      weakStudents.push({ id: r.id, fullName: r.fullName, matricule: r.matricule, computedAverage: r.computedAverage!, subject: r.subject, term: r.term });
+    }
+  }
+  return {
+    studentCount: rows.length,
+    gradedCount: n,
+    classAverage,
+    averageActivity: Math.round((sums.activity / n) * 100) / 100,
+    averageQuiz: Math.round((sums.quiz / n) * 100) / 100,
+    averageExam: Math.round((sums.exam / n) * 100) / 100,
+    topStudent: maxRow ? { fullName: maxRow.fullName, computedAverage: maxRow.computedAverage, matricule: maxRow.matricule } : null,
+    lowestStudent: minRow ? { fullName: minRow.fullName, computedAverage: minRow.computedAverage, matricule: minRow.matricule } : null,
+    distribution,
+    weakCount,
+    weakStudents,
+  };
 }

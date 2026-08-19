@@ -360,6 +360,34 @@ export type AssessmentResult = typeof assessmentResults.$inferSelect;
 export type InsertAssessmentResult = typeof assessmentResults.$inferInsert;
 
 /**
+ * Student grades (نتائج التلاميذ الفرديّة)
+ * تُستورد من وثيقة حجز النقاط في الرقمنة (xlsx):
+ * لكل فصل/قسم/مادة: التلاميذ بنقاط النشاطات والفرض والاختبار.
+ */
+export const studentGrades = mysqlTable("studentGrades", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId").notNull(),
+  subject: varchar("subject", { length: 64 }).notNull(),
+  term: int("term").notNull(),
+  fogCode: varchar("fogCode", { length: 32 }),
+  matricule: varchar("matricule", { length: 32 }).notNull(),
+  fullName: varchar("fullName", { length: 256 }).notNull(),
+  birthDate: varchar("birthDate", { length: 16 }),
+  activityScore: double("activityScore"),
+  examQuizScore: double("examQuizScore"),
+  finalExamScore: double("finalExamScore"),
+  computedAverage: double("computedAverage"),
+  officialEvaluation: varchar("officialEvaluation", { length: 64 }),
+  position: int("position"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type StudentGrade = typeof studentGrades.$inferSelect;
+export type InsertStudentGrade = typeof studentGrades.$inferInsert;
+
+/**
  * Curriculum search index (for fast search)
  */
 export const curriculumSearchIndex = mysqlTable("curriculumSearchIndex", {

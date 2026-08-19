@@ -15,6 +15,7 @@ import Assessment from "./pages/Assessment";
 import ContentLibrary from "./pages/ContentLibrary";
 import Inspector from "./pages/Inspector";
 import Results from "./pages/Results";
+import StudentResults from "./pages/StudentResults";
 import Profile from "./pages/Profile";
 import LessonDetail from "./pages/LessonDetail";
 import AnnualPlanDetail from "./pages/AnnualPlanDetail";
@@ -77,6 +78,9 @@ function Router() {
       </Route>
       <Route path="/results">
         {() => <DashboardLayout><Results /></DashboardLayout>}
+      </Route>
+      <Route path="/student-results">
+        {() => <DashboardLayout><StudentResults /></DashboardLayout>}
       </Route>
       <Route path="/profile">
         {() => <DashboardLayout><Profile /></DashboardLayout>}

@@ -11,6 +11,9 @@ import {
   getAcademicYears, getActiveAcademicYear, activateAcademicYear,
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass, parseImportExcelWorkbook,
+  parseRakmnaExcelWorkbook, computeTermAverage, termAverageEvaluation,
+  getStudentGradesByClass, getStudentGradesFilters, saveStudentGradesRows, deleteStudentGradesForClass, deleteStudentGrade,
+  recomputeClassGradesEvaluation, getStudentGradesAnalytics,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
   createCompensatorySession, getCompensatorySessionsBySituation, getUpcomingCompensatorySessions, updateCompensatorySessionStatus,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, copyReferencePlanToClass,
@@ -457,7 +460,112 @@ export const appRouter = router({
       return await replaceWeeklyScheduleEntries(ctx.user.id, input.toAcademicYear, validEntries);
     }),
   }),
-
+  // ─── Student Grades (نتائج التلاميذ من وثيقة حجز النقاط) ────
+  studentResults: router({
+    parseExcel: protectedProcedure.input(z.object({
+      fileContent: z.string().min(100).max(5_000_000),
+    })).mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.fileContent, "base64");
+      try {
+        return parseRakmnaExcelWorkbook(buffer);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "تعذر قراءة الملف. تأكد أنه ملف Excel (.xlsx) سليم (وثيقة حجز نقاط من منصة الرقمنة)." });
+      }
+    }),
+    saveImport: protectedProcedure.input(z.object({
+      mappings: z.array(z.object({
+        sheetFogCode: z.string().min(1).max(32),
+        classId: z.number().int().positive(),
+        subject: z.string().min(2).max(64),
+        term: z.number().int().min(1).max(4),
+        overrideExisting: z.boolean().default(false),
+        students: z.array(z.object({
+          matricule: z.string().min(10).max(32),
+          fullName: z.string().min(2).max(256),
+          birthDate: z.string().max(16).nullable().optional(),
+          activityScore: z.number().min(0).max(20).nullable(),
+          examQuizScore: z.number().min(0).max(20).nullable(),
+          finalExamScore: z.number().min(0).max(20).nullable(),
+        })).min(1).max(100),
+      })).min(1).max(30),
+    })).mutation(async ({ ctx, input }) => {
+      const teacherClasses = await getClasses(ctx.user.id);
+      const ownedClassIds = new Set(teacherClasses.map((item) => item.id));
+      for (const mapping of input.mappings) {
+        if (!ownedClassIds.has(mapping.classId)) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "لا يمكنك الحفظ في قسم لا يتبع لمساحتك." });
+        }
+      }
+      const accepted: string[] = [];
+      for (const mapping of input.mappings) {
+        if (mapping.overrideExisting) {
+          await deleteStudentGradesForClass(ctx.user.id, mapping.classId, mapping.subject, mapping.term);
+        }
+      const rows = mapping.students as { matricule: string; fullName: string; birthDate?: string | null; activityScore: number | null; examQuizScore: number | null; finalExamScore: number | null }[];
+      const graded = rows.map((student: { matricule: string; fullName: string; birthDate?: string | null; activityScore: number | null; examQuizScore: number | null; finalExamScore: number | null }, index: number) => ({
+          userId: ctx.user.id,
+          classId: mapping.classId,
+          subject: mapping.subject,
+          term: mapping.term,
+          fogCode: mapping.sheetFogCode,
+          matricule: student.matricule,
+          fullName: student.fullName,
+          birthDate: student.birthDate,
+          activityScore: student.activityScore,
+          examQuizScore: student.examQuizScore,
+          finalExamScore: student.finalExamScore,
+          computedAverage: computeTermAverage(student.activityScore, student.examQuizScore, student.finalExamScore),
+          officialEvaluation: null as string | null,
+          position: index + 1,
+        }));
+        await saveStudentGradesRows(graded);
+        accepted.push(mapping.sheetFogCode);
+      }
+      return { saved: accepted };
+    }),
+    list: protectedProcedure.input(z.object({
+      classId: z.number().int().positive().optional(),
+    })).query(async ({ ctx, input }) => {
+      if (input.classId) {
+        const classes = await getClasses(ctx.user.id);
+        const owned = classes.find((item) => item.id === input.classId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+        return await getStudentGradesByClass(ctx.user.id, input.classId);
+      }
+      return await getStudentGradesFilters(ctx.user.id);
+    }),
+    deleteGroup: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+      subject: z.string().min(2).max(64),
+      term: z.number().int().min(1).max(4),
+    })).mutation(async ({ ctx, input }) => {
+      await deleteStudentGradesForClass(ctx.user.id, input.classId, input.subject, input.term);
+      return { success: true };
+    }),
+    deleteStudent: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await deleteStudentGrade(input.id, ctx.user.id);
+      return { success: true };
+    }),
+    computeEvaluation: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+    })).mutation(async ({ ctx, input }) => {
+      const classes = await getClasses(ctx.user.id);
+      const owned = classes.find((item) => item.id === input.classId);
+      if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      await recomputeClassGradesEvaluation(ctx.user.id, input.classId);
+      return { success: true };
+    }),
+    analytics: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+      subject: z.string().optional(),
+      term: z.number().int().min(1).max(4).optional(),
+    })).query(async ({ ctx, input }) => {
+      const classes = await getClasses(ctx.user.id);
+      const owned = classes.find((item) => item.id === input.classId);
+      if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      return await getStudentGradesAnalytics(ctx.user.id, input.classId, input.subject ?? null, input.term ?? null);
+    }),
+  }),
   // ─── Season Readiness ───────────────────────────────────────
   seasonReadiness: router({
     get: protectedProcedure.input(z.object({
