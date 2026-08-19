@@ -815,3 +815,74 @@ export async function getAIResourceBySerial(serialNumber: string) {
   const result = await db.select().from(aiResources).where(eq(aiResources.serialNumber, serialNumber)).limit(1);
   return result.length > 0 ? result[0] : undefined;
 }
+
+// ─── Excel Import (استيراد الأقسام والجدول) ───────────────────
+/**
+ * يحلّل مضمون ملف Excel الخام (أقسام + جدول خدمة) ويعيد صفوف مقترحة
+ * جاهزة للعرض قبل الحفظ. لا يمسّ قاعدة البيانات إطلاقًا.
+ *
+ * تنسيق الملف:
+ *  - ورقة «الأقسام»: الاسم | المستوى | الشعب | المادة | عدد التلاميذ
+ *  - ورقة «الجدول»: القسم | اليوم | الحصة | المادة | من | إلى
+ */
+export function parseImportExcelWorkbook(buffer: Buffer) {
+  // xlsx يستورد فقط عند توفرها؛ نستعمل require لتفادي تحميلها في الاختبارات الصامتة
+  const XLSX = require("xlsx") as typeof import("xlsx");
+  // ملف Excel (.xlsx) هو أرشيف ZIP؛ الملفات النصية أو التالفة تعطي نتائج مضللة عند تمريرها دون حراسة.
+  if (buffer.length < 4 || !(buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04)) {
+    throw new Error("الملف ليس أرشيف Excel (.xlsx) صالحاً.");
+  }
+  const workbook = XLSX.read(buffer, { type: "buffer", cellStyles: false });
+
+  const sheetNames = workbook.SheetNames.map((name) => name.trim());
+  const classesSheet = workbook.Sheets[sheetNames.find((name) => name.startsWith("الأقسام") || name.toLowerCase() === "classes") || sheetNames[0]];
+  const scheduleSheet = workbook.Sheets[sheetNames.find((name) => name.startsWith("الجدول") || name.toLowerCase() === "schedule") || sheetNames[1] || sheetNames[0]];
+
+  const classRows = XLSX.utils.sheet_to_json<string[]>(classesSheet, { header: 1, blankrows: false }) as string[][];
+  const scheduleRows = XLSX.utils.sheet_to_json<string[]>(scheduleSheet, { header: 1, blankrows: false }) as string[][];
+
+  const normalize = (value: unknown) => String(value ?? "").trim();
+  const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"] as const;
+  const SUBJECTS = ["التاريخ", "الجغرافيا", "التربية المدنية"] as const;
+  const GRADE_LEVELS = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"] as const;
+  const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  const issues: string[] = [];
+  const parsedClasses: { name: string; gradeLevel: (typeof GRADE_LEVELS)[number] | null; subject: string; studentCount: number | null }[] = [];
+  for (const row of classRows.slice(1)) {
+    if (!row || row.length === 0) continue;
+    const [rawName, rawGrade, , rawSubject, rawCount] = row as unknown[];
+    const name = normalize(rawName);
+    if (!name) continue;
+    const gradeText = normalize(rawGrade);
+    const gradeLevel = (GRADE_LEVELS.find((level) => gradeText.includes(level.slice(0, 6))) || null);
+    const subject = normalize(rawSubject);
+    const studentText = normalize(rawCount);
+    const studentCount = /^\d+$/.test(studentText) ? Number(studentText) : null;
+    if (!gradeLevel) issues.push(`القسم «${name}»: المستوى «${gradeText}» غير مفهوم.`);
+    parsedClasses.push({ name, gradeLevel, subject, studentCount });
+  }
+
+  const parsedSchedule: { className: string; dayOfWeek: (typeof DAYS)[number] | null; periodIndex: number | null; subject: (typeof SUBJECTS)[number] | null; startTime: string | null; endTime: string | null }[] = [];
+  for (const row of scheduleRows.slice(1)) {
+    if (!row || row.length === 0) continue;
+    const [rawClass, rawDay, rawPeriod, rawSubject, rawStart, rawEnd] = row as unknown[];
+    const className = normalize(rawClass);
+    if (!className) continue;
+    const dayText = normalize(rawDay);
+    const dayOfWeek = DAYS.find((day) => dayText.startsWith(day)) || null;
+    const periodText = normalize(rawPeriod);
+    const periodIndex = /^\d+$/.test(periodText) ? Math.min(7, Math.max(1, Number(periodText))) : null;
+    const subjectText = normalize(rawSubject);
+    const subject = SUBJECTS.find((subject) => subjectText.startsWith(subject)) || null;
+    const startTime = TIME_RE.test(normalize(rawStart)) ? normalize(rawStart) : null;
+    const endTime = TIME_RE.test(normalize(rawEnd)) ? normalize(rawEnd) : null;
+    if (!dayOfWeek) issues.push(`صف الجدول «${className}»: اليوم «${dayText}» غير مفهوم.`);
+    if (!periodIndex) issues.push(`صف الجدول «${className}»: رقم الحصة «${periodText}» غير مفهوم (1–7).`);
+    if (!subject) issues.push(`صف الجدول «${className}»: المادة «${subjectText}» غير مفهومة.`);
+    if (!startTime || !endTime) issues.push(`صف الجدول «${className}»: التوقيت «${normalize(rawStart)}–${normalize(rawEnd)}» غير صالح.`);
+    parsedSchedule.push({ className, dayOfWeek, periodIndex, subject, startTime, endTime });
+  }
+
+  return { classes: parsedClasses, schedule: parsedSchedule, issues };
+}

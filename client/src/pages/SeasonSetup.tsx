@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { BookCopy, CalendarDays, CheckCircle2, ChevronLeft, CircleAlert, ClipboardList, Clock3, Copy, GraduationCap, ListChecks, Plus, Users } from "lucide-react";
+import { BookCopy, CalendarDays, CheckCircle2, ChevronLeft, CircleAlert, ClipboardList, Clock3, Copy, FileSpreadsheet, GraduationCap, ListChecks, Plus, Users, TriangleAlert } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -133,6 +134,79 @@ export default function SeasonSetup() {
     onError: (error) => toast.error(error.message || "تعذر حفظ جدول الخدمة."),
   });
 
+  const parseExcelMutation = trpc.weeklySchedule.parseExcel.useMutation();
+  const saveImportedMutation = trpc.weeklySchedule.saveImportedData.useMutation();
+  const [importPreview, setImportPreview] = useState<{ classes: { name: string; gradeLevel: string | null; subject: string; studentCount: number | null }[]; schedule: { className: string; dayOfWeek: string | null; periodIndex: number | null; subject: string | null; startTime: string | null; endTime: string | null }[]; issues: string[] } | null>(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importFileLoaded, setImportFileLoaded] = useState<Buffer | ArrayBuffer | null>(null);
+  const readImportFile = (file: File) => {
+    if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+      toast.error("الملف يجب أن يكون بصيغة Excel (.xlsx).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const buffer = reader.result as ArrayBuffer;
+      setImportFileLoaded(buffer);
+      parseExcelMutation.mutate({
+        fileContent: buffer.byteLength > 0
+          ? btoa(Array.from(new Uint8Array(buffer)).map((byte) => String.fromCharCode(byte)).join(""))
+          : "",
+      }, {
+        onSuccess: (result) => {
+          setImportPreview(result);
+          setShowImportDialog(true);
+        },
+        onError: (error) => toast.error(error.message || "تعذر قراءة الملف."),
+      });
+    };
+    reader.onerror = () => toast.error("تعذر قراءة الملف.");
+    reader.readAsArrayBuffer(file);
+  };
+  const saveImportedPreview = () => {
+    if (!importPreview) return;
+    const validSchedule = importPreview.schedule.filter(
+      (row) => row.className && row.dayOfWeek && row.periodIndex && row.subject && row.startTime && row.endTime,
+    );
+    if (validSchedule.length === 0) {
+      toast.error("لا توجد صفوف جدول صالحة في الملف. راجع ملاحظات القراءة.");
+      return;
+    }
+    const newClasses = importPreview.classes
+      .filter((item) => item.name)
+      .map((item) => ({
+        name: item.name,
+        gradeLevel: item.gradeLevel as "السنة الأولى متوسط" | "السنة الثانية متوسط" | "السنة الثالثة متوسط" | "السنة الرابعة متوسط",
+        studentCount: item.studentCount ?? undefined,
+      }));
+    saveImportedMutation.mutate({
+      academicYear,
+      newClasses,
+      entries: validSchedule.map((row) => ({
+        className: row.className,
+        dayOfWeek: row.dayOfWeek as "الأحد" | "الاثنين" | "الثلاثاء" | "الأربعاء" | "الخميس",
+        periodIndex: row.periodIndex!,
+        subject: row.subject as "التاريخ" | "الجغرافيا" | "التربية المدنية",
+        startTime: row.startTime!,
+        endTime: row.endTime!,
+      })),
+    }, {
+      onSuccess: async (result) => {
+        await Promise.all([
+          utils.classes.list.invalidate(),
+          utils.weeklySchedule.get.invalidate({ academicYear }),
+          utils.weeklySchedule.listSeasons.invalidate(),
+          utils.seasonReadiness.get.invalidate({ academicYear }),
+        ]);
+        setImportPreview(null);
+        setImportFileLoaded(null);
+        setShowImportDialog(false);
+        setScheduleInitialized(false);
+        toast.success(`حُفظت ${result.count} حصة من ملف Excel${newClasses.length > 0 ? ` وأُنشئ ${newClasses.length} قسم جديد` : ""}. راجع الجدول ثم احفظ التعديلات إن وجدت.`);
+      },
+      onError: (error) => toast.error(error.message || "تعذر حفظ بيانات الاستيراد."),
+    });
+  };
   const copyScheduleMutation = trpc.weeklySchedule.copyFromSeason.useMutation({
     onSuccess: async (result) => {
       await Promise.all([
@@ -331,7 +405,7 @@ export default function SeasonSetup() {
 	            <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">2. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>لكل قسم ثلاث حصص: تاريخ وجغرافيا وتربية مدنية. التوقيت الافتراضي يتضمن الاستراحتين ويمكن تعديله عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
             {previousScheduleSeasons.length > 0 && (
               <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/15 bg-primary/[0.035] p-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs leading-5 text-muted-foreground">لديك جدول محفوظ من موسم سابق. انسخه إلى هذا الموسم ثم راجع الأقسام والأوقات قبل المتابعة.</p>
+                <p className="text-xs leading-5 text-muted-foreground">لديك جدول محفوظ من موسم سابق. انسخه إلى هذا الموسم أو استورد ملف Excel جاهزًا ثم راجع الأقسام والأوقات قبل المتابعة.</p>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                   <Select value={previousSeason} onValueChange={setPreviousSeason}>
                     <SelectTrigger className="h-9 min-w-40 bg-background text-xs" aria-label="اختيار موسم لنسخ الجدول"><SelectValue placeholder="اختر الموسم" /></SelectTrigger>
@@ -339,6 +413,11 @@ export default function SeasonSetup() {
                   </Select>
                   <Button size="sm" variant="outline" onClick={copyPreviousSchedule} disabled={!previousSeason || copyScheduleMutation.isPending}>
                     <Copy className="ml-2 h-4 w-4" />{copyScheduleMutation.isPending ? "جارٍ النسخ…" : "نسخ جدول موسم سابق"}
+                  </Button>
+                  <a href="/manus-storage/import-sample-classes-schedule_bc283e6a.xlsx" download className="flex h-8 items-center rounded-md border border-dashed border-primary/30 bg-background px-2 text-xs text-primary hover:bg-primary/5" aria-label="تنزيل نموذج ملف Excel">نموذج Excel</a>
+                  <input type="file" accept=".xlsx,.xls" className="hidden" onChange={(event) => event.target.files?.[0] && readImportFile(event.target.files[0])} />
+                  <Button size="sm" variant="outline" onClick={() => (document.querySelector<HTMLInputElement>('input[type="file"][accept=".xlsx,.xls"]') as HTMLInputElement)?.click()} disabled={parseExcelMutation.isPending}>
+                    <FileSpreadsheet className="ml-2 h-4 w-4" />{parseExcelMutation.isPending ? "جارٍ القراءة…" : "استيراد من Excel"}
                   </Button>
                 </div>
               </div>
@@ -378,6 +457,61 @@ export default function SeasonSetup() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showImportDialog} onOpenChange={(open) => { if (!open) setImportPreview(null); setShowImportDialog(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-right">معاينة ملف الاستيراد</DialogTitle>
+            <DialogDescription className="text-right">راجِع الصفوف المقترحة قبل الحفظ. الصفوف ذات القيم الناقصة لن تُحفظ، ويمكنك الرجوع للجدول بعد ذلك لإكمالها.</DialogDescription>
+          </DialogHeader>
+          {importPreview && (
+            <div className="space-y-4">
+              {importPreview.classes.length > 0 && (
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold">الأقسام ({importPreview.classes.length})</h3>
+                  <div className="max-h-40 overflow-y-auto rounded-lg border">
+                    <table className="w-full text-xs">
+                      <tbody>{importPreview.classes.map((item, index) => (
+                        <tr key={index} className="border-t px-2 py-1">
+                          <td className="px-2 py-1.5 font-medium">{item.name}</td>
+                          <td className={`px-2 py-1.5 ${item.gradeLevel ? "text-muted-foreground" : "text-red-600"}`}>{item.gradeLevel || "مستوى غير مفهوم"}</td>
+                          {item.studentCount !== null && <td className="px-2 py-1.5 text-muted-foreground">{item.studentCount} تلميذ</td>}
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">الجدول المقترح ({importPreview.schedule.filter((row) => row.dayOfWeek && row.periodIndex && row.subject && row.startTime && row.endTime).length} حصة صالحة)</h3>
+                <div className="max-h-52 overflow-y-auto rounded-lg border">
+                  <table className="w-full text-right text-xs">
+                    <thead className="bg-muted/50 sticky top-0"><tr><th className="px-2 py-1.5">القسم</th><th className="px-2 py-1.5">اليوم</th><th className="px-2 py-1.5">الحصة</th><th className="px-2 py-1.5">المادة</th><th className="px-2 py-1.5">الوقت</th></tr></thead>
+                    <tbody>{importPreview.schedule.map((row, index) => (
+                      <tr key={index} className={`border-t ${row.dayOfWeek && row.periodIndex && row.subject && row.startTime && row.endTime ? "" : "bg-red-50/60 text-red-700"}`}>
+                        <td className="px-2 py-1">{row.className}</td>
+                        <td className="px-2 py-1">{row.dayOfWeek || "؟"}</td>
+                        <td className="px-2 py-1">{row.periodIndex ?? "؟"}</td>
+                        <td className="px-2 py-1">{row.subject || "؟"}</td>
+                        <td className="px-2 py-1">{row.startTime && row.endTime ? `${row.startTime}–${row.endTime}` : "؟"}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              </div>
+              {importPreview.issues.length > 0 && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /><ul className="list-disc space-y-1 pr-4">{importPreview.issues.slice(0, 5).map((issue, index) => <li key={index}>{issue}</li>)}</ul></div>
+              )}
+            </div>
+          )}
+          <DialogFooter className="flex-row justify-end gap-2 sm:justify-start">
+            <Button variant="outline" onClick={() => { setShowImportDialog(false); setImportPreview(null); }}>إلغاء</Button>
+            <Button onClick={saveImportedPreview} disabled={saveImportedMutation.isPending}>
+              <CheckCircle2 className="ml-2 h-4 w-4" />{saveImportedMutation.isPending ? "جارٍ الحفظ…" : "احفظ الصفوف الصالحة"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card className="border-primary/15 bg-primary/[0.025]"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-3"><Users className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><h2 className="font-semibold">انتهت التهيئة؟</h2><p className="mt-1 text-sm text-muted-foreground">افتح خطة اليوم؛ سيقترح لك نبراس الوضعية الرسمية التالية لكل قسم وفق تقدمك.</p></div></div><Button variant="outline" onClick={() => setLocation("/dashboard")}>اذهب إلى خطة اليوم<ChevronLeft className="mr-2 h-4 w-4" /></Button></CardContent></Card>
     </div>

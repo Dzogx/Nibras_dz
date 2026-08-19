@@ -88,7 +88,7 @@ vi.mock("./latex/compileLatex", () => {
 import * as db from "./db";
 // invokeLLM is mocked at the top of this file
 import { invokeLLM } from "./_core/llm";
-import { compileLatexToPdf } from "./latex/compileLatex";
+import { compileLatexToPdf, LatexCompilationError } from "./latex/compileLatex";
 import {
   getAssessmentRule,
   getExamStructure,
@@ -1120,6 +1120,66 @@ describe("ai.exportAssessmentPdf", () => {
   });
 });
 
+describe("ai.exportLessonPlanTex", () => {
+  beforeEach(resetMocks);
+
+  it("يعيد مصدر LaTeX آمناً لمذكرة بيداغوجية دون استدعاء مزود ذكاء اصطناعي", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.exportLessonPlanTex({
+      title: "الجزائر تحت الاستعمار الفرنسي",
+      content: "## مقدمة\n\nيكتشف المتعلم **مظاهر الاحتلال**.\n",
+      subject: "التاريخ",
+      gradeLevel: "السنة الرابعة متوسط",
+      className: "أ",
+      date: "2026-10-12",
+      academicYear: "2026-2027",
+      teacherName: "الأستاذ أحمد",
+      school: "متوسطة النور",
+    });
+    expect(result.filename).toBe("nibras-lesson-plan-2026-10-12.tex");
+    expect(result.compiler).toBe("xelatex");
+    expect(result.texContent).toContain("المؤسسة: متوسطة النور");
+    expect(result.texContent).toContain("\\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}");
+    expect(result.texContent).toContain("مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي");
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+});
+
+describe("ai.exportLessonPlanPdf", () => {
+  beforeEach(resetMocks);
+
+  it("يعيد ملف PDF جاهزاً من قالب المذكرة العربية دون تثبيت أو استدعاء مزود ذكاء اصطناعي", async () => {
+    const pdf = Buffer.from("%PDF-1.7\nNibras lesson plan\n", "utf8");
+    (compileLatexToPdf as any).mockResolvedValue(pdf);
+    const caller = appRouter.createCaller(createMockContext());
+
+    const result = await caller.ai.exportLessonPlanPdf({
+      title: "الجزائر تحت الاستعمار الفرنسي",
+      content: "1. حدّد مظاهر الاستعمار من السند.",
+      subject: "التاريخ",
+      gradeLevel: "السنة الرابعة متوسط",
+      teacherName: "الأستاذ أحمد",
+      school: "متوسطة النور",
+      date: "2026-10-12",
+    });
+
+    expect(result.filename).toBe("nibras-lesson-plan-2026-10-12.pdf");
+    expect(result.mimeType).toBe("application/pdf");
+    expect(result.pdfBase64).toBe(pdf.toString("base64"));
+    expect(compileLatexToPdf).toHaveBeenCalledWith(expect.stringContaining("\\setmainlanguage[numerals=maghrib]{arabic}"));
+    expect(invokeLLM).not.toHaveBeenCalled();
+  });
+
+  it("يحوّل خطأ التجميع إلى خطأ خدمة واضح", async () => {
+    (compileLatexToPdf as any).mockRejectedValue(new LatexCompilationError("XeLaTeX: emergency stop"));
+    const caller = appRouter.createCaller(createMockContext());
+
+    await expect(
+      caller.ai.exportLessonPlanPdf({ title: "عنوان", content: "محتوى" })
+    ).rejects.toMatchObject({ code: "SERVICE_UNAVAILABLE" });
+  });
+});
+
 // ─── Teacher-edited official situation titles ───────────────────
 describe("ai.generateAssessment with teacher-edited situation titles", () => {
   beforeEach(() => {
@@ -1664,5 +1724,47 @@ describe("academicYears.activate season activation", () => {
     const caller = appRouter.createCaller(createMockContext());
     await expect(caller.academicYears.activate({ academicYear: "ab" })).rejects.toThrow();
     expect(db.activateAcademicYear).not.toHaveBeenCalled();
+  });
+});
+
+describe("weeklyReadiness.summary", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rebuilds the week summary even when no active academic year is resolved (fallback chain)", async () => {
+    const situation = { id: 77, title: "وضعية تجريبية", isCompleted: false, sessionStatus: null, situationNumber: 1 };
+    (db.getActiveAcademicYear as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    (db.getWeeklyScheduleEntries as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (db.getLessons as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (db.getAnnualPlans as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 5, classId: 9, subject: "التاريخ", isReference: false }]);
+    (db.getAnnualPlanSections as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 51 }]);
+    (db.getLearningSituations as ReturnType<typeof vi.fn>).mockResolvedValue([situation]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const summary = await caller.ai.weeklyReadinessSummary();
+
+    // بلا موسم فعّال لا يوجد جدول خدمة فلا عناصر، لكن البناء لا ينهار ويترك المخططات بلا طلب.
+    expect(summary.items).toHaveLength(0);
+    expect(db.getWeeklyScheduleEntries).not.toHaveBeenCalled();
+    expect(db.getAnnualPlans).toHaveBeenCalledWith(1, undefined);
+  });
+
+  it("counts pending sessions per subject from the schedule rows only", async () => {
+    (db.getActiveAcademicYear as ReturnType<typeof vi.fn>).mockResolvedValue("2026-2027");
+    (db.getWeeklyScheduleEntries as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { classId: 9, subject: "التاريخ" },
+      { classId: 9, subject: "الجغرافيا" },
+      { classId: 9, subject: "التربية المدنية" },
+    ]);
+    (db.getLessons as ReturnType<typeof vi.fn>).mockResolvedValue([{ id: 3, classId: 9, subject: "التاريخ", isCompleted: true }]);
+    (db.getAnnualPlans as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    const caller = appRouter.createCaller(createMockContext());
+    const summary = await caller.ai.weeklyReadinessSummary();
+
+    const item = summary.items.find((entry) => entry.classId === 9);
+    expect(item?.pendingBySubject).toEqual({ "التاريخ": 0, "الجغرافيا": 1, "التربية المدنية": 1 });
+    expect(summary.totalPendingHours).toBe(2);
   });
 });

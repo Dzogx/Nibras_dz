@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
-import { Eye, Presentation } from "lucide-react";
+import { Eye, Presentation, FileDown } from "lucide-react";
 import { VoicePlayer } from "@/components/VoicePlayer";
 import { ClassroomSlides } from "@/components/ClassroomSlides";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
@@ -27,6 +27,25 @@ export default function LessonDetail({ id }: { id: string }) {
   );
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // تنزيل مذكرة PDF عبر XeLaTeX (نفس نظام التجميع المعتمد في التقويم)
+  const exportPdf = trpc.ai.exportLessonPlanPdf.useMutation({
+    onSuccess: (result) => {
+      const blob = new Blob([Uint8Array.from(atob(result.pdfBase64), (c) => c.charCodeAt(0))], { type: result.mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = result.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+    onError: () => toast.error("تعذّر تجميع ملف PDF. أعد المحاولة لاحقًا."),
+  });
+
+  const lessonPlanPdfDate = useMemo(() => {
+    if (!lesson?.date) return "";
+    return new Date(lesson.date).toISOString().slice(0, 10);
+  }, [lesson?.date]);
   const [slidesOpen, setSlidesOpen] = useState(false);
 
   // مورد المكتبة المولّد للمذكرة (لتزويد الرقم التسلسلي للترويسة البصرية)
@@ -180,6 +199,34 @@ export default function LessonDetail({ id }: { id: string }) {
           title="مذكرة بيداغوجية"
           subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`}
         />
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={exportPdf.isPending}
+          onClick={() =>
+            exportPdf.mutate({
+              title: lesson?.title || "مذكرة بيداغوجية",
+              content: [lesson.plan, lesson.objectives, lesson.content].filter(Boolean).join("\n\n"),
+              subject: lesson?.subject || "",
+              gradeLevel: cls ? `${cls.gradeLevel} — ${cls.section ? `القسم ${cls.section}` : ""}`.trim() : (lesson?.gradeLevel || ""),
+              teacherName: profile?.displayName || "",
+              school: cls?.name || profile?.school || "",
+              date: lessonPlanPdfDate,
+            })
+          }
+        >
+          {exportPdf.isPending ? (
+            <>
+              <Loader2 className="w-4 h-4 ml-1 animate-spin" />
+              جارٍ التجميع...
+            </>
+          ) : (
+            <>
+              <FileDown className="w-4 h-4 ml-1" />
+              PDF
+            </>
+          )}
+        </Button>
         <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
       </div>
 

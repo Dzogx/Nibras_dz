@@ -10,7 +10,7 @@ import {
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
   getAcademicYears, getActiveAcademicYear, activateAcademicYear,
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
-  getClasses, getClassById, createClass, updateClass, deleteClass,
+  getClasses, getClassById, createClass, updateClass, deleteClass, parseImportExcelWorkbook,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
   createCompensatorySession, getCompensatorySessionsBySituation, getUpcomingCompensatorySessions, updateCompensatorySessionStatus,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, copyReferencePlanToClass,
@@ -36,8 +36,9 @@ import {
   ARABIC_QA_RULES,
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
-import { buildSeasonReadiness } from "../shared/seasonReadiness";
+import { buildSeasonReadiness, buildWeeklyReadiness } from "../shared/seasonReadiness";
 import { buildAssessmentLatexDocument } from "./latex/assessmentTemplate";
+import { buildLessonPlanLatexDocument } from "./latex/lessonPlanTemplate";
 import { compileLatexToPdf, LatexCompilationError } from "./latex/compileLatex";
 
 /**
@@ -372,6 +373,60 @@ export const appRouter = router({
     }),
     listSeasons: protectedProcedure.query(async ({ ctx }) => {
       return await listScheduleSeasons(ctx.user.id);
+    }),
+    parseExcel: protectedProcedure.input(z.object({
+      fileContent: z.string().min(100).max(2_000_000),
+    })).mutation(async ({ input }) => {
+      const buffer = Buffer.from(input.fileContent, "base64");
+      try {
+        return parseImportExcelWorkbook(buffer);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "تعذر قراءة الملف. تأكد أنه ملف Excel (.xlsx) سليم." });
+      }
+    }),
+    saveImportedData: protectedProcedure.input(z.object({
+      academicYear: z.string().min(4).max(16),
+      newClasses: z.array(z.object({
+        name: z.string().min(1).max(128),
+        gradeLevel: z.enum(["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"]),
+        studentCount: z.number().int().min(0).max(200).optional(),
+      })).default([]),
+      entries: z.array(z.object({
+        className: z.string().min(1).max(128),
+        dayOfWeek: z.enum(["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"]),
+        periodIndex: z.number().int().min(1).max(7),
+        subject: z.enum(["التاريخ", "الجغرافيا", "التربية المدنية"]),
+        startTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+        endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+      })).min(1),
+    })).mutation(async ({ ctx, input }) => {
+      const teacherClasses = await getClasses(ctx.user.id);
+      const existingByName = new Map(teacherClasses.map((item) => [item.name, item]));
+      const resolvedClassIds = new Map<string, number>();
+      const nowYear = input.academicYear;
+      for (const newClass of input.newClasses) {
+        const match = existingByName.get(newClass.name);
+        const classId = match?.id ?? (await createClass({
+          userId: ctx.user.id,
+          name: newClass.name,
+          gradeLevel: newClass.gradeLevel,
+          academicYear: nowYear,
+          studentCount: newClass.studentCount ?? 0,
+          subject: "التاريخ والجغرافيا والتربية المدنية",
+        }))?.id;
+        if (!classId) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `تعذر إنشاء القسم «${newClass.name}».` });
+        }
+        resolvedClassIds.set(newClass.name, classId);
+      }
+      const entries = input.entries.map((entry) => {
+        const classId = resolvedClassIds.get(entry.className);
+        if (!classId) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: `القسم «${entry.className}» غير موجود في مساحتك ولا في ملف الاستيراد.` });
+        }
+        return { classId, dayOfWeek: entry.dayOfWeek, periodIndex: entry.periodIndex, subject: entry.subject, startTime: entry.startTime, endTime: entry.endTime };
+      });
+      return await replaceWeeklyScheduleEntries(ctx.user.id, nowYear, entries);
     }),
     copyFromSeason: protectedProcedure.input(z.object({
       fromAcademicYear: z.string().min(4).max(16),
@@ -1574,6 +1629,78 @@ ${rulesContext}
       }
     }),
 
+    /**
+     * يعيد مصدر LaTeX للمذكرة البيداغوجية من القالب العربي.
+     */
+    exportLessonPlanTex: protectedProcedure.input(z.object({
+      title: z.string().min(1).max(200),
+      content: z.string().min(1).max(100_000),
+      subject: z.string().max(80).optional(),
+      gradeLevel: z.string().max(80).optional(),
+      printTheme: z.enum(["nibras", "official", "mono"]).optional(),
+      unitTitle: z.string().max(300).optional(),
+      duration: z.string().max(80).optional(),
+      date: z.string().max(30).optional(),
+      academicYear: z.string().max(20).optional(),
+      teacherName: z.string().max(160).optional(),
+      school: z.string().max(200).optional(),
+      province: z.string().max(120).optional(),
+      className: z.string().max(80).optional(),
+      objectives: z.string().max(2000).optional(),
+      lessonNumber: z.number().positive().max(99).optional(),
+      unitNumber: z.number().positive().max(99).optional(),
+      serialNumber: z.string().max(32).optional(),
+      isClassroomPlan: z.boolean().optional(),
+    }).strict()).mutation(({ input }) => {
+      const texContent = buildLessonPlanLatexDocument(input);
+      const datePart = input.date || new Date().toISOString().slice(0, 10);
+      return {
+        filename: `nibras-lesson-plan-${datePart}.tex`,
+        texContent,
+        compiler: "xelatex" as const,
+      };
+    }),
+
+    /**
+     * يعيد ملف PDF جاهزاً للطباعة من قالب المذكرة العربية.
+     */
+    exportLessonPlanPdf: protectedProcedure.input(z.object({
+      title: z.string().min(1).max(200),
+      content: z.string().min(1).max(100_000),
+      subject: z.string().max(80).optional(),
+      gradeLevel: z.string().max(80).optional(),
+      printTheme: z.enum(["nibras", "official", "mono"]).optional(),
+      unitTitle: z.string().max(300).optional(),
+      duration: z.string().max(80).optional(),
+      date: z.string().max(30).optional(),
+      academicYear: z.string().max(20).optional(),
+      teacherName: z.string().max(160).optional(),
+      school: z.string().max(200).optional(),
+      province: z.string().max(120).optional(),
+      className: z.string().max(80).optional(),
+      objectives: z.string().max(2000).optional(),
+      lessonNumber: z.number().positive().max(99).optional(),
+      unitNumber: z.number().positive().max(99).optional(),
+      serialNumber: z.string().max(32).optional(),
+      isClassroomPlan: z.boolean().optional(),
+    }).strict()).mutation(async ({ input }) => {
+      try {
+        const texContent = buildLessonPlanLatexDocument(input);
+        const pdfBuffer = await compileLatexToPdf(texContent);
+        const datePart = input.date || new Date().toISOString().slice(0, 10);
+        return {
+          filename: `nibras-lesson-plan-${datePart}.pdf`,
+          pdfBase64: pdfBuffer.toString("base64"),
+          mimeType: "application/pdf" as const,
+        };
+      } catch (error) {
+        if (error instanceof LatexCompilationError) {
+          throw new TRPCError({ code: "SERVICE_UNAVAILABLE", message: error.message });
+        }
+        throw error;
+      }
+    }),
+
     // ─── National Rules API ────────────────────────────────────
     getAssessmentRules: protectedProcedure.input(z.object({
       gradeLevel: z.string().optional(),
@@ -1588,6 +1715,42 @@ ${rulesContext}
 
     getCompetencyCategories: protectedProcedure.query(() => {
       return COMPETENCY_CATEGORIES;
+    }),
+
+    weeklyReadinessSummary: protectedProcedure.query(async ({ ctx }) => {
+      // تلخيص جاهزية الأسبوع القادم: الوضعية التالية والحصص المتبقية لكل قسم،
+      // دون الحاجة لاختيار قسم — واجهة الصفحة الرئيسية تعرضه تلقائياً.
+      const resolvedYear = await getActiveAcademicYear();
+      const schedule = resolvedYear ? await getWeeklyScheduleEntries(ctx.user.id, resolvedYear) : [];
+      const lessons = await getLessons(ctx.user.id);
+      const classPlans = await getAnnualPlans(ctx.user.id, resolvedYear ? { academicYear: resolvedYear } : undefined);
+      const situations: { id: number; situationNumber: number; title: string; isCompleted: boolean; sessionStatus: string | null }[] = [];
+      for (const plan of classPlans) {
+        const sections = (await getAnnualPlanSections(plan.id)) ?? [];
+        for (const section of sections) {
+          for (const situation of (await getLearningSituations(section.id)) ?? []) {
+            situations.push({
+              id: situation.id,
+              situationNumber: situation.situationNumber,
+              title: situation.title,
+              isCompleted: situation.isCompleted,
+              sessionStatus: situation.sessionStatus ?? null,
+            });
+          }
+        }
+      }
+      return buildWeeklyReadiness(
+        schedule,
+        lessons.map((lesson) => ({
+          id: lesson.id,
+          classId: lesson.classId ?? null,
+          subject: lesson.subject ?? null,
+          situationId: null,
+          situationTitle: null,
+          isCompleted: lesson.isCompleted,
+        })),
+        situations,
+      );
     }),
 
     getTeacherOSContext: protectedProcedure.input(z.object({

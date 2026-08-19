@@ -928,3 +928,10 @@
 - [x] مسح بقية الواجهة بحثًا عن نمط خلط المشغلات نفسه (تمت المراجعة كاملة؛ موضع واحد متبقٍ في SeasonSetup لا يشكّل خطرًا بنفس الصيغة)
 - [x] تحقق بصري بعد الإصلاح: اليوم، الأسبوع، النتائج، المنهاج، التهيئة، الأقسام، المخططات، المولد، التقويم، المفتش — كلها تعرض المحتوى على سطح المكتب والهاتف
 - [x] 161/161 اختباراً وفحص TypeScript نظيف
+
+## الاقتراحات الثلاثة (19 أوت)
+
+- [x] استيراد Excel منجز: parseImportExcelWorkbook (db) + weeklySchedule.importExcel/applyImport (routers) مع تحقق تنسيقي وحدود ورسائل أخطاء عربية، وواجهة رفع في SeasonSetup بحوار معاينة ورابط تنزيل نموذج جاهز على مخزن الأصول الثابتة. اختبارات db.importExcel 7/7
+- [x] التقرير الأسبوعي منجز: buildWeeklyReadiness (shared/seasonReadiness) + weeklyReadinessSummary (ai router) وبطاقة في Dashboard تعرض الأقسام والوضعيات التالية وحالة المذكرات للساعة المتبقية. اختبارات weeklyReadiness 6/6 واختبار انحدار للإجراء
+- [x] PDF المذكرة منجز: قالب lessonPlanTemplate.ts (XeLaTeX bidi/RTL مع booktabs ودعم جداول Markdown وهروب LaTeX) + ai.exportLessonPlanTex/Pdf، زر PDF بجانب زر الطباعة في LessonDetail مع تجميع خادمي حقيقي وتحقق بصري من عينة. اختبارات القالب 7/7 واختبارا الإجراءين مع انحدار خطأ التجميع
+- [x] انحدار: 181/181 اختبارًا يمر وفحص TypeScript نظيف بعد المزايا الثلاث

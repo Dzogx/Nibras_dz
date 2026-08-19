@@ -120,6 +120,7 @@ export default function Dashboard() {
   const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery({ academicYear });
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery({ academicYear });
+  const { data: weeklyReadiness } = trpc.ai.weeklyReadinessSummary.useQuery();
 
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
@@ -402,6 +403,68 @@ export default function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* التقرير الأسبوعي التلقائي: جاهزية الأقسام للأسبوع القادم */}
+      {Boolean(weeklyReadiness?.items?.length) && (
+        <Card className="border-brand-wax-400/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-brand-wax-400" />
+              جاهزية الأسبوع القادم
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {weeklyReadiness!.totalPendingHours > 0
+                ? `حصة متبقية بلا درس منجز: ${weeklyReadiness!.totalPendingHours}`
+                : "كل الحصص التالية لها مذكرات منجزة."}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {weeklyReadiness!.items.map((item) => {
+                const classItem = seasonClasses.find((classObj) => classObj.id === item.classId);
+                const deferredIcon = item.hasDeferred ? PauseCircle : null;
+                const pendingEntries = Object.entries(item.pendingBySubject).filter(([, pending]) => pending > 0);
+                return (
+                  <div
+                    key={item.classId}
+                    className="rounded-xl border border-border bg-card p-3.5 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-semibold text-sm">{classItem?.name ?? `قسم ${item.classId}`}</p>
+                      {deferredIcon && (
+                        <span className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-700 dark:text-amber-400">
+                          <PauseCircle className="h-3 w-3" />تأجيل قيد المتابعة
+                        </span>
+                      )}
+                    </div>
+                    {item.nextSituation ? (
+                      <button
+                        type="button"
+                        className="block w-full rounded-lg bg-muted/60 px-3 py-2 text-right text-sm hover:bg-muted transition-colors"
+                        onClick={() => setLocation(readyLessonPlan ? `/content-library/${readyLessonPlan.id}` : buildQuickLessonPath(item.nextSituation!.id))}
+                      >
+                        <span className="block text-[11px] text-muted-foreground">الوضعية التالية</span>
+                        <span className="block font-medium mt-0.5">{item.nextSituation.title}</span>
+                      </button>
+                    ) : (
+                      <p className="rounded-lg bg-muted/40 px-3 py-2 text-[13px] text-muted-foreground">لا توجد وضعية متبقية في الخطة.</p>
+                    )}
+                    {pendingEntries.length > 0 && (
+                      <div className="space-y-1">
+                        {pendingEntries.map(([subject, pending]) => (
+                          <p key={subject} className="text-xs text-muted-foreground">
+                            {subject}: {pending === 1 ? "حصة متبقية بلا مذكرة" : `${pending} حصص متبقية بلا مذكرات`}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Dialog open={finishSessionOpen} onOpenChange={(open) => open ? setFinishSessionOpen(true) : closeFinishSessionDialog()}>
         <DialogContent className="sm:max-w-lg" dir="rtl">
