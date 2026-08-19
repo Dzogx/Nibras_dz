@@ -8,7 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import {
   upsertUser, getUserByOpenId,
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
-  getAcademicYears, getActiveAcademicYear,
+  getAcademicYears, getActiveAcademicYear, activateAcademicYear,
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
@@ -215,6 +215,11 @@ export const appRouter = router({
   academicYears: router({
     list: protectedProcedure.query(async () => {
       return await getAcademicYears();
+    }),
+    activate: protectedProcedure.input(z.object({
+      academicYear: z.string().min(4).max(16),
+    })).mutation(async ({ ctx, input }) => {
+      return await activateAcademicYear(ctx.user.id, input.academicYear);
     }),
   }),
 

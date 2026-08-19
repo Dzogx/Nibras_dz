@@ -9,6 +9,7 @@ vi.mock("./db", () => ({
   updateTeacherProfile: vi.fn(),
   getAcademicYears: vi.fn(),
   getActiveAcademicYear: vi.fn(),
+  activateAcademicYear: vi.fn(),
   getCurriculumDocuments: vi.fn(),
   getCurriculumDocumentById: vi.fn(),
   createCurriculumDocument: vi.fn(),
@@ -1644,5 +1645,24 @@ describe("academicYears.list fallback behavior", () => {
     const active = (result as any[]).find((y) => y.isActive);
     expect(active?.year).toBe("2026-2027");
     expect(db.getAcademicYears).toHaveBeenCalled();
+  });
+});
+
+describe("academicYears.activate season activation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it("should set profile academicYear when activating a season (regression for 909)", async () => {
+    (db.activateAcademicYear as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.academicYears.activate({ academicYear: "2026-2027" });
+    expect(result).toBe(true);
+    expect(db.activateAcademicYear).toHaveBeenCalledWith(1, "2026-2027");
+  });
+
+  it("should reject activation of an invalid year format", async () => {
+    const caller = appRouter.createCaller(createMockContext());
+    await expect(caller.academicYears.activate({ academicYear: "ab" })).rejects.toThrow();
+    expect(db.activateAcademicYear).not.toHaveBeenCalled();
   });
 });

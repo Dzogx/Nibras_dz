@@ -125,6 +125,18 @@ export async function getAcademicYears() {
   return await db.select().from(academicYears).orderBy(desc(academicYears.year));
 }
 
+/** يفعّل موسمًا دراسيًا معيّنًا ويضبط سنة الدراسة في ملف الأستاذ، مع تعطيل كل المواسم الأخرى. */
+export async function activateAcademicYear(userId: number, academicYear: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  // تفعيل الموسم المطلوب وتعطيل البقية
+  await db.update(academicYears).set({ isActive: false });
+  await db.update(academicYears).set({ isActive: true }).where(eq(academicYears.year, academicYear));
+  // ربط الملف الشخصي بسنة الدراسة المفعّلة
+  await updateTeacherProfile(userId, { academicYear } as any);
+  return true;
+}
+
 /** يعيد السنة الدراسية المفعّلة (isActive=true) إن وجدت، وأحدث سنة مُعرَّفة في غيابها. */
 export async function getActiveAcademicYear(): Promise<string | undefined> {
   const db = await getDb();

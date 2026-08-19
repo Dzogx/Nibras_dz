@@ -113,7 +113,7 @@ export default function Dashboard() {
   const { data: profile } = trpc.profile.get.useQuery();
   const { data: activeYears } = trpc.academicYears.list.useQuery();
   const resolvedYear = useMemo(
-    () => (profile?.academicYear ?? (activeYears?.find((y: any) => y.isActive)?.year ?? "2026-2027")),
+    () => (profile?.academicYear ?? (activeYears?.find((y: any) => y.isActive)?.year ?? activeYears?.[0]?.year ?? "")),
     [profile, activeYears],
   );
   const academicYear = resolvedYear;

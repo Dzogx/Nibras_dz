@@ -113,6 +113,17 @@ export default function SeasonSetup() {
     onError: (error) => toast.error(error.message || "تعذرت إضافة القسم."),
   });
 
+  const activateSeasonMutation = trpc.academicYears.activate.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        utils.academicYears.list.invalidate(),
+        utils.profile.get.invalidate(),
+        utils.seasonReadiness.get.invalidate({ academicYear }),
+      ]);
+      toast.success(`فُعّل موسم ${academicYear}: أصبح سنة الدراسة الرسمية لكل الأقسام.`);
+    },
+    onError: (error) => toast.error(error.message || "تعذر تفعيل الموسم."),
+  });
   const saveScheduleMutation = trpc.weeklySchedule.save.useMutation({
     onSuccess: async (result) => {
       await utils.weeklySchedule.get.invalidate({ academicYear });
@@ -271,7 +282,7 @@ export default function SeasonSetup() {
           {readinessLoading ? <p className="text-sm text-muted-foreground">جارٍ فحص جاهزية الموسم…</p> : !readiness || readiness.totalClasses === 0 ? (
             <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm leading-6 text-muted-foreground">أضف أول قسم لتظهر قائمة جاهزيته للموسم.</p><Button size="sm" onClick={() => document.getElementById("season-classes")?.scrollIntoView({ behavior: "smooth", block: "start" })}>أضف قسماً</Button></div>
           ) : readiness.incompleteClasses === 0 ? (
-            <div className="flex gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><p className="text-sm leading-6">كل الأقسام مكتملة: الجداول والمخططات الصفية جاهزة. يمكنك الانتقال إلى خطة اليوم.</p></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><div className="flex gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><p className="text-sm leading-6">كل الأقسام مكتملة: الجداول والمخططات الصفية جاهزة. فعّل الموسم لتربطه بسنة دراستك الرسمية.</p></div><Button onClick={() => activateSeasonMutation.mutate({ academicYear })} disabled={activateSeasonMutation.isPending}>{activateSeasonMutation.isPending ? "جارٍ التفعيل…" : "فعّل الموسم"}</Button></div>
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
               {readiness.items.map((item) => item.isReady ? <div key={item.classId} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" /><span>{item.className}: مكتمل</span></div> : <div key={item.classId} className="rounded-xl border bg-muted/20 p-3"><div className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0 text-brand-wax-500" /><p className="font-semibold text-sm">{item.className}</p></div><div className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">{item.missingScheduleSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص الجدول: {item.missingScheduleSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => document.getElementById("weekly-schedule")?.scrollIntoView({ behavior: "smooth", block: "start" })}>أكمل الجدول</Button></div>}{item.missingPlanSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص المخطط: {item.missingPlanSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => setLocation("/annual-plans")}><BookCopy className="ml-1 h-3.5 w-3.5" />انسخ المخطط</Button></div>}</div></div>)}
