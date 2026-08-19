@@ -13,9 +13,10 @@ import {
   getClasses, getClassById, createClass, updateClass, deleteClass, parseImportExcelWorkbook,
   parseRakmnaExcelWorkbook, computeTermAverage, termAverageEvaluation,
   getStudentGradesByClass, getStudentGradesFilters, saveStudentGradesRows, deleteStudentGradesForClass, deleteStudentGrade,
-  recomputeClassGradesEvaluation, getStudentGradesAnalytics,
+  recomputeClassGradesEvaluation, getStudentGradesAnalytics, exportBackupExcel,
   getGradebookByClass, getGradebookFilters, upsertGradebookEntry,
   sumContinuousScore, deleteGradebookForClass, deleteGradebookEntry,
+  monthlySummary,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
   createCompensatorySession, getCompensatorySessionsBySituation, getUpcomingCompensatorySessions, updateCompensatorySessionStatus,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, copyReferencePlanToClass,
@@ -587,6 +588,17 @@ export const appRouter = router({
       if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
       return await getStudentGradesAnalytics(ctx.user.id, input.classId, input.subject ?? null, input.term ?? null);
     }),
+    /** نسخة Excel احتياطية من نقاط القسم (صيغة متوافقة مع الاستيراد لإعادة الاستيراد عند الحاجة). */
+    exportBackup: protectedProcedure.input(z.object({
+      classId: z.number().int().positive().optional(),
+    })).query(async ({ ctx, input }) => {
+      if (input.classId) {
+        const classes = await getClasses(ctx.user.id);
+        const owned = classes.find((item) => item.id === input.classId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      }
+      return await exportBackupExcel(ctx.user.id, input.classId ?? null);
+    }),
   }),
 
   // ─── Gradebook (دفتر التنقيط) ────────────────────────────────
@@ -659,12 +671,23 @@ export const appRouter = router({
       await deleteGradebookForClass(ctx.user.id, input.classId, input.subject, input.term);
       return { success: true };
     }),
-    deleteEntry: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+        deleteEntry: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       await deleteGradebookEntry(input.id, ctx.user.id);
       return { success: true };
     }),
+    /** الاستيفائي الشهري: ملخص تقويم التلاميذ خلال شهر معيّن (للتعبئة في دفتر الأستاذ). */
+    monthlySummary: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+      term: z.number().int().min(1).max(4),
+      subject: z.string().min(2).max(100),
+      monthKey: z.string().regex(/^\d{4}-\d{2}$/),
+    })).query(async ({ ctx, input }) => {
+      const classes = await getClasses(ctx.user.id);
+      const owned = classes.find((item) => item.id === input.classId);
+      if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      return await monthlySummary(ctx.user.id, input.classId, input.term, input.subject, input.monthKey);
+    }),
   }),
-
   // ─── Season Readiness ───────────────────────────────────────
   seasonReadiness: router({
     get: protectedProcedure.input(z.object({

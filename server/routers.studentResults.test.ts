@@ -11,6 +11,8 @@ const mockDb = vi.hoisted(() => ({
   getStudentGradesFilters: vi.fn(),
   getStudentGradesAnalytics: vi.fn(),
   upsertGradebookEntry: vi.fn(),
+  exportBackupExcel: vi.fn(),
+  monthlySummary: vi.fn(),
 }));
 
 vi.mock("./db", async (importOriginal) => {
@@ -82,6 +84,11 @@ beforeEach(() => {
   mockDb.getStudentGradesByClass.mockImplementation(async () => []);
   mockDb.getStudentGradesFilters.mockImplementation(async () => []);
   mockDb.getStudentGradesAnalytics.mockImplementation(async () => null);
+  mockDb.exportBackupExcel.mockImplementation(async () => ({
+    filename: "نسخة-احتياطية-نقاط-القسم-7-2026-08-19.xlsx",
+    buffer: Buffer.from("PK", "latin1"),
+  }));
+  mockDb.monthlySummary.mockImplementation(async () => []);
 });
 
 describe("studentResults router", () => {
@@ -186,5 +193,38 @@ describe("studentResults router", () => {
     const { caller } = createCaller();
     const result = await caller.studentResults.analytics({ classId: 7 });
     expect(result).toBeNull();
+  });
+
+  it("exportBackup يصدر نسخة Excel ويمنع الأقسام غير التابعة للأستاذ", async () => {
+    const { caller } = createCaller();
+    const result = await caller.studentResults.exportBackup({ classId: 7 });
+    expect(result.filename).toContain("نسخة-احتياطية");
+    expect(result.filename).toContain(".xlsx");
+    expect(Buffer.isBuffer(result.buffer)).toBe(true);
+    expect(mockDb.exportBackupExcel).toHaveBeenCalledWith(1, 7);
+    // قسم لا يتبع للأستاذ يُرفض
+    const outsider = createCaller(2);
+    await expect(outsider.caller.studentResults.exportBackup({ classId: 7 })).rejects.toThrow();
+  });
+
+  it("gradebook.monthlySummary يستدعي دالة التجميع للفصل والقسم المملوكين", async () => {
+    const { caller } = createCaller();
+    const result = await caller.gradebook.monthlySummary({
+      classId: 7,
+      term: 1,
+      subject: "التاريخ",
+      monthKey: "2025-10",
+    });
+    expect(Array.isArray(result)).toBe(true);
+    expect(mockDb.monthlySummary).toHaveBeenCalledWith(1, 7, 1, "التاريخ", "2025-10");
+    // قسم لا يتبع للأستاذ يُرفض
+    const outsider = createCaller(2);
+    await expect(
+      outsider.caller.gradebook.monthlySummary({ classId: 7, term: 1, subject: "التاريخ", monthKey: "2025-10" }),
+    ).rejects.toThrow();
+    // صيغة الشهر تُرفض إن كانت غير صحيحة
+    await expect(
+      caller.gradebook.monthlySummary({ classId: 7, term: 1, subject: "التاريخ", monthKey: "bad" }),
+    ).rejects.toThrow();
   });
 });

@@ -1,4 +1,4 @@
-import { eq, asc, desc, and, or, like, sql, count } from "drizzle-orm";
+import { eq, asc, desc, and, or, like, sql, count, gte, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   InsertUser, users,
@@ -827,6 +827,48 @@ export async function getStudentGradesByClass(userId: number, classId: number) {
   if (!db) return [];
   return await db.select().from(studentGrades).where(and(eq(studentGrades.userId, userId), eq(studentGrades.classId, classId))).orderBy(desc(studentGrades.computedAverage));
 }
+
+/**
+ * ينشئ نسخة Excel احتياطية من نقاط قسم معيّن (أو كل نقاط الأستاذ) بصيغة متوافقة
+ * مع بنية استيراد نبراس: ورقة لكل فوج (مادة/فصل) بنفس أعمدة وثيقة الرقمنة.
+ * يعيد الملف كـ Buffer (بيانات ثنائية) واسم المقترح.
+ */
+export async function exportBackupExcel(userId: number, classId: number | null): Promise<{ filename: string; buffer: Buffer }> {
+  const db = await getDb();
+  if (!db) throw new Error("قاعدة البيانات غير متاحة");
+  const rows = await db
+    .select()
+    .from(studentGrades)
+    .where(classId ? and(eq(studentGrades.userId, userId), eq(studentGrades.classId, classId)) : eq(studentGrades.userId, userId))
+    .orderBy(desc(studentGrades.classId), asc(studentGrades.subject), asc(studentGrades.term), desc(studentGrades.computedAverage));
+  if (rows.length === 0) throw new Error("لا توجد نقاط للتصدير");
+
+  // تجميع حسب (مادة، فصل) مع الاحتفاظ برمز الفوج واسم القسم والسطر من جدول classes للمعاينة
+  const groups = new Map<string, { subject: string; term: number; fogCode: string | null; rows: typeof rows }>;
+  for (const r of rows) {
+    const key = `${r.subject}|${r.term}`;
+    const g = groups.get(key) ?? { subject: r.subject, term: r.term, fogCode: r.fogCode ?? null, rows: [] };
+    g.rows.push(r);
+    groups.set(key, g);
+  }
+
+  const wb = XLSX.utils.book_new();
+  for (const [, g] of Array.from(groups.entries()).sort((a, b) => a[1].term - b[1].term)) {
+    const sheetName = `${g.subject}-${g.term}`.slice(0, 31);
+    // ترويسة متوافقة مع محوّل الاستيراد: كل صف يمثّل تلميذًا بالأسهم المتطابقة
+    const sheetRows = [
+      ["التعريف", "الاسم واللقب", "النشاطات", "الفرض الكتابي", "الاختبار الفصلي"],
+      ...g.rows.map((r) => [r.matricule, r.fullName, r.activityScore, r.examQuizScore, r.finalExamScore]),
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(sheetRows);
+    // عرض أعمدة مريح
+    ws["!cols"] = [{ wch: 14 }, { wch: 42 }, { wch: 10 }, { wch: 12 }, { wch: 13 }];
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  }
+  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const className = rows[0]?.classId ? `القسم-${rows[0].classId}` : "كل-الأقسام";
+  return { filename: `نسخة-احتياطية-نقاط-${className}-${new Date().toISOString().slice(0, 10)}.xlsx`, buffer: buf };
+}
 export async function getStudentGradesFilters(userId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -991,6 +1033,86 @@ export async function deleteGradebookEntry(id: number, userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(gradebookEntries).where(and(eq(gradebookEntries.id, id), eq(gradebookEntries.userId, userId)));
+}
+
+export type MonthlySummaryRow = {
+  studentName: string;
+  studentMatricule: string | null;
+  attendanceTotal: number | null; // مجموع خانات الانضباط/المواظبة المسجلة خلال الشهر
+  activityTotal: number | null; // مجموع خانات إنجاز الأنشطة خلال الشهر
+  continuousTotal: number | null; // التقويم المستمر المعتمد (آخر إدخال)
+  quizTotal: number | null; // مجموع نقاط الفروض المسجلة خلال الشهر
+  assessmentScore: number | null; // آخر نقطة اختبار مسجلة (تبقى من الفصل)
+  notes: string | null;
+  entryCount: number; // عدد الإدخالات خلال الشهر
+};
+
+/**
+ * الاستيفائي الشهري: ملخص تقويم التلميذ خلال شهر معيّن.
+ * يجمع خانات التقويم المستمر والفرض المحفوظة خلال الشهر ويميّز التلميذ الواحد
+ * (آخر إدخال هو المعتمد للتقويم المستمر والاختبار)، وهو ما يُعبّأ في خانة
+ * «الاستيفائي الشهري» من دفتر التنقيط الرسمي.
+ */
+export async function monthlySummary(
+  userId: number,
+  classId: number,
+  term: number,
+  subject: string,
+  monthKey: string,
+): Promise<MonthlySummaryRow[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const [yearStr, monthStr] = monthKey.split("-");
+  const start = new Date(`${yearStr}-${monthStr}-01T00:00:00`);
+  const nextMonth = monthStr === "12" ? `${Number(yearStr) + 1}-01` : `${yearStr}-${String(Number(monthStr) + 1).padStart(2, "0")}`;
+  const end = new Date(`${nextMonth}-01T00:00:00`);
+  const rows = await db
+    .select()
+    .from(gradebookEntries)
+    .where(
+      and(
+        eq(gradebookEntries.userId, userId),
+        eq(gradebookEntries.classId, classId),
+        eq(gradebookEntries.term, term),
+        eq(gradebookEntries.subject, subject),
+        gte(gradebookEntries.createdAt, start),
+        lt(gradebookEntries.createdAt, end),
+      ),
+    )
+    .orderBy(asc(gradebookEntries.studentName), desc(gradebookEntries.createdAt));
+
+  const byStudent = new Map<string, MonthlySummaryRow>();
+  for (const row of rows) {
+    const key = row.studentName;
+    if (!byStudent.has(key)) {
+      byStudent.set(key, {
+        studentName: row.studentName,
+        studentMatricule: row.studentMatricule ?? null,
+        attendanceTotal: 0,
+        activityTotal: 0,
+        continuousTotal: row.continuousScore ?? null,
+        quizTotal: 0,
+        assessmentScore: row.assessmentScore ?? null,
+        notes: row.notes ?? null,
+        entryCount: 0,
+      });
+    }
+    const agg = byStudent.get(key)!;
+    if (row.attendanceScore != null) {
+      agg.attendanceTotal = (agg.attendanceTotal ?? 0) + row.attendanceScore;
+      if (agg.attendanceTotal != null) agg.attendanceTotal = Math.round(agg.attendanceTotal * 100) / 100;
+    }
+    if (row.activityScore != null) {
+      agg.activityTotal = (agg.activityTotal ?? 0) + row.activityScore;
+      if (agg.activityTotal != null) agg.activityTotal = Math.round(agg.activityTotal * 100) / 100;
+    }
+    if (row.quizScore != null) {
+      agg.quizTotal = (agg.quizTotal ?? 0) + row.quizScore;
+      if (agg.quizTotal != null) agg.quizTotal = Math.round(agg.quizTotal * 100) / 100;
+    }
+    agg.entryCount += 1;
+  }
+  return Array.from(byStudent.values());
 }
 
 // ─── Excel Import (استيراد الأقسام والجدول) ───────────────────
@@ -1305,13 +1427,56 @@ export async function getStudentGradesAnalytics(userId: number, classId: number,
     "ضعيف جداً": 0,
   };
   let weakCount = 0;
-  const weakStudents: { id: number; fullName: string; matricule: string; computedAverage: number; subject: string; term: number }[] = [];
+  const weakStudents: {
+    id: number;
+    fullName: string;
+    matricule: string;
+    computedAverage: number;
+    subject: string;
+    term: number;
+    /** نوع الضعف المرصود: اختبار / تقويم مستمر / عام */
+    weaknessType: "exam" | "continuous" | "general";
+    /** توصية علاج تربوي مبنية على نوع الضعف وفق المنهاج الجزائري */
+    recommendation: string;
+  }[] = [];
   for (const r of withAverage) {
     const ev = termAverageEvaluation(r.computedAverage!);
     if (distribution[ev] != null) distribution[ev] += 1;
     if (r.computedAverage! < 10) {
       weakCount += 1;
-      weakStudents.push({ id: r.id, fullName: r.fullName, matricule: r.matricule, computedAverage: r.computedAverage!, subject: r.subject, term: r.term });
+      const examPart = r.finalExamScore ?? 0;
+      const continuousPart = (r.activityScore ?? 0) + (r.examQuizScore ?? 0);
+      // نصيب الاختبار من المعدل: الاختبار ×3 في البسط من مجموع ×5
+      const examShare = r.finalExamScore != null ? (examPart * 3) / (r.computedAverage! * 5) : null;
+      let weaknessType: "exam" | "continuous" | "general";
+      let recommendation: string;
+      if (examShare != null && examShare < 1.5) {
+        weaknessType = "exam";
+        recommendation =
+          "الضعف مركّز في الاختبار. أعد معه الوضعيات التعليمية المنجزة ودرّبه على نمط وثائق التقويم التحصيلي (الإجابة عن الأسئلة المركبة والوضعية الإدماجية) قبل حصة الاستدراك.";
+      } else if (r.finalExamScore == null && continuousPart < 8) {
+        weaknessType = "continuous";
+        recommendation =
+          "التقويم المستمر منخفض. أشركه في الأنشطة الصفية، وأسند إليه واجبات متابعة أسبوعية، وارصد حضوره ومشاركته بانتظام في دفتر التنقيط.";
+      } else if (examShare != null && examShare >= 2.4) {
+        weaknessType = "continuous";
+        recommendation =
+          "نقطة الاختبار مقبولة لكن التقويم المستمر يخفض المعدل. تابع مشاركته الصّفية وأنشطته اليومية وسجّلها بانتظام في دفتر التنقيط.";
+      } else {
+        weaknessType = "general";
+        recommendation =
+          "الضعف عام عبر المحصلات (التقويم المستمر والاختبار). أدرجه في مجموعة الاستدراك، وأعد معه أساسيات الوضعيات غير المتقنة مع أنشطة تعويضية مبسطة وفق منهاج المادة.";
+      }
+      weakStudents.push({
+        id: r.id,
+        fullName: r.fullName,
+        matricule: r.matricule,
+        computedAverage: r.computedAverage!,
+        subject: r.subject,
+        term: r.term,
+        weaknessType,
+        recommendation,
+      });
     }
   }
   return {

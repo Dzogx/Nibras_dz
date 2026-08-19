@@ -32,6 +32,7 @@ import {
   Printer,
   RefreshCw,
   Trash2,
+  CalendarClock,
 } from "lucide-react";
 
 /**
@@ -258,6 +259,7 @@ export default function Gradebook() {
         >
           التقييمات النوعية
         </Button>
+        <MonthlySummaryButton classId={classes?.id ?? null} subject={subject} term={Number(term)} className={classes?.name ?? ""} />
         <PrintButton enabled={!!classes && !!subject && Array.isArray(list.data)} entries={list.data ?? []} className={classes?.name ?? ""} subject={subject} term={Number(term)} />
         <Button
           variant="destructive"
@@ -470,6 +472,147 @@ function EmptyState({ className, subject }: { className: string; subject: string
       <p className="mb-1 font-medium">{subject} — {className}</p>
       <p className="text-sm text-muted-foreground">لا توجد بعد أي نقطة مسجلة لهذا الفصل. اضغط «إدخال النقاط» لبدء الدفتر.</p>
     </div>
+  );
+}
+
+const MONTH_KEYS = [
+  { key: "10", label: "أكتوبر" },
+  { key: "11", label: "نوفمبر" },
+  { key: "12", label: "ديسمبر" },
+  { key: "01", label: "يناير" },
+  { key: "02", label: "فبراير" },
+  { key: "03", label: "مارس" },
+  { key: "04", label: "أفريل" },
+  { key: "05", label: "ماي" },
+  { key: "06", label: "جوان" },
+];
+
+/** زر الاستيفائي الشهري: يعرض ملخص تقويم الشهر (الانضباط، الأنشطة، الفرض) للطباعة. */
+function MonthlySummaryButton({
+  classId,
+  subject,
+  term,
+  className,
+}: {
+  classId: number | null;
+  subject: string;
+  term: number;
+  className: string;
+}) {
+  const [printOpen, setPrintOpen] = useState(false);
+  const today = new Date();
+  const academicYearStart = today.getMonth() >= 9; // الموسم يبدأ سبتمبر/أكتوبر
+  const defaultMonthKey = `${today.getFullYear() - (academicYearStart && today.getMonth() < 9 ? 1 : 0)}-${today.getMonth() + 1 === 0 ? "10" : String(today.getMonth() + 1).padStart(2, "0")}`;
+  const [monthKey, setMonthKey] = useState<string>(() => {
+    const m = today.getMonth() + 1;
+    const y = today.getMonth() >= 9 ? today.getFullYear() : today.getFullYear() - 1;
+    return `${y}-${String(m).padStart(2, "0")}`;
+  });
+  const enabled = classId != null;
+  const { data: summary, isLoading } = trpc.gradebook.monthlySummary.useQuery(
+    { classId: classId ?? 0, term, subject, monthKey },
+    { enabled: enabled && printOpen },
+  );
+  const yearLabel = monthKey.startsWith("0") || monthKey.split("-")[1] === "10" || monthKey.split("-")[1] === "11" || monthKey.split("-")[1] === "12"
+    ? `${Number(monthKey.split("-")[0])}/${Number(monthKey.split("-")[0]) + 1}`
+    : `${Number(monthKey.split("-")[0]) - 1}/${monthKey.split("-")[0]}`;
+  const buildPrintHtml = (): string => {
+    const rows = (summary ?? []).map((row, i) => `
+<tr><td>${i + 1}</td><td class="name">${row.studentName}</td>
+<td>${row.attendanceTotal != null ? row.attendanceTotal : ""}</td><td>${row.activityTotal != null ? row.activityTotal : ""}</td>
+<td>${row.quizTotal != null ? row.quizTotal : ""}</td><td>${row.continuousTotal != null ? row.continuousTotal : ""}</td><td>${row.notes ?? ""}</td></tr>`).join("");
+    return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>الاستيفائي الشهري — ${className} — ${subject}</title>
+<style>
+@page { size: A4 portrait; margin: 20mm 16mm; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Amiri", serif; color: #111; background: #fff; }
+.doc { padding: 6mm 0; }
+.center { text-align: center; }
+.small { font-size: 10.5pt; }
+.hdr { border-bottom: 2px solid #111; padding-bottom: 3mm; margin-bottom: 4mm; }
+.hdr tr td { vertical-align: top; width: 33%; }
+table.sheet { width: 100%; border-collapse: collapse; margin-top: 4mm; }
+table.sheet th, table.sheet td { border: 1px solid #222; padding: 2.2mm 2mm; font-size: 10.5pt; text-align: center; }
+table.sheet th { background: #f0f0f0; }
+td.name { text-align: right; }
+.sig { margin-top: 14mm; display: flex; justify-content: space-between; }
+</style></head><body><div class="doc">
+<div class="hdr"><table class="small"><tr>
+<td><div>الجمهورية الجزائرية الديمقراطية الشعبية</div><div>وزارة التربية الوطنية</div></td>
+<td class="center"><div class="small" style="font-weight:bold;">الاستيفائي الشهري للتقويم المستمر</div><div>${className} — ${subject}</div><div>${MONTH_KEYS.find((m) => m.key === monthKey.split("-")[1])?.label} ${yearLabel}</div></td>
+<td class="center"><div>عدد التلاميذ: ${(summary ?? []).length}</div></td>
+</tr></table></div>
+<table class="sheet"><thead><tr>
+<th>الترتيب</th><th>الاسم واللقب</th><th>الانضباط والمواظبة<br>(مجموع الشهر)</th><th>إنجاز الأنشطة<br>(مجموع الشهر)</th><th>الفروض<br>(مجموع الشهر)</th><th>التقويم المستمر<br>/20</th><th>ملاحظات</th>
+</tr></thead><tbody>${rows}
+</tbody></table>
+<div class="sig"><div class="small">إمضاء الأستاذ(ة)</div><div class="small">إمضاء مدير(ة) المؤسسة</div></div>
+</div></body></html>`;
+  };
+  const printFromFrame = (iframe: HTMLIFrameElement | null) => {
+    const win = iframe?.contentWindow;
+    if (!win) return;
+    setTimeout(() => {
+      try {
+        win.focus();
+        win.print();
+      } catch {
+        /* ignore */
+      }
+    }, 600);
+  };
+  return (
+    <>
+      <Button variant="outline" disabled={!enabled} onClick={() => setPrintOpen(true)}>
+        <CalendarClock className="ml-2 size-4" />
+        الاستيفائي الشهري
+      </Button>
+      <Dialog open={printOpen} onOpenChange={setPrintOpen}>
+        <DialogContent className="max-w-3xl w-[95vw] max-h-[90vh] overflow-hidden p-0 flex flex-col">
+          <DialogHeader className="px-5 pt-4 pb-2">
+            <DialogTitle className="text-right">{`الاستيفائي الشهري — ${className} · ${subject}`}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 px-5 pb-4 flex flex-col gap-3 overflow-hidden">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">اختر الشهر:</span>
+              <Select value={monthKey} onValueChange={setMonthKey}>
+                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTH_KEYS.map((m) => (
+                    <SelectItem key={m.key} value={monthKey.split("-")[0] + "-" + m.key}>{m.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {isLoading && <Spinner className="size-4" />}
+            </div>
+            {!isLoading && summary && summary.length > 0 ? (
+              <>
+                <div className="text-xs text-muted-foreground">
+                  يجمع هذا الملخص خانات الانضباط والأنشطة والفروض المسجلة خلال الشهر، ويعتمد آخر إدخال للتقويم المستمر.
+                </div>
+                <iframe
+                  title="معاينة الاستيفائي الشهري"
+                  srcDoc={buildPrintHtml()}
+                  className="w-full flex-1 min-h-[50vh] border rounded bg-white"
+                  onLoad={(e) => printFromFrame(e.currentTarget)}
+                />
+                <Button onClick={() => printFromFrame(document.querySelector<HTMLIFrameElement>('iframe[title="معاينة الاستيفائي الشهري"]'))}>
+                  <Printer className="ml-2 size-4" />
+                  طباعة الآن (Ctrl+P)
+                </Button>
+              </>
+            ) : !isLoading ? (
+              <div className="rounded-lg border border-dashed bg-card p-8 text-center">
+                <CalendarClock className="mx-auto mb-3 size-8 text-muted-foreground/60" />
+                <p className="text-sm text-muted-foreground">
+                  لا توجد نقاط مسجلة لهذا الشهر في دفتر التنقيط. سجّل نقاط التلاميذ أولًا ثم افتح الاستيفائي.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, Upload, BarChart3, TrendingDown, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2, Printer } from "lucide-react";
+import { Users, Upload, BarChart3, TrendingDown, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2, Printer, Download } from "lucide-react";
 import { toast } from "sonner";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
 
@@ -33,6 +33,7 @@ export default function StudentResults() {
   const [mappings, setMappings] = useState<any[]>([]);
   const [studentFilter, setStudentFilter] = useState("");
   const [printOpen, setPrintOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const { data: profile } = trpc.profile.get.useQuery(undefined, { staleTime: 60_000 });
   const { data: classes } = trpc.classes.list.useQuery();
@@ -111,6 +112,35 @@ export default function StudentResults() {
       toast.success("تم الحذف");
     },
   });
+
+  const exportBackup = trpc.studentResults.exportBackup.useQuery(
+    { classId: selectedClassId ?? undefined },
+    { enabled: false },
+  );
+  const triggerExport = async () => {
+    try {
+      setExporting(true);
+      const result = await exportBackup.refetch({ cancelRefetch: false });
+      const data = result.data;
+      if (!data) {
+        toast.warning("لا توجد نقاط لهذا القسم لتصديرها.");
+        return;
+      }
+      // البيانات ثنائية (ArrayBuffer) من الـ query — نحولها لملف وننزّله
+      const blob = new Blob([new Uint8Array(data.buffer as unknown as number[])], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("حُمّلت نسخة Excel الاحتياطية");
+    } catch (err: any) {
+      toast.error(err?.message ?? "تعذّر تصدير النسخة الاحتياطية");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleFile = async (file: File) => {
     if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
@@ -223,6 +253,10 @@ export default function StudentResults() {
             </div>
             <Button variant="outline" size="sm" onClick={openImport}>
               <Upload className="w-4 h-4 ml-2" />رفع ملف جديد
+            </Button>
+            <Button variant="outline" size="sm" onClick={triggerExport} disabled={exporting || !(filteredGroups as any[]).length}>
+              {exporting ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Download className="w-4 h-4 ml-2" />}
+              تنزيل نسخة Excel احتياطية
             </Button>
           </div>
 
@@ -410,11 +444,24 @@ export default function StudentResults() {
                             {analytics.weakCount === 0 ? (
                               <p className="text-sm text-muted-foreground py-2">لا يوجد تلاميذ تحت المعدل. أداء جيد للفوج.</p>
                             ) : (
-                              <ul className="space-y-1.5 max-h-64 overflow-y-auto">
+                              <ul className="space-y-3 max-h-[420px] overflow-y-auto">
                                 {analytics.weakStudents.map((w: any) => (
-                                  <li key={w.id} className="flex items-center justify-between text-sm border-b pb-1.5 last:border-0">
-                                    <span>{w.fullName} <span className="text-xs text-muted-foreground font-mono">({w.matricule})</span></span>
-                                    <span className="text-red-500 font-semibold">{w.computedAverage?.toFixed(2)}</span>
+                                  <li key={w.id} className="border-b pb-3 last:border-0">
+                                    <div className="flex items-center justify-between text-sm">
+                                      <span>
+                                        {w.fullName} <span className="text-xs text-muted-foreground font-mono">({w.matricule})</span>
+                                      </span>
+                                      <span className="text-red-500 font-semibold">{w.computedAverage?.toFixed(2)}</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      {w.weaknessType === "exam" && "تعثر مركّز في الاختبار"}
+                                      {w.weaknessType === "continuous" && "تعثر في التقويم المستمر"}
+                                      {w.weaknessType === "general" && "تعثر عام عبر المحصلات"}
+                                    </p>
+                                    <div className="mt-1.5 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-2 text-xs leading-relaxed text-right">
+                                      <span className="font-semibold text-amber-800 dark:text-amber-300 ml-1">الإجراء العلاجي المقترح:</span>
+                                      {w.recommendation}
+                                    </div>
                                   </li>
                                 ))}
                               </ul>
