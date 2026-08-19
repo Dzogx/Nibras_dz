@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, bigint, boolean, double } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, json, bigint, boolean, double, decimal, date } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -399,3 +399,33 @@ export const curriculumSearchIndex = mysqlTable("curriculumSearchIndex", {
 
 export type CurriculumSearchIndex = typeof curriculumSearchIndex.$inferSelect;
 export type InsertCurriculumSearchIndex = typeof curriculumSearchIndex.$inferInsert;
+
+/**
+ * دفتر التنقيط (Gradebook) — التقويم المستمر والفرض والتقويم التحصيلي
+ * لكل تلميذ في كل فصل وفصل دراسي، مع مصدر النقطة (يدوي / استيراد رقمنة / استوديو التقويم).
+ */
+export const gradebookEntries = mysqlTable("gradebookEntries", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  classId: int("classId").notNull(),
+  studentMatricule: varchar("studentMatricule", { length: 64 }),
+  studentName: varchar("studentName", { length: 255 }).notNull(),
+  term: int("term").notNull().default(0),
+  subject: varchar("subject", { length: 100 }).notNull().default("التاريخ والجغرافيا"),
+  dateScored: date("dateScored"),
+  // معايير التقويم المستمر وفق الوثيقة الوزارية 2025-2026 (من /20)
+  attendanceScore: double("attendanceScore"), // الانضباط والمواظبة /10 (الحضور، السلوك، الأدوات)
+  activityScore: double("activityScore"), // إنجاز الأنشطة /10 (استجوابات، واجبات، مشاريع)
+  // التقويم المستمر /20 = انضباط/10 + أنشطة/10 (تُحسب تلقائيًا في الواجهة)
+  continuousScore: double("continuousScore"),
+  quizScore: double("quizScore"), // الفرض الكتابي /20
+  assessmentScore: double("assessmentScore"), // الاختبار الفصلي /20
+  assessmentResultId: int("assessmentResultId"),
+  source: varchar("source", { length: 50 }).notNull().default("manual"),
+  notes: text("notes"), // التقييم النوعي لدفتر المراسلة
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type GradebookEntry = typeof gradebookEntries.$inferSelect;
+export type InsertGradebookEntry = typeof gradebookEntries.$inferInsert;

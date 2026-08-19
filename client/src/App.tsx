@@ -16,6 +16,7 @@ import ContentLibrary from "./pages/ContentLibrary";
 import Inspector from "./pages/Inspector";
 import Results from "./pages/Results";
 import StudentResults from "./pages/StudentResults";
+import Gradebook from "./pages/Gradebook";
 import Profile from "./pages/Profile";
 import LessonDetail from "./pages/LessonDetail";
 import AnnualPlanDetail from "./pages/AnnualPlanDetail";
@@ -81,6 +82,9 @@ function Router() {
       </Route>
       <Route path="/student-results">
         {() => <DashboardLayout><StudentResults /></DashboardLayout>}
+      </Route>
+      <Route path="/gradebook">
+        {() => <DashboardLayout><Gradebook /></DashboardLayout>}
       </Route>
       <Route path="/profile">
         {() => <DashboardLayout><Profile /></DashboardLayout>}

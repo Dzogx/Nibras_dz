@@ -49,6 +49,7 @@ const menuItems = [
   { icon: Library, label: "التقويم", path: "/assessment" },
   { icon: Library, label: "المكتبة", path: "/content-library" },
   { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
+  { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
 ];
 
 const mobileQuickActions = [
@@ -57,6 +58,7 @@ const mobileQuickActions = [
   { icon: FileText, label: "التخطيط", path: "/annual-plans" },
   { icon: Library, label: "المكتبة", path: "/content-library" },
   { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
+  { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

@@ -19,6 +19,8 @@ import {
   assessmentResults,
   studentGrades,
   InsertStudentGrade,
+  gradebookEntries,
+  InsertGradebookEntry,
   InsertAnnualPlanSection,
   InsertLearningSituation,
   InsertAssessmentResult,
@@ -857,6 +859,138 @@ export async function deleteStudentGrade(id: number, userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(studentGrades).where(and(eq(studentGrades.id, id), eq(studentGrades.userId, userId)));
+}
+
+// ─── Gradebook (دفتر التنقيط: التقويم المستمر / الفرض / التحصيلي) ─────────
+/**
+ * يدرج مجموعة إدخالات دفتر تنقيط (شبكة تلاميذ × معايير) بعد حراسة الملكية.
+ */
+export async function saveGradebookEntries(userId: number, entries: InsertGradebookEntry[]) {
+  const db = await getDb();
+  if (!db || entries.length === 0) return 0;
+  await db.insert(gradebookEntries).values(entries);
+  return entries.length;
+}
+
+/**
+ * يحدّث إدخالًا أو ينشئه إن لم يوجد (upsert عبر الطالب والمادة والفصل).
+ */
+export async function upsertGradebookEntry(userId: number, entry: Omit<InsertGradebookEntry, "classId" | "term" | "subject" | "studentName"> & { classId: number; term: number; subject: string; studentName: string }) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await db
+    .select({ id: gradebookEntries.id })
+    .from(gradebookEntries)
+    .where(
+      and(
+        eq(gradebookEntries.userId, userId),
+        eq(gradebookEntries.classId, entry.classId),
+        eq(gradebookEntries.term, entry.term),
+        eq(gradebookEntries.subject, entry.subject),
+        eq(gradebookEntries.studentName, entry.studentName),
+      ),
+    )
+    .limit(1);
+  if (existing.length > 0) {
+    const { id: _id, createdAt: _c, updatedAt: _u, ...payload } = entry as Record<string, unknown> & { id?: number };
+    await db.update(gradebookEntries).set(payload).where(eq(gradebookEntries.id, existing[0].id));
+    return { id: existing[0].id };
+  }
+  await db.insert(gradebookEntries).values(entry);
+  const created = await db.select({ id: gradebookEntries.id }).from(gradebookEntries).where(and(eq(gradebookEntries.userId, userId), eq(gradebookEntries.classId, entry.classId), eq(gradebookEntries.term, entry.term), eq(gradebookEntries.subject, entry.subject), eq(gradebookEntries.studentName, entry.studentName))).limit(1);
+  return created[0] ?? null;
+}
+
+/**
+ * يحدّث إدخالات دفتر تنقيط متعددة بدفع واحد.
+ */
+export async function updateGradebookEntries(userId: number, entries: { id: number; data: Partial<InsertGradebookEntry> }[]) {
+  const db = await getDb();
+  if (!db || entries.length === 0) return 0;
+  for (const { id, data } of entries) {
+    await db.update(gradebookEntries).set(data).where(and(eq(gradebookEntries.id, id), eq(gradebookEntries.userId, userId)));
+  }
+  return entries.length;
+}
+
+/**
+ * جميع إدخالات دفتر التنقيط لقسم معيّن (فصل دراسي ومادة)، مع إجمالي التقويم المستمر
+ * المحسوب من معايير الانضباط والمشاركة والواجبات والنشاطات.
+ */
+export async function getGradebookByClass(userId: number, classId: number, term: number, subject: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db
+    .select()
+    .from(gradebookEntries)
+    .where(
+      and(
+        eq(gradebookEntries.userId, userId),
+        eq(gradebookEntries.classId, classId),
+        eq(gradebookEntries.term, term),
+        eq(gradebookEntries.subject, subject),
+      ),
+    )
+    .orderBy(asc(gradebookEntries.studentName));
+  return rows;
+}
+
+/**
+ * الفصول الدراسية والمواد الموجودة في دفتر التنقيط للأستاذ (للمرشيحات).
+ */
+export async function getGradebookFilters(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return await db
+    .select({
+      classId: gradebookEntries.classId,
+      subject: gradebookEntries.subject,
+      term: gradebookEntries.term,
+      count: count(),
+    })
+    .from(gradebookEntries)
+    .where(eq(gradebookEntries.userId, userId))
+    .groupBy(gradebookEntries.classId, sql`${gradebookEntries.subject}`, gradebookEntries.term);
+}
+
+/**
+ * حساب التقويم المستمر /20 وفق الوثيقة الوزارية 2025-2026:
+ * انضباط ومواظبة (/10) + إنجاز الأنشطة (/10). إذا كان continuousScore موجودًا يدويًا يُستخدم أولًا.
+ */
+export function sumContinuousScore(
+  attendance: number | null | string,
+  activities: number | null | string,
+  manual: number | null | string,
+): number | null {
+  if (manual != null && manual !== "") {
+    const m = Number(manual);
+    if (!Number.isNaN(m)) return Math.round(m * 100) / 100;
+  }
+  const attendanceV = attendance == null || attendance === "" ? null : Number(attendance);
+  const activitiesV = activities == null || activities === "" ? null : Number(activities);
+  const parts = [attendanceV, activitiesV].filter((v): v is number => v != null && !Number.isNaN(v));
+  if (parts.length === 0) return null;
+  return Math.round((parts.reduce((a, b) => a + b, 0)) * 100) / 100;
+}
+
+/**
+ * حذف إدخالات قسم/مادة/فصل دراسي كامل مع حماية الملكية.
+ */
+export async function deleteGradebookForClass(userId: number, classId: number, subject: string, term: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .delete(gradebookEntries)
+    .where(and(eq(gradebookEntries.userId, userId), eq(gradebookEntries.classId, classId), eq(gradebookEntries.subject, subject), eq(gradebookEntries.term, term)));
+}
+
+/**
+ * حذف إدخال واحد مع حماية الملكية.
+ */
+export async function deleteGradebookEntry(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(gradebookEntries).where(and(eq(gradebookEntries.id, id), eq(gradebookEntries.userId, userId)));
 }
 
 // ─── Excel Import (استيراد الأقسام والجدول) ───────────────────

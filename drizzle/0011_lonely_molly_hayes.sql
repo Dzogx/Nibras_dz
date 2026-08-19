@@ -1,0 +1,23 @@
+CREATE TABLE `gradebookEntries` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`classId` int NOT NULL,
+	`studentMatricule` varchar(64),
+	`studentName` varchar(255) NOT NULL,
+	`term` int NOT NULL DEFAULT 0,
+	`subject` varchar(100) NOT NULL DEFAULT 'التاريخ والجغرافيا',
+	`dateScored` date,
+	`disciplineScore` decimal(5,2),
+	`participationScore` decimal(5,2),
+	`homeworkScore` decimal(5,2),
+	`activitiesScore` decimal(5,2),
+	`continuousScore` decimal(5,2),
+	`quizScore` decimal(5,2),
+	`assessmentScore` decimal(5,2),
+	`assessmentResultId` int,
+	`source` varchar(50) NOT NULL DEFAULT 'manual',
+	`notes` text,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()),
+	CONSTRAINT `gradebookEntries_id` PRIMARY KEY(`id`)
+);

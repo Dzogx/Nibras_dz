@@ -14,6 +14,8 @@ import {
   parseRakmnaExcelWorkbook, computeTermAverage, termAverageEvaluation,
   getStudentGradesByClass, getStudentGradesFilters, saveStudentGradesRows, deleteStudentGradesForClass, deleteStudentGrade,
   recomputeClassGradesEvaluation, getStudentGradesAnalytics,
+  getGradebookByClass, getGradebookFilters, upsertGradebookEntry,
+  sumContinuousScore, deleteGradebookForClass, deleteGradebookEntry,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
   createCompensatorySession, getCompensatorySessionsBySituation, getUpcomingCompensatorySessions, updateCompensatorySessionStatus,
   getAnnualPlans, getAnnualPlanById, createAnnualPlan, updateAnnualPlan, deleteAnnualPlan, copyReferencePlanToClass,
@@ -519,6 +521,26 @@ export const appRouter = router({
           position: index + 1,
         }));
         await saveStudentGradesRows(graded);
+        // صب نفس نقاط الرقمنة مباشرة في دفتر التنقيط (انضباط/مواظبة = نصف معدل النشاطات، أنشطة = نصف معدل النشاطات تقريبًا وفق الوثيقة)
+        for (const student of rows) {
+          const activitySplit = student.activityScore != null ? student.activityScore / 2 : null;
+          await upsertGradebookEntry(ctx.user.id, {
+            userId: ctx.user.id,
+            classId: mapping.classId,
+            term: mapping.term,
+            subject: mapping.subject,
+            studentName: student.fullName,
+            studentMatricule: student.matricule,
+            attendanceScore: activitySplit,
+            activityScore: activitySplit,
+            continuousScore: student.activityScore,
+            quizScore: student.examQuizScore,
+            assessmentScore: student.finalExamScore,
+            assessmentResultId: null,
+            source: "rakmna",
+            notes: "نُقلت من وثيقة حجز النقاط الرسمية",
+          });
+        }
         accepted.push(mapping.sheetFogCode);
       }
       return { saved: accepted };
@@ -566,6 +588,83 @@ export const appRouter = router({
       return await getStudentGradesAnalytics(ctx.user.id, input.classId, input.subject ?? null, input.term ?? null);
     }),
   }),
+
+  // ─── Gradebook (دفتر التنقيط) ────────────────────────────────
+  gradebook: router({
+    list: protectedProcedure.input(z.object({
+      classId: z.number().int().positive().optional(),
+      term: z.number().int().min(1).max(4).optional(),
+      subject: z.string().optional(),
+    })).query(async ({ ctx, input }) => {
+      if (input.classId) {
+        const classes = await getClasses(ctx.user.id);
+        const owned = classes.find((item) => item.id === input.classId);
+        if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+        if (input.term == null || !input.subject) {
+          return await getGradebookFilters(ctx.user.id);
+        }
+        return await getGradebookByClass(ctx.user.id, input.classId, input.term, input.subject);
+      }
+      return await getGradebookFilters(ctx.user.id);
+    }),
+    /** إدخال/تحديث شبكة إدخالات كاملة: لكل تلميذ معيار أو أكثر. */
+    saveEntries: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+      term: z.number().int().min(1).max(4),
+      subject: z.string().min(2).max(100),
+      source: z.enum(["manual", "rakmna", "assessment"]).default("manual"),
+      entries: z.array(z.object({
+        studentName: z.string().min(2).max(255),
+        studentMatricule: z.string().max(64).nullable().optional(),
+        attendanceScore: z.number().min(0).max(10).nullable(),
+        activityScore: z.number().min(0).max(10).nullable(),
+        continuousScore: z.number().min(0).max(20).nullable(),
+        quizScore: z.number().min(0).max(20).nullable(),
+        assessmentScore: z.number().min(0).max(20).nullable(),
+        assessmentResultId: z.number().int().positive().nullable().optional(),
+        notes: z.string().max(500).nullable().optional(),
+      })).min(1).max(120),
+    })).mutation(async ({ ctx, input }) => {
+      const classes = await getClasses(ctx.user.id);
+      const owned = classes.find((item) => item.id === input.classId);
+      if (!owned) throw new TRPCError({ code: "FORBIDDEN", message: "القسم لا يتبع لمساحتك." });
+      let saved = 0;
+      for (const entry of input.entries) {
+        const continuous = sumContinuousScore(entry.attendanceScore, entry.activityScore, entry.continuousScore);
+        await upsertGradebookEntry(ctx.user.id, {
+          userId: ctx.user.id,
+          classId: input.classId,
+          term: input.term,
+          subject: input.subject,
+          studentName: entry.studentName,
+          studentMatricule: entry.studentMatricule ?? null,
+          attendanceScore: entry.attendanceScore,
+          activityScore: entry.activityScore,
+          continuousScore: continuous,
+          quizScore: entry.quizScore,
+          assessmentScore: entry.assessmentScore,
+          assessmentResultId: entry.assessmentResultId ?? null,
+          source: input.source,
+          notes: entry.notes ?? null,
+        });
+        saved += 1;
+      }
+      return { saved };
+    }),
+    deleteGroup: protectedProcedure.input(z.object({
+      classId: z.number().int().positive(),
+      subject: z.string().min(2).max(100),
+      term: z.number().int().min(1).max(4),
+    })).mutation(async ({ ctx, input }) => {
+      await deleteGradebookForClass(ctx.user.id, input.classId, input.subject, input.term);
+      return { success: true };
+    }),
+    deleteEntry: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await deleteGradebookEntry(input.id, ctx.user.id);
+      return { success: true };
+    }),
+  }),
+
   // ─── Season Readiness ───────────────────────────────────────
   seasonReadiness: router({
     get: protectedProcedure.input(z.object({

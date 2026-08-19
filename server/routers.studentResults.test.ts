@@ -10,6 +10,7 @@ const mockDb = vi.hoisted(() => ({
   getStudentGradesByClass: vi.fn(),
   getStudentGradesFilters: vi.fn(),
   getStudentGradesAnalytics: vi.fn(),
+  upsertGradebookEntry: vi.fn(),
 }));
 
 vi.mock("./db", async (importOriginal) => {
@@ -77,6 +78,7 @@ beforeEach(() => {
   }));
   mockDb.saveStudentGradesRows.mockImplementation(async () => undefined);
   mockDb.deleteStudentGradesForClass.mockImplementation(async () => undefined);
+  mockDb.upsertGradebookEntry.mockImplementation(async () => undefined);
   mockDb.getStudentGradesByClass.mockImplementation(async () => []);
   mockDb.getStudentGradesFilters.mockImplementation(async () => []);
   mockDb.getStudentGradesAnalytics.mockImplementation(async () => null);
@@ -129,6 +131,9 @@ describe("studentResults router", () => {
     const result = await caller.studentResults.saveImport({ mappings: [mapping] });
     expect(result.saved).toContain("2200001");
     expect(mockDb.saveStudentGradesRows).toHaveBeenCalledTimes(1);
+    // نقاط الرقمنة تُصب أيضًا مباشرة في دفتر التنقيط (مصدر rakmna)
+    expect(mockDb.upsertGradebookEntry).toHaveBeenCalledTimes(1);
+    expect((mockDb.upsertGradebookEntry.mock.calls[0][1] as any).source).toBe("rakmna");
     const gradedRows = mockDb.saveStudentGradesRows.mock.calls[0][0] as any[];
     // المعادلة الرسمية: (نشاط + فرض + اختبار×3) / 5 = (16 + 14 + 15×3) / 5 = 15.0
     expect(gradedRows[0].computedAverage).toBeCloseTo(15.0, 1);
@@ -156,6 +161,10 @@ describe("studentResults router", () => {
       ],
     });
     expect(mockDb.deleteStudentGradesForClass).toHaveBeenCalledWith(1, 7, "التاريخ", 3);
+    expect(mockDb.saveStudentGradesRows).toHaveBeenCalledTimes(1);
+    // الانضباط/الأنشطة = نصف نقطة النشاطات = 9
+    expect(mockDb.upsertGradebookEntry).toHaveBeenCalledTimes(1);
+    expect((mockDb.upsertGradebookEntry.mock.calls[0][1] as any).attendanceScore).toBe(9);
   });
 
   it("list يرجع الترشيحات بدون قسم والفلاتر مع قسم ويحمي الملكية", async () => {
