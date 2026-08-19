@@ -43,7 +43,7 @@ export default function Curriculum() {
     search: search || undefined,
     subject: subject !== "all" ? subject : undefined,
     gradeLevel: gradeLevel !== "all" ? gradeLevel : undefined,
-    type: type || undefined,
+    type: type !== "all" ? type : undefined,
   });
 
   const createMutation = trpc.curriculum.create.useMutation({
