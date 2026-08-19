@@ -111,7 +111,12 @@ export default function Dashboard() {
   const { data: situations } = trpc.situations.listPending.useQuery();
   const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery();
   const { data: profile } = trpc.profile.get.useQuery();
-  const academicYear = profile?.academicYear || "2025-2026";
+  const { data: activeYears } = trpc.academicYears.list.useQuery();
+  const resolvedYear = useMemo(
+    () => profile?.academicYear || (activeYears?.find((y: any) => y.isActive)?.year ?? "2026-2027"),
+    [profile, activeYears],
+  );
+  const academicYear = resolvedYear;
   const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery({ academicYear });
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery({ academicYear });
@@ -295,7 +300,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm bg-white/10 border border-white/15 px-3 py-1.5 rounded-lg backdrop-blur">
-              السنة الدراسية {profile?.academicYear || "2025-2026"}
+              السنة الدراسية {resolvedYear}
             </span>
           </div>
         </div>

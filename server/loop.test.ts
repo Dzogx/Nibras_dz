@@ -3,12 +3,22 @@ import { appRouter } from "./routers";
 
 // Mock the db module
 vi.mock("./db", () => ({
+  getActiveAcademicYear: vi.fn(() => Promise.resolve("2025-2026")),
   getClasses: vi.fn(() => Promise.resolve([
     { id: 1, name: "1AM1", gradeLevel: "السنة الأولى متوسط", subject: "التاريخ والجغرافيا", academicYear: "2025-2026", teacherId: "user-1" },
   ])),
-  getAnnualPlans: vi.fn(() => Promise.resolve([
-    { id: 1, classId: 1, title: "الخطة السنوية", subject: "التاريخ والجغرافيا", gradeLevel: "السنة الأولى متوسط", academicYear: "2025-2026", userId: "user-1" },
-  ])),
+  getAnnualPlans: vi.fn((userId: string, filters?: { academicYear?: string }) => {
+    // خطة القسم تحمل مادة جزئية (تاريخ فقط) بينما يستدعي العميل بالمادة الموسعة —
+    // يغطي هذا سيناريو المخططات الموزعة على مواد لكل قسم.
+    if (filters?.subject) {
+      return Promise.resolve([
+        { id: 1, classId: 1, title: "الخطة السنوية - التاريخ", subject: "التاريخ", gradeLevel: "السنة الأولى متوسط", academicYear: "2025-2026", userId },
+      ]);
+    }
+    return Promise.resolve([
+      { id: 1, classId: 1, title: "الخطة السنوية - التاريخ", subject: "التاريخ", gradeLevel: "السنة الأولى متوسط", academicYear: "2025-2026", userId },
+    ]);
+  }),
   getAnnualPlanById: vi.fn(() => Promise.resolve({ id: 1, userId: "user-1", isReference: false })),
   getAnnualPlanSections: vi.fn(() => Promise.resolve([
     { id: 1, annualPlanId: 1, sectionNumber: 1, title: "المقطع الأول", isCompleted: false, sectionOrder: 1 },
@@ -67,6 +77,15 @@ describe("Full Pedagogical Loop", () => {
     const sections = await caller.sections.list({ annualPlanId: 1 });
     expect(sections).toHaveLength(2);
     expect(sections[0].title).toBe("المقطع الأول");
+  });
+
+  it("should fall back to the class plan when the requested subject does not match the plan's subject", async () => {
+    // المخطط موزع على مواد (خطة التاريخ فقط) بينما يستدعي العميل بالمادة الموسعة
+    // (التاريخ والجغرافيا) — يجب ألا يفقد الأستاذ سياق إنجازاته.
+    const context = await caller.ai.getTeacherOSContext({ classId: 1, subject: "التاريخ والجغرافيا" });
+    expect(context.currentSection).toBeDefined();
+    expect(context.sectionProgress.completed).toBeGreaterThan(0);
+    expect(context.completedSituations.length).toBeGreaterThan(0);
   });
 
   it("should get Teacher OS context with current section and next situation", async () => {

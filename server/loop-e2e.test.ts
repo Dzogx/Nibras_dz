@@ -343,7 +343,7 @@ describe("Full Pedagogical Loop E2E", () => {
     expect(axis2?.avg).toBeCloseTo(6, 1);
     // Textual weak areas flow into remediation suggestions
     expect(analysis2.suggestions.some(s => s.includes("الوضعية الثانية نوع تحليل"))).toBe(true);
-    expect(analysis2.suggestions.some(s => s.includes("بناءً على ملاحظاتك"))).toBe(true);
+    expect(analysis2.suggestions.some(s => s.includes("معالجة نقاط الضعف الملاحظة ميدانيًا"))).toBe(true);
     // "الموارد" 14 > 10 must not appear in weak domains
     expect(analysis2.weakDomains).not.toContain("الموارد");
   });

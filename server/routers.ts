@@ -8,7 +8,7 @@ import { invokeLLM } from "./_core/llm";
 import {
   upsertUser, getUserByOpenId,
   getTeacherProfile, createTeacherProfile, updateTeacherProfile,
-  getAcademicYears,
+  getAcademicYears, getActiveAcademicYear,
   getCurriculumDocuments, getCurriculumDocumentById, createCurriculumDocument, updateCurriculumDocument, deleteCurriculumDocument, getCurriculumForTopic,
   getClasses, getClassById, createClass, updateClass, deleteClass,
   getWeeklyScheduleEntries, replaceWeeklyScheduleEntries, listScheduleSeasons,
@@ -33,6 +33,7 @@ import {
   COMPETENCY_CATEGORIES,
   getLessonSessionContext,
   AI_ROLE_PRINCIPLE,
+  ARABIC_QA_RULES,
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 import { buildSeasonReadiness } from "../shared/seasonReadiness";
@@ -40,9 +41,19 @@ import { buildAssessmentLatexDocument } from "./latex/assessmentTemplate";
 import { compileLatexToPdf, LatexCompilationError } from "./latex/compileLatex";
 
 /**
- * يتحقق من بنية استجابة مزود الذكاء الاصطناعي وقت التشغيل.
- * لا يكفي نوع TypeScript وحده لأن الاستجابة الخارجية قد تكون رسالة خطأ أو جسماً ناقصاً.
+ * تنظيف رموز LaTeX التي قد يُدسّها النموذج داخل المحتوى العربي (تظهر حرفياً
+ * في المعاينة والطباعة داخل مخرجات Markdown). نحوّلها إلى رموز Unicode مقروءة
+ * بدلاً من حذفها حفاظاً على المعنى (اتجاه/تسلسل بين العبارتين).
  */
+function sanitizeLatexSymbols(text: string): string {
+  return text
+    .replace(/\$\\leftarrow\$|\\leftarrow/g, "\u2190")
+    .replace(/\$\\rightarrow\$|\\rightarrow/g, "\u2192")
+    .replace(/\$\\Rightarrow\$|\\Rightarrow/g, "\u21D2")
+    .replace(/\$\\Leftarrow\$|\\Leftarrow/g, "\u21D0")
+    .replace(/\$\\cdot\$|\\cdot/g, "\u00B7");
+}
+
 function getLLMTextContent(response: unknown): string | undefined {
   if (!response || typeof response !== "object") return undefined;
 
@@ -56,14 +67,14 @@ function getLLMTextContent(response: unknown): string | undefined {
   if (!message || typeof message !== "object") return undefined;
 
   const content = (message as { content?: unknown }).content;
-  if (typeof content === "string" && content.trim().length > 0) return content;
+  if (typeof content === "string" && content.trim().length > 0) return sanitizeLatexSymbols(content);
   if (Array.isArray(content)) {
     const textParts = content
       .filter(part => part && typeof part === "object" && (part as { type?: string }).type === "text")
       .map(part => (part as { text?: string }).text)
       .filter(t => typeof t === "string")
       .join("");
-    if (textParts.trim().length > 0) return textParts;
+    if (textParts.trim().length > 0) return sanitizeLatexSymbols(textParts);
   }
   return undefined;
 }
@@ -1154,7 +1165,7 @@ ${AI_ROLE_PRINCIPLE}
 
 استند دائماً إلى المنهاج الرسمي الجزائري ولا تخترع معلومة منهاجية.${curriculumContext}
 
-كل مخرج مسودة قابلة للتعديل: الكفاءة والكفاءات والمقاطع من وثائق المنهاج فقط، وبقية الصياغة يراجعها الأستاذ قبل الاعتماد.`,
+كل مخرج مسودة قابلة للتعديل: الكفاءة والكفاءات والمقاطع من وثائق المنهاج فقط، وبقية الصياغة يراجعها الأستاذ قبل الاعتماد.${ARABIC_QA_RULES}`,
 
         activity: `أنت مساعد ذكي لتعليم الدراسات الاجتماعية في التعليم المتوسط الجزائري. أنشئ نشاط تعلم نشط.
 - الموضوع: ${canonicalTitle}
@@ -1197,7 +1208,8 @@ ${diffBlock}
 
 ${AI_ROLE_PRINCIPLE}
 
-ابنِ الوضعية في الأقسام التالية فقط: عنوان واضح، سياق قصير واقعي مناسب للمتعلمين، سند أو معطيات قابلة للاستعمال داخل القسم دون افتراض إنترنت أو طباعة كثيرة، تعليمة إدماجية واحدة دقيقة، مؤشرات إنجاز أو عناصر منتظرَة، ومعايير تقويم موجزة. اجعل المهمة تدعو إلى توظيف موارد الوضعية لا نسخها، وراعِ التدرج والوضوح والواقعية في قسم كبير. لا تكتب الكفاءة المستهدفة في وثيقة التلميذ، ولا تخترع معطيات منهاجية غير موجودة في المراجع.${curriculumContext}`,
+ابنِ الوضعية في الأقسام التالية فقط: عنوان واضح، سياق قصير واقعي مناسب للمتعلمين، سند أو معطيات قابلة للاستعمال داخل القسم دون افتراض إنترنت أو طباعة كثيرة، تعليمة إدماجية واحدة دقيقة، مؤشرات إنجاز أو عناصر منتظرَة، ومعايير تقويم موجزة. اجعل المهمة تدعو إلى توظيف موارد الوضعية لا نسخها، وراعِ التدرج والوضوح والواقعية في قسم كبير. لا تكتب الكفاءة المستهدفة في وثيقة التلميذ، ولا تخترع معطيات منهاجية غير موجودة في المراجع.${ARABIC_QA_RULES}
+${curriculumContext}`,
       };
 
       const response = await invokeLLM({
@@ -1579,7 +1591,10 @@ ${rulesContext}
       subject: z.string().optional(),
       academicYear: z.string().min(4).max(16).optional(),
     })).query(async ({ ctx, input }) => {
-      const planFilters = input.academicYear ? { academicYear: input.academicYear } : undefined;
+      // عند عدم تحديد السنة صراحة، نشتقها من الموسم المفعّل في النظام حتى لو كان ملف الأستاذ
+      // غير محدّث بها — فلا يعتمد سياق الأستاذ على إدخال يدوي متكرر.
+      const resolvedYear = input.academicYear || (await getActiveAcademicYear());
+      const planFilters = resolvedYear ? { academicYear: resolvedYear } : undefined;
       // Auto-import: get completed lessons from Teacher OS
       const lessons = await getLessons(ctx.user.id, {
         classId: input.classId,
@@ -1632,12 +1647,15 @@ ${rulesContext}
       try {
         if (input.classId) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          const classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          let classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          // عند تعذر مطابقة المادة صراحة (المخطط موزع على عدة خطط حسب المادة)، نستخدم أي
+          // خطة للقسم حتى لا يفقد الأستاذ سياق إنجازاته — فلا يضطر لإعادة إدخال المادة.
+          if (!classPlan) classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
-            const sections = await getAnnualPlanSections(classPlan.id);
+            const sections = (await getAnnualPlanSections(classPlan.id)) ?? [];
             const sectionProgressList: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
             for (const section of sections) {
-              const situations = await getLearningSituations(section.id);
+              const situations = (await getLearningSituations(section.id)) ?? [];
               const completed = situations.filter(s => s.isCompleted);
               const completedCount = completed.length;
               totalSituations += situations.length;
@@ -1694,7 +1712,8 @@ ${rulesContext}
       try {
         if (input.classId && totalSituations > 0) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          const classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          let classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          if (!classPlan) classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
             // لا نربط متابعة الأستاذ بسنة جامدة: بداية التدريس تُشتق من موسم الخطة نفسه.
             // المرجع الحالي للتدرج المعتمد هو أول اثنين من أكتوبر، مع الإبقاء على المؤشر
@@ -1737,11 +1756,12 @@ ${rulesContext}
       try {
         if (input.classId) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          const classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          let classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          if (!classPlan) classPlan = plans.find(p => p.classId === input.classId);
           if (classPlan) {
-            const sections = await getAnnualPlanSections(classPlan.id);
+            const sections = (await getAnnualPlanSections(classPlan.id)) ?? [];
             for (const section of sections) {
-              const situations = await getLearningSituations(section.id);
+              const situations = (await getLearningSituations(section.id)) ?? [];
               for (const s of situations) {
                 if (s.isCompleted) {
                   completedSituationsList.push({
@@ -1758,7 +1778,7 @@ ${rulesContext}
             }
           }
         }
-      } catch (e) { /* no sections configured */ }
+      } catch (e) { /* no sections configured */ console.error("[nibras] completedSituationsList failed:", e); }
       // تعرض بطاقة العلاج أحدث وضعية منجزة أولاً حتى يكون عنوانها الافتراضي
       // هو العنوان الرسمي الأقرب للتقويم الذي حلّله الأستاذ.
       completedSituationsList.sort((a, b) =>
@@ -2030,12 +2050,25 @@ ${rulesContext}
         if (avg < 10 && !weakDomains.includes(label)) weakDomains.push(label);
       });
 
-      // Capture the weakest labeled domains (with averages) for pedagogical reporting
+      // Capture the weakest labeled domains (with averages) for pedagogical reporting.
+      // When a subject-level domain (التاريخ/الجغرافيا) has no fine-grained domainScores,
+      // fall back to the recorded subject average so the badge never shows "0 نقطة".
       const weakDomainDetails = weakDomains
         .map(label => {
           const scores = domainAverages[label];
-          if (!scores || scores.length === 0) return { label, avg: 0 };
-          return { label, avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100) / 100 };
+          if (scores && scores.length > 0) {
+            return { label, avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length * 100) / 100 };
+          }
+          const subjectAvg =
+            label === "التاريخ"
+              ? results.reduce((s, r) => s + (r.historyAverage ?? 0), 0) / results.length
+              : label === "الجغرافيا"
+                ? results.reduce((s, r) => s + (r.geographyAverage ?? 0), 0) / results.length
+                : undefined;
+          if (subjectAvg !== undefined) {
+            return { label, avg: Math.round(subjectAvg * 100) / 100 };
+          }
+          return { label, avg: 0 };
         })
         .sort((a, b) => a.avg - b.avg);
 
@@ -2054,7 +2087,7 @@ ${rulesContext}
         .map(r => r.weakAreas as string | null)
         .filter((t): t is string => typeof t === 'string' && t.trim().length > 0);
       if (weakAreasTexts.length > 0) {
-        suggestions.push("بناءً على ملاحظاتك المسجلة: " + weakAreasTexts.join("؛ "));
+        suggestions.push("معالجة نقاط الضعف الملاحظة ميدانيًا: " + weakAreasTexts.join("؛ ") + ".");
       }
 
       return {

@@ -125,6 +125,17 @@ export async function getAcademicYears() {
   return await db.select().from(academicYears).orderBy(desc(academicYears.year));
 }
 
+/** يعيد السنة الدراسية المفعّلة (isActive=true) إن وجدت، وأحدث سنة مُعرَّفة في غيابها. */
+export async function getActiveAcademicYear(): Promise<string | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const active = await db.select().from(academicYears).where(eq(academicYears.isActive, true)).limit(1);
+  if (active.length > 0) return active[0].year;
+  const latest = await db.select().from(academicYears).orderBy(desc(academicYears.year)).limit(1);
+  if (latest.length > 0) return latest[0].year;
+  return undefined;
+}
+
 // ─── Curriculum Documents ─────────────────────────────────────
 export async function getCurriculumDocuments(filters: { userId?: number; subject?: string; gradeLevel?: string; type?: string; search?: string }) {
   const db = await getDb();

@@ -66,6 +66,21 @@ describe("buildAssessmentLatexDocument", () => {
     expect(latex).toContain("\\textcolor{NibrasInk}{تقويم تحصيلي — المجموع: 20 نقطة}");
   });
 
+  it("يحوّل مستويات العناوين الأربعة (####) والخطوط الفاصلة والاقتباس من المحتوى المولّد", () => {
+    const latex = buildAssessmentLatexDocument({
+      ...baseInput,
+      content: "### أولاً: التاريخ (10 نقاط)\n\n#### الجزء الأول: (8 نقاط)\n\n──────────────────────────\n\n> نص السند المقتبس\n\n**السؤال الأول:**",
+    });
+
+    expect(latex).toContain("\\subsection*{أولاً: التاريخ (10 نقاط)}");
+    expect(latex).toContain("\\subsubsection*{الجزء الأول: (8 نقاط)}");
+    expect(latex).toContain("\\hrule");
+    expect(latex).toContain("\\begin{quote}");
+    expect(latex).toContain("\\textbf{السؤال الأول:}");
+    expect(latex).not.toContain("####");
+    expect(latex).not.toContain("──────────────");
+  });
+
   it("لا يتأثر بإدخال حقول إضافية مجهولة عند الاستدعاء المباشر (strict typing)", () => {
     // لا تُدرج أرقام إصدار أو روابط حتى لو مُرّرت كحقول
     const latex = buildAssessmentLatexDocument({ ...baseInput, printTheme: "mono" });

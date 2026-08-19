@@ -68,10 +68,21 @@ function markdownToLatex(content: string): string {
       continue;
     }
 
-    const heading = line.match(/^(#{1,3})\s+(.+)$/);
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
     if (heading) {
-      const command = heading[1].length === 1 ? "section" : "subsection";
+      const command = heading[1].length === 1 ? "section" : heading[1].length <= 3 ? "subsection" : "subsubsection";
       blocks.push(`\\${command}*{${formatInline(heading[2])}}`);
+      continue;
+    }
+
+    if (/^\s*[-━─═─]+\s*$/.test(line) && line.length >= 3) {
+      blocks.push("\\vspace{0.3em}\\hrule\\vspace{0.3em}");
+      continue;
+    }
+
+    const quote = line.match(/^>\s*(.+)$/);
+    if (quote) {
+      blocks.push(`\\begin{quote} ${formatInline(quote[1])} \\end{quote}`);
       continue;
     }
 
@@ -81,7 +92,7 @@ function markdownToLatex(content: string): string {
       continue;
     }
 
-    const bullet = line.match(/^[-*•]\s+(.+)$/);
+    const bullet = line.match(/^[-*•]\s+([^─].*)$/);
     if (bullet) {
       blocks.push(`\\noindent\\textbullet\\quad ${formatInline(bullet[1])}\\\\`);
       continue;

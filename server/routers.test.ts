@@ -8,6 +8,7 @@ vi.mock("./db", () => ({
   createTeacherProfile: vi.fn(),
   updateTeacherProfile: vi.fn(),
   getAcademicYears: vi.fn(),
+  getActiveAcademicYear: vi.fn(),
   getCurriculumDocuments: vi.fn(),
   getCurriculumDocumentById: vi.fn(),
   createCurriculumDocument: vi.fn(),
@@ -1628,5 +1629,20 @@ describe("generateSerialNumber", () => {
     } finally {
       db.generateSerialNumber = original;
     }
+  });
+});
+
+describe("academicYears.list fallback behavior", () => {
+  it("should return the active academic year from getAcademicYears", async () => {
+    const years = [
+      { year: "2025-2026", isActive: false },
+      { year: "2026-2027", isActive: true },
+    ];
+    (db.getAcademicYears as ReturnType<typeof vi.fn>).mockResolvedValue(years);
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.academicYears.list();
+    const active = (result as any[]).find((y) => y.isActive);
+    expect(active?.year).toBe("2026-2027");
+    expect(db.getAcademicYears).toHaveBeenCalled();
   });
 });

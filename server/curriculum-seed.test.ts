@@ -20,7 +20,7 @@ describe("Curriculum Seeding Data Integrity", () => {
   it("should have 12 annual plans (one per level/subject combination)", async () => {
     const db = await getDb();
     const [result] = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM annualPlans WHERE title LIKE 'المخطط السنوي 2022/2023%'`
+      sql`SELECT COUNT(*) as cnt FROM annualPlans WHERE isReference = 1 AND title LIKE 'المخطط السنوي 2022/2023%'`
     );
     const count = (result as any[])[0].cnt;
     expect(parseInt(count)).toBe(12);
@@ -75,7 +75,7 @@ describe("Curriculum Seeding Data Integrity", () => {
   it("should have the 4 standalone geography plans (official 2022 Geo PDFs)", async () => {
     const db = await getDb();
     const [result] = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM annualPlans WHERE subject = 'الجغرافيا' AND title LIKE 'المخطط السنوي 2022/2023%'`
+      sql`SELECT COUNT(*) as cnt FROM annualPlans WHERE isReference = 1 AND subject = 'الجغرافيا' AND title LIKE 'المخطط السنوي 2022/2023%'`
     );
     const count = (result as any[])[0].cnt;
     expect(parseInt(count)).toBe(4);
@@ -84,7 +84,7 @@ describe("Curriculum Seeding Data Integrity", () => {
   it("should have exactly 144 learning situations (36 sections x 4) across all plans", async () => {
     const db = await getDb();
     const [result] = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM learningSituations ls JOIN annualPlanSections aps ON ls.sectionId = aps.id`
+      sql`SELECT COUNT(*) as cnt FROM learningSituations ls JOIN annualPlanSections aps ON ls.sectionId = aps.id JOIN annualPlans ap ON ap.id = aps.annualPlanId WHERE ap.isReference = 1`
     );
     const count = (result as any[])[0].cnt;
     // Official source: 91 base situations from the 2022 annual plans, reconciled against
@@ -93,8 +93,9 @@ describe("Curriculum Seeding Data Integrity", () => {
     expect(parseInt(count)).toBe(144);
     const [gap] = await db.execute(
       sql`SELECT aps.id, aps.title FROM annualPlanSections aps
+          JOIN annualPlans ap ON ap.id = aps.annualPlanId
           LEFT JOIN learningSituations ls ON ls.sectionId = aps.id
-          WHERE ls.id IS NULL AND aps.title != ''`
+          WHERE ls.id IS NULL AND aps.title != '' AND ap.isReference = 1`
     );
     expect((gap as any[]).length).toBe(0);
   });
@@ -103,21 +104,22 @@ describe("Curriculum Seeding Data Integrity", () => {
     const db = await getDb();
     const [dupes] = await db.execute(
       sql`SELECT ls.sectionId, ls.situationNumber, COUNT(*) c
-          FROM learningSituations ls
+          FROM learningSituations ls JOIN annualPlanSections aps ON aps.id = ls.sectionId JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          WHERE ap.isReference = 1
           GROUP BY ls.sectionId, ls.situationNumber HAVING c > 1`
     );
     expect((dupes as any[]).length).toBe(0);
     const [ord] = await db.execute(
       sql`SELECT ls.sectionId, GROUP_CONCAT(ls.situationNumber ORDER BY ls.situationNumber) nums
-          FROM learningSituations ls
-          WHERE ls.title NOT LIKE '%الإدماج الكلي%'
+          FROM learningSituations ls JOIN annualPlanSections aps ON aps.id = ls.sectionId JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          WHERE ap.isReference = 1 AND ls.title NOT LIKE '%الإدماج الكلي%'
           GROUP BY ls.sectionId HAVING nums != '1,2,3'`
     );
     expect((ord as any[]).length).toBe(0);
     const [ints] = await db.execute(
       sql`SELECT ls.sectionId, ls.situationNumber
-          FROM learningSituations ls
-          WHERE ls.title LIKE '%الإدماج الكلي%' AND ls.situationNumber != 4`
+          FROM learningSituations ls JOIN annualPlanSections aps ON aps.id = ls.sectionId JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          WHERE ap.isReference = 1 AND ls.title LIKE '%الإدماج الكلي%' AND ls.situationNumber != 4`
     );
     expect((ints as any[]).length).toBe(0);
   });
@@ -125,12 +127,13 @@ describe("Curriculum Seeding Data Integrity", () => {
   it("should have exactly 36 integration (الإدماج الكلي) situations, one per official section", async () => {
     const db = await getDb();
     const [result] = await db.execute(
-      sql`SELECT COUNT(*) as cnt FROM learningSituations WHERE title LIKE '%الإدماج الكلي%'`
+      sql`SELECT COUNT(*) as cnt FROM learningSituations ls JOIN annualPlanSections aps ON aps.id = ls.sectionId JOIN annualPlans ap ON ap.id = aps.annualPlanId WHERE ap.isReference = 1 AND ls.title LIKE '%الإدماج الكلي%'`
     );
     expect(parseInt((result as any[])[0].cnt)).toBe(36);
     const [extra] = await db.execute(
       sql`SELECT ls.sectionId, COUNT(*) c FROM learningSituations ls
-          WHERE ls.title LIKE '%الإدماج الكلي%' GROUP BY ls.sectionId HAVING c > 1`
+          JOIN annualPlanSections aps ON aps.id = ls.sectionId JOIN annualPlans ap ON ap.id = aps.annualPlanId
+          WHERE ap.isReference = 1 AND ls.title LIKE '%الإدماج الكلي%' GROUP BY ls.sectionId HAVING c > 1`
     );
     expect((extra as any[]).length).toBe(0);
   });

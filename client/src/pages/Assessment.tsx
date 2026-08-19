@@ -162,6 +162,13 @@ export default function Assessment() {
 
   const linkedSituationInitialized = useRef(false);
 
+  // إعادة تمكين ملء النموذج من الوضعية المرتبطة عند تغيّر مصدرها في الرابط،
+  // حتى لا يُغلق الملء التلقائي نهائياً بسبب مفتاح ref عالق بعد زيارة سابقة.
+  const linkedSituationKey = linkedSituationId ? String(linkedSituationId) : null;
+  useEffect(() => {
+    if (linkedSituationKey !== null) linkedSituationInitialized.current = false;
+  }, [linkedSituationKey]);
+
   useEffect(() => {
     const preferredIsInSeason = Boolean(preferredClassId && seasonClasses.some((classItem) => classItem.id === preferredClassId));
     const targetClassId = linkedClassId ?? (!activeSeasonClassId && preferredIsInSeason ? preferredClassId : undefined);
@@ -193,7 +200,7 @@ export default function Assessment() {
       }));
       setShowAdvanced(true);
     }
-  }, [linkedSituation, linkedSection, linkedPlan, setForm]);
+  }, [linkedSituation, linkedSection, linkedPlan, setForm, linkedSituationKey]);
 
   const assessmentPrintMeta = useMemo(() => ({
     title: `اختبار في ${form.subject}`,
@@ -292,14 +299,19 @@ export default function Assessment() {
       ?? (linkedSituation && form.situationIds.length === 1 && linkedSituation.id === form.situationIds[0]
         ? linkedSituation
         : undefined);
+    // عندما يدخل الأستاذ من لوحة اليوم بوضعية رسمية دون إدخال العنوان يدوياً،
+    // نستمد العنوان والموضوع من الوضعية نفسها فلا نرسل طلبًا ناقصًا للذكاء الاصطناعي.
+    const officialTitle = officialSituationForTitle?.title || (form.title && form.title.trim()) || undefined;
     const payload = {
       ...form,
+      title: officialTitle || form.title,
+      topic: officialTitle || form.topic || undefined,
       llmModel: form.llmModel || undefined,
       lessonIds: selectedLessonIds.length > 0 ? selectedLessonIds : undefined,
       situationIds: form.situationIds.length > 0 ? form.situationIds : undefined,
       competencyIds: selectedCompetencies.length > 0 ? selectedCompetencies : undefined,
       preferOfficialSituationTitle: officialSituationForTitle
-        ? form.title === officialSituationForTitle.title && form.topic === officialSituationForTitle.title
+        ? (officialTitle === officialSituationForTitle.title)
         : undefined,
     };
     generateMutation.mutate(payload as any);
@@ -744,7 +756,7 @@ export default function Assessment() {
               </Button>
             )}
 
-            <Button id="assessment-generate" className="w-full" onClick={handleGenerate} disabled={generateMutation.isPending || !form.title || !form.topic}>
+            <Button id="assessment-generate" className="w-full" onClick={handleGenerate} disabled={generateMutation.isPending || (!form.title && form.situationIds.length === 0)}>
               {generateMutation.isPending ? <><Loader2 className="w-4 h-4 ml-2 animate-spin" />جاري التوليد...</> : <>
                 <Sparkles className="w-4 h-4 ml-2" />توليد التقييم
               </>}
