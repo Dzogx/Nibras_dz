@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Save, Pencil, Copy, Download, Printer } from "lucide-react";
+import { ArrowRight, Save, Pencil, Copy, Printer, FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { LOGO_URL } from "@/components/A4Print";
 import { Eye } from "lucide-react";
 import { VoicePlayer } from "@/components/VoicePlayer";
+import { downloadGeneratedPdf } from "@/lib/pdfDownload";
 
 const typeLabels: Record<string, string> = {
   lessonPlan: "خطة درس",
@@ -47,6 +48,21 @@ export default function ResourceDetail({ id }: { id: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [multiOpen, setMultiOpen] = useState(false);
+
+  const exportAssessmentPdf = trpc.ai.exportAssessmentPdf.useMutation({
+    onSuccess: (result) => {
+      downloadGeneratedPdf(result);
+      toast.success("تم تنزيل PDF عالي الجودة وجاهز للطباعة.");
+    },
+    onError: (error) => toast.error(error.message || "تعذر تجهيز ملف PDF الآن. أعد المحاولة لاحقًا."),
+  });
+  const exportLessonPlanPdf = trpc.ai.exportLessonPlanPdf.useMutation({
+    onSuccess: (result) => {
+      downloadGeneratedPdf(result);
+      toast.success("تم تنزيل PDF عالي الجودة وجاهز للطباعة.");
+    },
+    onError: (error) => toast.error(error.message || "تعذر تجهيز ملف PDF الآن. أعد المحاولة لاحقًا."),
+  });
 
   // الطباعة المتعددة للأقسام: التقويم التحصيلي وثيقة موحّدة لكل المستوى
   const { data: allClasses } = trpc.classes.list.useQuery(undefined, {
@@ -140,6 +156,56 @@ export default function ResourceDetail({ id }: { id: string }) {
           ? "شبكة التقويم"
           : (resource?.type ? typeLabels[resource?.type] : undefined) || "وثيقة تربوية";
 
+  const isAssessment = resource?.type === "quiz" || resource?.type === "exam" || resource?.type === "rubric" || resource?.type === "answerKey";
+  const isLessonPlan = resource?.type === "lessonPlan";
+  const canExportPdf = Boolean((isAssessment || isLessonPlan) && subject && gradeLevel && resource?.content);
+  const isPdfExporting = exportAssessmentPdf.isPending || exportLessonPlanPdf.isPending;
+
+  const exportPdf = () => {
+    if (!resource || !canExportPdf) {
+      toast.error("يلزم توفر المادة والمستوى ومحتوى الوثيقة قبل تصدير PDF.");
+      return;
+    }
+
+    if (isLessonPlan) {
+      exportLessonPlanPdf.mutate({
+        title: resource.title || "مذكرة بيداغوجية",
+        content: resource.content,
+        subject,
+        gradeLevel,
+        printTheme: "official",
+        unitTitle: meta?.unitTitle || linkedLesson?.unitTitle || undefined,
+        duration: meta?.duration || linkedLesson?.duration || undefined,
+        academicYear: linkedClass?.academicYear || profile?.academicYear || undefined,
+        teacherName: profile?.displayName || undefined,
+        school: profile?.school || undefined,
+        province: profile?.province || undefined,
+        className: linkedClass?.name || undefined,
+        objectives: meta?.objectives || linkedLesson?.objectives || undefined,
+        lessonNumber: meta?.lessonNumber || linkedLesson?.lessonNumber || undefined,
+        unitNumber: meta?.unitNumber || linkedLesson?.unitNumber || undefined,
+        serialNumber: resource.serialNumber || undefined,
+      });
+      return;
+    }
+
+    exportAssessmentPdf.mutate({
+      title: resource.title || docTitle,
+      content: resource.content,
+      subject,
+      gradeLevel,
+      assessmentType: resource.type as "quiz" | "exam" | "rubric" | "answerKey",
+      printTheme: "official",
+      topic: meta?.topic || undefined,
+      duration: meta?.duration || linkedLesson?.duration || undefined,
+      totalPoints: meta?.totalPoints || undefined,
+      teacherName: profile?.displayName || undefined,
+      school: profile?.school || undefined,
+      className: linkedClass?.name || undefined,
+      assessmentDate: meta?.assessmentDate || undefined,
+    });
+  };
+
   const resourcePrintMeta = useMemo(() => ({
     title: docTitle,
     subtitle: resource?.title || undefined,
@@ -218,6 +284,19 @@ export default function ResourceDetail({ id }: { id: string }) {
           <Button variant="outline" size="sm" className="print:hidden" onClick={() => setMultiOpen(true)}>
             <Printer className="w-4 h-4 ml-1" />
             طباعة لكل الأقسام
+          </Button>
+        )}
+        {(isAssessment || isLessonPlan) && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="print:hidden"
+            disabled={!canExportPdf || isPdfExporting}
+            onClick={exportPdf}
+            title={canExportPdf ? "تنزيل نسخة PDF عالية الجودة" : "أكمل المادة والمستوى ومحتوى الوثيقة أولاً"}
+          >
+            {isPdfExporting ? <Loader2 className="w-4 h-4 ml-1 animate-spin" /> : <FileDown className="w-4 h-4 ml-1" />}
+            {isPdfExporting ? "جارٍ تجهيز PDF..." : "تنزيل PDF"}
           </Button>
         )}
         <A4PrintButton title={docTitle} subtitle={levelSection || undefined} />
