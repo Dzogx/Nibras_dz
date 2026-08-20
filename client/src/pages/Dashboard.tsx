@@ -161,6 +161,10 @@ export default function Dashboard() {
   );
 
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
+  // هل اكتملت بيانات القسم الأساسية؟ نمنع فرع «تهيئة الموسم» نهائيًا أثناء التحميل:
+  // عرض شاشة التهيئة قرار نهائي يحتاج يقينًا أن classes انتهت وفعليًا فارغة.
+  const classesSettled = !classesLoading && Array.isArray(classes);
+  const classesLoadedEmpty = classesSettled && classes.length === 0;
 
   const completedLessons = useMemo(() => lessons?.filter(l => l.isCompleted).length ?? 0, [lessons]);
   const completedSituations = useMemo(() => (situations ?? []).filter((s: any) => s.isCompleted).length ?? 0, [situations]);
@@ -170,7 +174,8 @@ export default function Dashboard() {
   const pendingLessons = pendingSituations.length;
   const pendingLessonsList = pendingSituations;
 
-  const [selectedClassId, setSelectedClassId] = usePreferredClass(fallbackYear ?? "");
+  // لا نقرأ/نكتب تفضيل القسم إلا بعد حسم السنة — مفتاح "" كان يبقي classId من موسم سابق.
+  const [selectedClassId, setSelectedClassId] = usePreferredClass(fallbackYear);
   const [followSchedule, setFollowSchedule] = useState(true);
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
@@ -212,15 +217,30 @@ export default function Dashboard() {
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId && (!scheduledSlot?.subject || plan.subject === scheduledSlot.subject))
     ?? annualPlans?.find((plan) => plan.classId === activeClassId);
   // اشتقاق دفاعي متقدم للسنة: لا نمرّر "" لأي استعلام — إما سنة محسومة وإما undefined مع تعطيل الاستعلام.
-  // عند تحول السنة النهائية (fallbackYear) من undefined إلى قيمة فعلية نُبطل أي كاش مسموم بمفتاح سنة فارغ.
-  useEffect(() => {
-    if (fallbackYear) {
-      void utils.ai.getTeacherOSContext.invalidate();
-      void utils.annualPlans.list.invalidate();
-      void utils.weeklySchedule.get.invalidate();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(fallbackYear)]);
+    // عند تحول السنة النهائية (fallbackYear) من undefined إلى قيمة فعلية نُبطل أي كاش مسموم بمفتاح سنة فارغ.
+    useEffect(() => {
+      if (fallbackYear) {
+        void utils.ai.getTeacherOSContext.invalidate();
+        void utils.annualPlans.list.invalidate();
+        void utils.weeklySchedule.get.invalidate();
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [Boolean(fallbackYear)]);
+
+    // إعادة إحياء من خلفية الهاتف (BFCache): إعادة فتح التبويب قد تعيد queryClient قديمًا
+    // يحتوي نتائج فارغة قديمة دون إعادة جلب — نعيد الجلب للاستعلامات الأساسية فورًا.
+    useEffect(() => {
+      const onShow = (event: PageTransitionEvent) => {
+        void utils.classes.list.invalidate();
+        void utils.academicYears.list.invalidate();
+        void utils.profile.get.invalidate();
+        if (fallbackYear) void utils.annualPlans.list.invalidate();
+        void (event);
+      };
+      window.addEventListener("pageshow", onShow);
+      return () => window.removeEventListener("pageshow", onShow);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fallbackYear]);
 
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     {
@@ -513,6 +533,17 @@ export default function Dashboard() {
               <p className="mt-2 text-sm text-white/75">أدخله مرة واحدة؛ بعدها يقترح نبراس حصة اليوم تلقائياً.</p>
               <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Clock className="ml-2 h-4 w-4" />إعداد جدولي الأسبوعي</Button>
             </div>
+          ) : !classesSettled ? (
+            <div className="pt-7">
+              <h3 className="text-xl font-bold">جارٍ تجهيز مساحة عملك…</h3>
+              <p className="mt-2 text-sm text-white/75">يلتقط نبراس أقسامك وسنتك الدراسية من بياناتك المسجّلة.</p>
+            </div>
+          ) : classesLoadedEmpty ? (
+            <div className="pt-7">
+              <h3 className="text-xl font-bold">ابدأ بتهيئة موسمك الدراسي</h3>
+              <p className="mt-2 text-sm text-white/75">أضف أقسامك وجدولك، وسيتولى نبراس اقتراح الحصة التالية.</p>
+              <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Plus className="ml-2 h-4 w-4" />تهيئة الموسم الدراسي</Button>
+            </div>
           ) : activeClass ? (
             <div className="pt-7">
               <h3 className="text-xl font-bold">لا توجد وضعية معلّقة في هذا القسم</h3>
@@ -521,7 +552,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="pt-7">
-              <h3 className="text-xl font-bold">ابدأ بتهيئة موسمك الدراسي</h3>
+              <h3 className="text-xl font-bold">لا توجد قسم متاح في هذه السنة</h3>
               <p className="mt-2 text-sm text-white/75">أضف أقسامك وجدولك، وسيتولى نبراس اقتراح الحصة التالية.</p>
               <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Plus className="ml-2 h-4 w-4" />تهيئة الموسم الدراسي</Button>
             </div>
