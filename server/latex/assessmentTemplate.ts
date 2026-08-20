@@ -77,7 +77,11 @@ function isTableSeparator(line: string): boolean {
   return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
 }
 
-/** يحوّل جدول Markdown البسيط إلى جدول إجابة رسمي عند الحاجة. */
+/**
+ * يحوّل جدول Markdown البسيط إلى جدول سؤال رسمي داخل ورقة الاختبار.
+ * يبقى الجدول في كل المستويات؛ اختلاف المستوى يقتصر على سطور الإجابة المدمجة
+ * التي لا تظهر في الثالثة والرابعة لأن الإجابة تكون في ورقة مستقلة.
+ */
 function buildFormalTable(rows: string[][]): string {
   const columns = Math.max(...rows.map((row) => row.length));
   const width = (0.92 / columns).toFixed(3);
@@ -182,6 +186,16 @@ function assessmentFooterLabel(theme: (typeof ASSESSMENT_PRINT_THEMES)[keyof typ
   return theme === ASSESSMENT_PRINT_THEMES.mono ? "أبيض وأسود" : "تقويم تحصيلي";
 }
 
+/**
+ * في السنوات الأولى تُستثمر ورقة الاختبار نفسها للإجابة الموجزة،
+ * أما الثالثة والرابعة فتُسلَّم فيهما ورقة أسئلة فقط وفق قاعدة الأستاذ.
+ * القيمة غير المتعرف عليها تعامل باحتياط كورقة أسئلة بلا إجابة مدمجة.
+ */
+function allowsEmbeddedAnswerSpace(gradeLevel: string): boolean {
+  const normalized = gradeLevel.replace(/\s+/g, " ").trim();
+  return /(?:الأولى|الثانية|(?:^|\s)[12](?:\s*م)?(?:\s|$))/.test(normalized);
+}
+
 function escapeForComment(value: string): string {
   return value.replace(/[\r\n%]/g, " ").trim();
 }
@@ -206,8 +220,9 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
   const date = input.assessmentDate ? formatInline(input.assessmentDate) : ".... / .... / ........";
   const duration = input.duration ? formatInline(input.duration) : "................................";
   const points = input.totalPoints ? `${input.totalPoints} نقطة` : "................................";
-  const includeAnswerLines = input.assessmentType !== "answerKey" && input.assessmentType !== "rubric";
-  const includeStudentInfo = input.assessmentType !== "answerKey" && input.assessmentType !== "rubric";
+  const isStudentPaper = input.assessmentType !== "answerKey" && input.assessmentType !== "rubric";
+  const includeAnswerLines = isStudentPaper && allowsEmbeddedAnswerSpace(input.gradeLevel);
+  const includeStudentInfo = isStudentPaper;
 
   return `% Official assessment print template
 % Compiled securely with XeLaTeX.

@@ -44,6 +44,34 @@ describe("buildAssessmentLatexDocument", () => {
   });
 
   it.each([
+    ["السنة الأولى متوسط", true],
+    ["السنة الثانية متوسط", true],
+    ["السنة الثالثة متوسط", false],
+    ["السنة الرابعة متوسط", false],
+  ])("يطبق قاعدة مساحة الإجابة المدمجة على مستوى %s", (gradeLevel, shouldIncludeAnswerLines) => {
+    const latex = buildAssessmentLatexDocument({
+      ...baseInput,
+      gradeLevel,
+      content: "1. أجب عن السؤال باختصار.",
+    });
+
+    expect(latex.includes("\\QuestionItem{1}{أجب عن السؤال باختصار.}\\AnswerLines")).toBe(shouldIncludeAnswerLines);
+  });
+
+  it("يبقي جدول السؤال في اختبار السنة الثالثة من دون إضافة خطوط إجابة مدمجة", () => {
+    const latex = buildAssessmentLatexDocument({
+      ...baseInput,
+      gradeLevel: "السنة الثالثة متوسط",
+      content: "| المجال | النتيجة |\n| --- | --- |\n| تاريخ | حدث |\n\n1. انقل الجدول إلى ورقة الإجابة ثم أكمله.",
+    });
+
+    expect(latex).toContain("\\begin{tabular}");
+    expect(latex).toContain("المجال & النتيجة");
+    expect(latex).toContain("انقل الجدول إلى ورقة الإجابة ثم أكمله.");
+    expect(latex).not.toContain("\\QuestionItem{1}{انقل الجدول إلى ورقة الإجابة ثم أكمله.}\\AnswerLines");
+  });
+
+  it.each([
     ["nibras", "000000", "6C6C6C"],
     ["official", "000000", "6C6C6C"],
     ["mono", "000000", "000000"],
