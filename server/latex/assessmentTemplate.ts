@@ -55,6 +55,20 @@ function stripCurriculumCitations(content: string): string {
   return content.replace(/\s*\[مرجع:[^\]]+\]/g, "");
 }
 
+/**
+ * ترويسة التقويم يملكها قالب الطباعة وحده. بعض المخرجات تعيد كتابة العنوان
+ * وبيانات الوزارة قبل «الجزء الأول»، وهو ما يكرر الترويسة داخل جسم الورقة.
+ */
+function stripGeneratedInstitutionalPreamble(content: string): string {
+  const lines = content.replace(/\r\n/g, "\n").split("\n");
+  const firstPartIndex = lines.findIndex((line) => /^#{1,6}\s*الجزء\s+(الأول|الثاني|الثالث)/.test(line.trim()));
+  if (firstPartIndex <= 0) return content;
+
+  const preamble = lines.slice(0, firstPartIndex).join("\n");
+  const containsInstitutionalPreamble = /(الجمهورية الجزائرية|وزارة التربية الوطنية|اختبار في|تقويم تحصيلي|المستوى\s*:|المدة\s*:)/.test(preamble);
+  return containsInstitutionalPreamble ? lines.slice(firstPartIndex).join("\n").trim() : content;
+}
+
 function extractPointBadge(heading: string): string | null {
   const match = heading.match(/(?:[\(（]\s*)?(\d+)\s*(نقطة|نقاط|ن)(?:\s*[\)）])?/);
   return match ? `${match[1]} ${match[2] || "ن"}` : null;
@@ -105,7 +119,7 @@ ${rows.slice(1).map((cells) => row(cells)).join("\n")}
  * مرقم في ورقة التلميذ فقط. نموذج الإجابة وشبكة التقويم لا يستهلكان مساحة الإجابة.
  */
 function markdownToLatex(content: string, includeAnswerLines: boolean): string {
-  const lines = stripCurriculumCitations(content).replace(/\r\n/g, "\n").split("\n");
+  const lines = stripGeneratedInstitutionalPreamble(stripCurriculumCitations(content)).replace(/\r\n/g, "\n").split("\n");
   const blocks: string[] = [];
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -224,7 +238,7 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
   const includeAnswerLines = isStudentPaper && allowsEmbeddedAnswerSpace(input.gradeLevel);
   const includeStudentInfo = isStudentPaper;
 
-  return `% Official assessment print template
+  return `% Nibras Print System — Official Assessment Template
 % Compiled securely with XeLaTeX.
 % Title: ${escapeForComment(input.title)}
 \\documentclass[12pt,a4paper]{article}

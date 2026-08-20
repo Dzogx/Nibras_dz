@@ -20,6 +20,14 @@ describe("مسار الأستاذ المبسّط", () => {
       currentTitle: "اختبار الفصل الأول",
       currentTopic: "المقاومات",
     })).toMatchObject({ title: "اختبار الفصل الأول", topic: "المقاومات", autoImport: true });
+
+    // هذا هو المسار التلقائي في استوديو التقويم: عنوان فارغ يصبح صالحاً للتوليد فوراً.
+    expect(prepareAssessmentFromCompletedLessons({
+      className: "1م1",
+      lessonTitles: ["المخلفات الأثرية", "الحقب التاريخية"],
+      currentTitle: "",
+      currentTopic: "",
+    }).title).toBe("تقويم تحصيلي — 1م1");
   });
 
   it("يملأ عدد التلاميذ والمشاركين في أول نتيجة من بيانات القسم فقط عند غيابهما", () => {

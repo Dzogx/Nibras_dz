@@ -15,6 +15,7 @@ describe("buildAssessmentLatexDocument", () => {
   it("ينشئ وثيقة عربية قابلة للتجميع بـ XeLaTeX مع ترويسة التقويم", () => {
     const latex = buildAssessmentLatexDocument(baseInput);
 
+    expect(latex).toMatch(/^% Nibras Print System — Official Assessment Template/);
     expect(latex).toContain("\\documentclass[12pt,a4paper]{article}");
     expect(latex).toContain("\\setmainlanguage{arabic}");
     expect(latex).toContain("\\newfontfamily\\arabicfont");
@@ -22,6 +23,22 @@ describe("buildAssessmentLatexDocument", () => {
     expect(latex).toContain("اللقب والاسم");
     expect(latex).toContain("\\section*{الوضعية الأولى}");
     expect(latex).not.toContain("[مرجع: 1]");
+  });
+
+  it("لا يكرر ترويسة الذكاء الاصطناعي داخل جسم وثيقة التقويم", () => {
+    const latex = buildAssessmentLatexDocument({
+      ...baseInput,
+      content: `# اختبار في التاريخ والجغرافيا
+## الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية
+المستوى: السنة الأولى متوسط
+المدة: ساعة ونصف
+
+### الجزء الأول: التاريخ (12 نقطة)
+1. عرّف الوثيقة التاريخية.`,
+    });
+
+    expect(latex).not.toContain("الجمهورية الجزائرية الديمقراطية الشعبية");
+    expect(latex).toContain("الجزء الأول: التاريخ");
   });
 
   it("يهرب أوامر LaTeX القادمة من المحتوى ولا يدرجها كأوامر قابلة للتنفيذ", () => {

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileDown, Palette } from "lucide-react";
+import { Loader2, Printer, Sparkles, Copy, GraduationCap, BookOpen, CheckCircle2, AlertTriangle, ChevronDown, ChevronUp, Scale, Clock, ListChecks, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Streamdown } from 'streamdown';
@@ -31,8 +31,7 @@ const assessmentTypes = [
 ];
 
 const printThemes = [
-  { value: "nibras", label: "هوية نبراس", description: "كحلي هادئ وتمييز نحاسي خفيف" },
-  { value: "official", label: "رسمي اقتصادي", description: "تدرج هادئ واضح للطباعة اليومية" },
+  { value: "official", label: "رسمي مؤسساتي", description: "تدرجات رمادية محايدة وترويسة امتحان" },
   { value: "mono", label: "أبيض وأسود", description: "تباين عالٍ للنسخ الاقتصادي" },
 ] as const;
 
@@ -82,8 +81,9 @@ export default function Assessment() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<{ url: string; filename: string; objectUrl: boolean } | null>(null);
-  const [printTheme, setPrintTheme] = useState<PrintTheme>("nibras");
+  const [printTheme, setPrintTheme] = useState<PrintTheme>("official");
   const linkedSituationId = situationIdFromSearch();
+  const initialPreparationClassId = useRef<number | null>(null);
 
   // المورد المولّد في استوديو التقييم (لتمرير الرقم التسلسلي إلى الترويسة)
   const { data: currentResource } = trpc.aiResources.getById.useQuery(
@@ -103,7 +103,6 @@ export default function Assessment() {
     autoImport: true,
     situationIds: [] as number[],
     useNationalRules: true,
-    examEndsAt: undefined as number | undefined,
     llmModel: "" as string,
   };
   const { form, setForm } = usePersistedForm<typeof DEFAULT_ASSESSMENT_FORM>(
@@ -111,7 +110,9 @@ export default function Assessment() {
     DEFAULT_ASSESSMENT_FORM,
     (defaults, saved) => {
       // لا نسترعي الحالة/التقييمات المستوردة من Teacher OS، ولا المدة (تُضبط آليًا من القواعد الوطنية)
-      const { situationIds, duration, title, ...rest } = saved;
+      const sanitizedSaved = { ...saved } as typeof saved & { examEndsAt?: number };
+      delete sanitizedSaved.examEndsAt;
+      const { situationIds, duration, title, ...rest } = sanitizedSaved;
       const merged = { ...defaults, ...rest } as typeof defaults;
       if (!merged.subject) merged.subject = defaults.subject;
       if (!merged.gradeLevel) merged.gradeLevel = defaults.gradeLevel;
@@ -213,7 +214,6 @@ export default function Assessment() {
     duration: rulesInfo?.duration || undefined,
     date: selectedClass?.academicYear ? `الموسم الدراسي ${selectedClass.academicYear}` : undefined,
     extra: rulesInfo ? `المجموع: ${rulesInfo.totalPoints} نقطة` : undefined,
-    examEndsAt: form.examEndsAt || null,
   }), [form, selectedClass, profile, rulesInfo]);
 
   // Auto-import completed lessons and competencies when Teacher OS context loads
@@ -230,6 +230,31 @@ export default function Assessment() {
       setSelectedLessonIds([]);
     }
   }, [teacherOSContext, form.autoImport]);
+
+  // إذا وصل الأستاذ إلى الاستوديو من قسم له دروس منجزة، لا نطلب منه نقرة إضافية
+  // لمجرد ملء عنوان إلزامي. لا نستبدل أبداً عنواناً كتبه بنفسه أو تقويماً مرتبطاً بوضعية.
+  useEffect(() => {
+    const completedLessons = teacherOSContext?.completedLessons ?? [];
+    const canPrepare = form.autoImport
+      && Boolean(activeSeasonClassId)
+      && completedLessons.length > 0
+      && !linkedSituation
+      && !form.title.trim()
+      && initialPreparationClassId.current !== activeSeasonClassId;
+
+    if (!canPrepare) return;
+
+    initialPreparationClassId.current = activeSeasonClassId ?? null;
+    setForm((current) => ({
+      ...current,
+      ...buildPreparedAssessment({
+        className: selectedClass?.name,
+        lessonTitles: completedLessons.map((lesson) => lesson.title),
+        currentTitle: current.title,
+        currentTopic: current.topic,
+      }),
+    }));
+  }, [activeSeasonClassId, form.autoImport, form.title, linkedSituation, selectedClass?.name, setForm, teacherOSContext]);
 
   // Auto-set duration from national rules
   useEffect(() => {
@@ -516,7 +541,7 @@ export default function Assessment() {
               <p className="mt-1 text-xs leading-5 text-emerald-900/75">يستورد نبراس الدروس المنجزة تلقائياً، ثم يطبق قواعد النقاط والمدة المناسبة للمستوى والمادة.</p>
             </div>
             <Button size="sm" className="shrink-0" onClick={prepareAssessmentFromCompletedLessons} disabled={!teacherOSContext?.completedLessons.length}>
-              <BookOpen className="ml-2 h-4 w-4" />{teacherOSContext?.completedLessons.length ? `استعمل ${teacherOSContext.completedLessons.length} درساً منجزاً` : "لا توجد دروس منجزة"}
+              <BookOpen className="ml-2 h-4 w-4" />{teacherOSContext?.completedLessons.length ? `تحديث من ${teacherOSContext.completedLessons.length} درساً منجزاً` : "لا توجد دروس منجزة"}
             </Button>
           </CardContent>
         </Card>
@@ -600,10 +625,6 @@ export default function Assessment() {
               )}
               <div><Label>المدة (تلقائي من القواعد)</Label>
                 <Input value={form.duration} onChange={e => setForm({ ...form, duration: e.target.value })} placeholder="ساعة ونصف" />
-              </div>
-              <div><Label>وقت نهاية الاختبار (اختياري — لرمز QR الإجابات)</Label>
-                <Input type="datetime-local" value={form.examEndsAt ? new Date(form.examEndsAt - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""} onChange={e => setForm({ ...form, examEndsAt: e.target.value ? new Date(e.target.value).getTime() : undefined })} />
-                <p className="text-xs text-muted-foreground mt-1">رمز QR الإجابات لا يكشف المحتوى إلا بعد هذا الموعد</p>
               </div>
             </div>
 
@@ -852,8 +873,8 @@ export default function Assessment() {
                 <div className="print-container">
                   <div className="mb-3 flex flex-col gap-3 rounded-lg border bg-muted/30 p-3 print:hidden sm:flex-row sm:items-end sm:justify-between">
                     <div className="min-w-0">
-                      <Label className="mb-1 flex items-center gap-1.5 text-xs"><Palette className="h-3.5 w-3.5" />هوية ملف PDF</Label>
-                      <p className="text-xs leading-5 text-muted-foreground">اختر نمط الطباعة ثم عاين النسخة النهائية أو نزّلها؛ لا تحتاج إلى تثبيت أي برنامج.</p>
+	                      <Label className="mb-1 flex items-center gap-1.5 text-xs"><Scale className="h-3.5 w-3.5" />تنسيق ملف PDF الرسمي</Label>
+	                      <p className="text-xs leading-5 text-muted-foreground">اختر تنسيقاً محايداً للطباعة ثم عاين النسخة النهائية أو نزّلها؛ لا تحتاج إلى تثبيت أي برنامج.</p>
                     </div>
                     <Select value={printTheme} onValueChange={(value) => setPrintTheme(value as PrintTheme)}>
                       <SelectTrigger className="w-full sm:w-52"><SelectValue /></SelectTrigger>

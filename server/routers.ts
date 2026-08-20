@@ -54,6 +54,7 @@ import {
 } from "./rules/nationalRules";
 import { getTeachingTemplate, TEACHING_TEMPLATES } from "../shared/teachingTemplates";
 import { buildSeasonReadiness, buildWeeklyReadiness } from "../shared/seasonReadiness";
+import { sanitizeOfficialAssessmentOutput } from "../shared/assessment-output";
 import { buildAssessmentLatexDocument } from "./latex/assessmentTemplate";
 import { buildLessonPlanLatexDocument } from "./latex/lessonPlanTemplate";
 import { compileLatexToPdf, LatexCompilationError } from "./latex/compileLatex";
@@ -1669,8 +1670,6 @@ ${curriculumContext}`,
       llmModel: z.string().optional(),
       situationIds: z.array(z.number()).optional(),
       preferOfficialSituationTitle: z.boolean().optional(),
-      // وقت نهاية الاختبار (بالمللي ثانية) — يُستخدم لرمز QR نموذج الإجابات
-      examEndsAt: z.number().optional(),
     })).mutation(async ({ ctx, input }) => {
       // ─── Get Teacher OS data (completed lessons) ─────────────
       let completedLessons: { title: string; unitTitle?: string; unitNumber?: number; lessonNumber?: number; objectives?: string }[] = [];
@@ -1846,14 +1845,16 @@ ${rule.weights.map(w => `- ${w.label}: ${w.points} نقطة (${((w.points / rule
 
 قاعدة حاكمَة (قاعدة رقم واحد): كل سؤال من أسئلتك يجب أن يقيس محتوى الموضوع المحدد أعلاه فقط. ممنوع طرح أي سؤال عن مفاهيم عامة من المنهاج لا تنتمي صراحة إلى هذا الموضوع (مثل الخط الاستوائي أو غرينيتش أو توزيع السكان إذا لم تكن جزءاً من الموضوع المطلوب). ابدأ الاختبار بالموضوع مباشرة دون تمهيد عن مستوى المادة أو مدة الاختبار.
 
-اكتب الاختبار كاملاً مع:
+	اكتب الاختبار كاملاً مع:
 1. ترويسة رسمية بالمستوى والمادة والمدة ${rule ? `(${rule.duration})` : ""}
 2. أسئلة مرتبة حسب توزيع النقاط
 3. ربط كل سؤال بالكفاءة التي يقيسها
 4. سلم التنقيط التفصيلي
-5. نموذج الإجابة
+	5. نموذج الإجابة
 
-ابدأ بـ: ${examHeader}
+	صياغة رسمية للتلميذ فقط: لا تستخدم أوصافاً موجّهة مثل «تعريف مخادع» أو «سؤال مضلل» أو «خدعة» أو «فخ». عند قياس مهارة التصحيح اكتب مثلاً «تعريف غير دقيق يتضمن أخطاء، صححه». لا تكتب أي ملاحظات للمعلّم أو تعليمات تقنية داخل الامتحان.
+
+	ابدأ بـ: ${examHeader}
 
 قدم الامتحان مع مفتاح الإجابات ونظام التنقيط.`,
 
@@ -1905,26 +1906,7 @@ ${rulesContext}
         });
       }
 
-      // ─── تنظيف مخرج النموذج من أسطر الاستشهادات المتسربة ──
-      // بعض النماذج تدرج قائمة «[مرجع: ن]» رغم التعليمات؛ وثيقة الاختبار الرسمية
-      // لا تحتمل أي أسطر استشهاد تقنية، لذا تُفلتر هنا في المصدر.
-      content = content
-        .split("\n")
-        .filter(line => !/^\s*(\[مرجع|مرجع:\s?\d|مصدر:?\s?\d|\d+\.\s+(الوضعية|المخطط|الكفاءة|وثيقة)).*$/.test(line.trim()))
-        .join("\n")
-        .replace(/\[مرجع[^\]]*\]/g, "")
-        .replace(/\s{3,}/g, "\n");
-
-      // ─── فلتر تنويهات الموجّه المتسربة ──
-      // بعض النماذج تُخرج تذييلًا موجَّهًا للأستاذ مثل «ملاحظة: هذا التقويم…»
-      // أو «تنبيه: يجب أن…»، وهي ليست جزءًا من وثيقة الاختبار الرسمية، فتُحذف.
-      content = content
-        .split("\n")
-        .filter(line => !/^\s*(ملاحظة:|تنبيه:|توضيح:|انتبه:|تذكير:|مهم:).*$/.test(line.trim()))
-        .join("\n")
-        .replace(/\n{3,}/g, "\n\n");
-      // حذف أي فقرة ختامية تُخاطب الأستاذ («يجب عليك…»، «ننصحك…»، «يمكنك…») إن كانت آخر فقرة مفصولة بسطر فارغ
-      content = content.replace(/\n+((?:يجب عليك|ننصحك|نوصي|يمكنك|لا تنس|بالتوفيق)[^.\n]{0,140}[\.\s]*)\s*$/, "");
+	      content = sanitizeOfficialAssessmentOutput(content);
 
       // Build metadata with rules engine info
       // Build curriculum citations from retrieved docs
@@ -1973,11 +1955,6 @@ ${rulesContext}
         metadata,
         tags: [typeLabels[input.assessmentType], input.subject, input.gradeLevel, ...(input.useNationalRules ? ["تقويم وطني"] : [])],
       } as any);
-
-      // حفظ وقت نهاية الاختبار إذا حُدِّد (لرمز QR نموذج الإجابات المشفّر بالوقت)
-      if (result?.id && input.examEndsAt) {
-        await updateAIResource(result.id, { examEndsAt: input.examEndsAt } as any);
-      }
 
       return { resourceId: result?.id, content, title: canonicalAssessmentTitle, topic: canonicalTopic, rulesApplied: !!rule, pointDistribution: rule?.weights || [], totalPoints: rule?.totalPoints || 20, duration: rule?.duration || "غير محدد", curriculumCitations, curriculumDocsCount: curriculumDocs.length };
     }),

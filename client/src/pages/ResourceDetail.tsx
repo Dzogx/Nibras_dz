@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { ArrowRight, Save, Pencil, Copy, Printer, FileDown, Loader2 } from "lucide-react";
+import { ArrowRight, Save, Pencil, Copy, Printer, FileDown, Loader2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useState, useMemo } from "react";
@@ -16,6 +16,14 @@ import { LOGO_URL } from "@/components/A4Print";
 import { Eye } from "lucide-react";
 import { VoicePlayer } from "@/components/VoicePlayer";
 import { downloadGeneratedPdf } from "@/lib/pdfDownload";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const typeLabels: Record<string, string> = {
   lessonPlan: "خطة درس",
@@ -269,26 +277,13 @@ export default function ResourceDetail({ id }: { id: string }) {
         {(resource.metadata as any)?.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{(resource.metadata as any).gradeLevel}</span>}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-2" aria-label="إجراءات الوثيقة">
         <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
           <Pencil className="w-4 h-4 ml-1" />{isEditing ? "عرض" : "تحرير"}
         </Button>
-        <Button variant="outline" size="sm" onClick={copyContent}>
-          <Copy className="w-4 h-4 ml-1" />نسخ
-        </Button>
-        <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}>
-          <Eye className="w-4 h-4 ml-1" />
-          معاينة
-        </Button>
-        {(resource?.type === "exam" || resource?.type === "quiz") && (
-          <Button variant="outline" size="sm" className="print:hidden" onClick={() => setMultiOpen(true)}>
-            <Printer className="w-4 h-4 ml-1" />
-            طباعة لكل الأقسام
-          </Button>
-        )}
         {(isAssessment || isLessonPlan) && (
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             className="print:hidden"
             disabled={!canExportPdf || isPdfExporting}
@@ -299,8 +294,37 @@ export default function ResourceDetail({ id }: { id: string }) {
             {isPdfExporting ? "جارٍ تجهيز PDF..." : "تنزيل PDF"}
           </Button>
         )}
-        <A4PrintButton title={docTitle} subtitle={levelSection || undefined} />
-        <VoicePlayer text={resource?.content || ""} label="النسخة الصوتية" />
+        <DropdownMenu dir="rtl">
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="print:hidden" aria-label="إجراءات إضافية للوثيقة">
+              <MoreHorizontal className="w-4 h-4 ml-1" />
+              المزيد
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-52">
+            <DropdownMenuLabel>إجراءات إضافية</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={copyContent}>
+              <Copy className="w-4 h-4 ml-1" />نسخ النص
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setPreviewOpen(true)}>
+              <Eye className="w-4 h-4 ml-1" />معاينة قبل الطباعة
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => window.print()}>
+              <Printer className="w-4 h-4 ml-1" />طباعة A4 مباشرة
+            </DropdownMenuItem>
+            {(resource?.type === "exam" || resource?.type === "quiz") && (
+              <DropdownMenuItem onSelect={() => setMultiOpen(true)}>
+                <Printer className="w-4 h-4 ml-1" />طباعة لكل الأقسام
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">خيار مساعد</DropdownMenuLabel>
+            <div className="px-1 pb-1 pt-0.5">
+              <VoicePlayer text={resource?.content || ""} label="النسخة الصوتية" />
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* المعاينة الاحترافية: ترويسة رسمية جزائرية عند الطباعة */}
