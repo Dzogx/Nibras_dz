@@ -29,6 +29,7 @@ import IntegrativeSituation from "./pages/IntegrativeSituation";
 import WeeklyPlan from "./pages/WeeklyPlan";
 import ExperimentLog from "./pages/ExperimentLog";
 import Competencies from "./pages/Competencies";
+import ExpertTour from "./pages/ExpertTour";
 
 
 function Router() {
@@ -98,6 +99,7 @@ function Router() {
         {() => <DashboardLayout><Profile /></DashboardLayout>}
       </Route>
       {/* صفحات عامة (بدون مصادقة) */}
+      <Route path="/expert-tour" component={ExpertTour} />
       <Route path="/brand" component={Brand} />
       <Route path="/verify" component={Verify} />
       <Route path="/verify/answer/:serial" component={AnswerPage} />
