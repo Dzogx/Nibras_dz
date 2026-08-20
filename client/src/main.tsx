@@ -7,8 +7,13 @@ import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
+import { registerPwa, requestInstallPromptCapture } from "./lib/pwa";
 
 const queryClient = new QueryClient();
+
+// PWA keeps only a static offline page. It never caches API, roster or student data.
+requestInstallPromptCapture();
+registerPwa();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;

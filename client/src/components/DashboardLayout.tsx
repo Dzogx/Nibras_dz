@@ -41,6 +41,7 @@ import {
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { Button } from "./ui/button";
 
 const menuItems = [
@@ -307,7 +308,10 @@ function DashboardLayoutContent({
               </div>
             </div>
           </div>
-        <main className="flex-1 p-4 pb-24 md:p-6">{children}</main>
+	        <main className="flex-1 p-4 pb-24 md:p-6">
+	          <PwaInstallPrompt />
+	          {children}
+	        </main>
           <nav
             className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-4 border-t bg-background/95 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(24,34,47,0.08)] backdrop-blur md:hidden"
             aria-label="إجراءات الحصة السريعة"

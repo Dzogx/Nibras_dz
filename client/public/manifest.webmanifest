@@ -1,0 +1,23 @@
+{
+  "id": "/",
+  "name": "نبراس | مساعد التدريس الذكي",
+  "short_name": "نبراس",
+  "description": "مساعد التدريس الذكي لمعلمي الدراسات الاجتماعية في التعليم المتوسط الجزائري.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/dashboard?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fffdfb",
+  "theme_color": "#24131f",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/manus-storage/favicon-192_847cdf6d.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

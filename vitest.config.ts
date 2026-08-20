@@ -16,6 +16,6 @@ export default defineConfig({
     environment: "node",
     // علامة بيئة تُميّز تشغيل vitest (العمال fork لا يظهرون «vitest» في argv)
     env: { __NIBRAS_TEST_MODE: "1" },
-    include: ["server/**/*.test.ts", "server/**/*.spec.ts"],
+    include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "client/src/**/*.spec.ts"],
   },
 });

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#24131f" />
+    <title>نبراس — غير متصل بالإنترنت</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #fffdfb; color: #24131f; font-family: Cairo, Tahoma, Arial, sans-serif; }
+      main { width: min(92vw, 420px); padding: 2rem; text-align: center; border: 1px solid #eadfd9; border-radius: 1.5rem; box-shadow: 0 18px 42px rgba(36,19,31,.08); }
+      .mark { display: inline-grid; place-items: center; width: 3rem; height: 3rem; margin-bottom: 1rem; border-radius: 1rem; background: #24131f; color: #f2c66d; font-size: 1.5rem; font-weight: 800; }
+      h1 { margin: 0 0 .75rem; font-size: 1.25rem; }
+      p { margin: 0; line-height: 1.9; color: #6d5a63; font-size: .95rem; }
+      button { margin-top: 1.5rem; padding: .75rem 1rem; border: 0; border-radius: .75rem; background: #24131f; color: white; font: inherit; cursor: pointer; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="mark" aria-hidden="true">ن</div>
+      <h1>نبراس يحتاج اتصالًا بالإنترنت</h1>
+      <p>لا نحفظ بيانات الأقسام أو التلاميذ داخل التطبيق على الهاتف. تحقق من الشبكة ثم أعد المحاولة.</p>
+      <button type="button" onclick="location.reload()">إعادة المحاولة</button>
+    </main>
+  </body>
+</html>
