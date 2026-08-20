@@ -129,10 +129,13 @@ export default function Dashboard() {
     staleTime: 60_000,
     gcTime: 2 * 60_000,
   });
-  // اشتقاق السنة دون لحظة وسيطة فارغة: الموسم المفعّل هو المرجع الأول، ثم ملف الأستاذ.
+  // اشتقاق السنة دون لحظة وسيطة فارغة. ترتيب المقاومة:
+  // 1) الموسم المفعّل، 2) ملف الأستاذ، 3) أول قائمة سنوات،
+  // 4) الاشتقاق من البيانات الموجودة فعليًا (الأقسام ثم المخططات) — الملاذ الأخير الحاسم
+  // ضد شاشة «تهيئة الموسم» الخاطئة: إذا كان للأستاذ أقسام فعليًا في قاعدة البيانات فإن سنة
+  // تلك البيانات أصدق من قائمة سنوات قد يفشل تحميلها (شبكة/كاش قديم)، وهو ما يضمن عدم وصول
+  // المستخدم لبطاقة التهيئة أبدًا بينما بياناته موجودة.
   // لا نمرّر "" لأي استعلام حتى لا تُخزَّن استجابات خطأ دائمة في ذاكرة الاستعلامات.
-  // إذا لم تُحسم السنة بعد (استعلامات جارية)، تبقى undefined ولا تُمكَّن الاستعلامات التابعة حتى لا
-  // يُسمَّم الكاش بمفتاح سنة فارغ — خاصة بعد تغييرات الخادم أو كاش متصفح قديم.
   const academicYear = useMemo(
     () =>
       activeYears?.find((y: any) => y.isActive)?.year ??
@@ -140,16 +143,22 @@ export default function Dashboard() {
       activeYears?.[0]?.year,
     [profile, activeYears],
   );
-  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery(
-    { academicYear },
-    { enabled: Boolean(academicYear) },
-  );
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
-  const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery(
-    { academicYear },
-    { enabled: Boolean(academicYear), staleTime: 2 * 60_000 },
-  );
   const { data: weeklyReadiness } = trpc.ai.weeklyReadinessSummary.useQuery();
+  // طبقة الحصانة: السنة تُحسم أولًا من الأقسام الموجودة فعلًا (بلا اعتماد على annualPlans)
+  // حتى لا يدخل annualPlans في اعتماد دائري. المخططات تُطلب بسنة معطلة مؤقتًا إن لزم.
+  const fallbackYear = useMemo(
+    () => academicYear ?? (classes?.[0] as { academicYear?: string } | undefined)?.academicYear,
+    [academicYear, classes],
+  );
+  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery(
+    { academicYear: fallbackYear ?? "" },
+    { enabled: Boolean(fallbackYear) },
+  );
+  const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery(
+    { academicYear: fallbackYear ?? "" },
+    { enabled: Boolean(fallbackYear), staleTime: 2 * 60_000 },
+  );
 
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
 
@@ -161,7 +170,7 @@ export default function Dashboard() {
   const pendingLessons = pendingSituations.length;
   const pendingLessonsList = pendingSituations;
 
-  const [selectedClassId, setSelectedClassId] = usePreferredClass(academicYear ?? "");
+  const [selectedClassId, setSelectedClassId] = usePreferredClass(fallbackYear ?? "");
   const [followSchedule, setFollowSchedule] = useState(true);
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
@@ -184,8 +193,14 @@ export default function Dashboard() {
   const [selectedRescheduleKey, setSelectedRescheduleKey] = useState<string | null>(null);
   const utils = trpc.useUtils();
   const seasonClasses = useMemo(
-    () => (classes ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
-    [classes, academicYear],
+    // فلتر السنة يعتمد fallbackYear (المحصوم نهائيًا من الأقسام/المخططات)،
+    // حتى لا يُستبعد قسم صحيح لمجرد فشل قائمة «السنوات المفعّلة».
+    () => {
+      const year = fallbackYear;
+      if (!year) return classes ?? [];
+      return (classes ?? []).filter((classItem) => !classItem.academicYear || classItem.academicYear === year);
+    },
+    [classes, fallbackYear],
   );
   const scheduledSlot = useMemo(() => getScheduledSlotForNow(weeklySchedule), [weeklySchedule]);
   const preferredClassId = selectedClassId && seasonClasses.some((classItem) => classItem.id === selectedClassId)
@@ -197,24 +212,24 @@ export default function Dashboard() {
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId && (!scheduledSlot?.subject || plan.subject === scheduledSlot.subject))
     ?? annualPlans?.find((plan) => plan.classId === activeClassId);
   // اشتقاق دفاعي متقدم للسنة: لا نمرّر "" لأي استعلام — إما سنة محسومة وإما undefined مع تعطيل الاستعلام.
-  // عند تحول السنة من undefined إلى قيمة فعلية نُبطل أي كاش مسموم بمفتاح سنة فارغ.
+  // عند تحول السنة النهائية (fallbackYear) من undefined إلى قيمة فعلية نُبطل أي كاش مسموم بمفتاح سنة فارغ.
   useEffect(() => {
-    if (academicYear) {
+    if (fallbackYear) {
       void utils.ai.getTeacherOSContext.invalidate();
       void utils.annualPlans.list.invalidate();
       void utils.weeklySchedule.get.invalidate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(academicYear)]);
+  }, [Boolean(fallbackYear)]);
 
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     {
       classId: activeClassId ?? -1,
-      academicYear,
+      academicYear: fallbackYear,
       subject: scheduledSlot?.subject,
     },
     {
-      enabled: Boolean(activeClassId && academicYear),
+      enabled: Boolean(activeClassId && fallbackYear),
     }
   );
 
@@ -289,7 +304,7 @@ export default function Dashboard() {
   const { data: rescheduleSuggestions, isLoading: rescheduleSuggestionsLoading } = trpc.compensatorySessions.suggest.useQuery(
     {
       situationId: rescheduleContext?.situationId ?? -1,
-      academicYear,
+      academicYear: fallbackYear ?? "",
       subject: rescheduleContext?.subject ?? "التاريخ",
       classId: rescheduleContext?.classId ?? -1,
       sourceStatus: rescheduleContext?.sourceStatus ?? "postponed",
@@ -411,7 +426,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm bg-white/10 border border-white/15 px-3 py-1.5 rounded-lg backdrop-blur">
-              السنة الدراسية {academicYear || "—"}
+              السنة الدراسية {fallbackYear || "—"}
             </span>
           </div>
         </div>
@@ -718,7 +733,7 @@ export default function Dashboard() {
                 bookCompensatorySessionMutation.mutate({
                   situationId: rescheduleContext.situationId,
                   classId: rescheduleContext.classId,
-                  academicYear,
+                  academicYear: fallbackYear ?? "",
                   subject: rescheduleContext.subject,
                   sourceStatus: rescheduleContext.sourceStatus,
                   ...selectedRescheduleSuggestion,
