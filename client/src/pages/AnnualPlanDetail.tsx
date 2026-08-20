@@ -53,6 +53,8 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
     { id: strategySituationId ?? 0 },
     { enabled: strategySituationId !== null && strategySituationId > 0 }
   );
+  // توحيد شكل الإرجاع: الاستراتيجية المقترحة مباشرةً (الموقع كله مبني على الحقول المباشرة)
+  const suggestedStrategy = strategyQuery.data?.strategy;
   const [strategySaved, setStrategySaved] = useState(false);
   const saveToLogMutation = trpc.savedStrategies.save.useMutation({
     onSuccess: () => {
@@ -511,17 +513,17 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
             <div className="space-y-4 text-right">
               <div className="rounded-lg border border-amber-400/60 bg-amber-50 p-4">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-amber-900">{strategyQuery.data.name}</span>
+                  <span className="font-bold text-amber-900">{suggestedStrategy!.name}</span>
                   <Badge variant="outline" className="text-xs text-amber-800 border-amber-400/60">
-                    {strategyQuery.data.kind === "integrative" ? "وضعية إدماجية" : "وضعية تعلّمية"}
+                    {suggestedStrategy!.kind === "integrative" ? "وضعية إدماجية" : "وضعية تعلّمية"}
                   </Badge>
                   <Badge variant="outline" className="text-xs text-amber-800 border-amber-400/60">
-                    {strategyQuery.data.totalMinutes} دقيقة
+                    {suggestedStrategy!.totalMinutes} دقيقة
                   </Badge>
                 </div>
-                <p className="text-sm text-amber-900/80 mt-2 leading-6">{strategyQuery.data.rationale}</p>
+                <p className="text-sm text-amber-900/80 mt-2 leading-6">{suggestedStrategy!.rationale}</p>
               </div>
-              {strategyQuery.data.phases.length > 0 && (
+              {suggestedStrategy!.phases.length > 0 && (
                 <div className="overflow-x-auto rounded-lg border">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/60">
@@ -534,7 +536,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {strategyQuery.data.phases.map((phase, idx) => (
+                      {suggestedStrategy!.phases.map((phase, idx) => (
                         <tr key={idx}>
                           <td className="px-3 py-2 font-medium whitespace-nowrap">{phase.stage}</td>
                           <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{phase.minutes} د</td>
@@ -547,11 +549,11 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                   </table>
                 </div>
               )}
-              {strategyQuery.data.generalTips.length > 0 && (
+              {suggestedStrategy!.generalTips.length > 0 && (
                 <div>
                   <p className="text-sm font-semibold mb-1">توصيات تسيير إضافية</p>
                   <ul className="space-y-1 text-sm text-muted-foreground list-disc pr-5">
-                    {strategyQuery.data.generalTips.map((tip, idx) => <li key={idx}>{tip}</li>)}
+                    {suggestedStrategy!.generalTips.map((tip, idx) => <li key={idx}>{tip}</li>)}
                   </ul>
                 </div>
               )}
@@ -564,14 +566,14 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                     const sit = strategiesBySection.find((s) => s.id === strategySituationId);
                     saveToLogMutation.mutate({
                       strategy: {
-                        kind: strategyQuery.data!.kind,
-                        name: strategyQuery.data!.name,
-                        rationale: strategyQuery.data!.rationale,
-                        phases: strategyQuery.data!.phases,
-                        totalMinutes: strategyQuery.data!.totalMinutes,
-                        generalTips: strategyQuery.data!.generalTips,
+                        kind: suggestedStrategy!.kind,
+                        name: suggestedStrategy!.name,
+                        rationale: suggestedStrategy!.rationale,
+                        phases: suggestedStrategy!.phases,
+                        totalMinutes: suggestedStrategy!.totalMinutes,
+                        generalTips: suggestedStrategy!.generalTips,
                       },
-                      situationType: strategyQuery.data!.kind === "integrative" ? "integrative" : "learning",
+                      situationType: suggestedStrategy!.kind === "integrative" ? "integrative" : "learning",
                       subject: plan?.subject || "",
                       situationTitle: sit?.title,
                     } as any);
@@ -587,12 +589,12 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                     const sit = strategiesBySection.find((s) => s.id === strategySituationId);
                     const html = buildStrategyPrintHtml({
                       title: sit?.title || "",
-                      strategyName: strategyQuery.data!.name,
-                      kindLabel: strategyQuery.data!.kind === "integrative" ? "وضعية إدماجية" : "وضعية تعلّمية",
-                      totalMinutes: strategyQuery.data!.totalMinutes,
-                      rationale: strategyQuery.data!.rationale,
-                      phases: strategyQuery.data!.phases,
-                      generalTips: strategyQuery.data!.generalTips,
+                      strategyName: suggestedStrategy!.name,
+                      kindLabel: suggestedStrategy!.kind === "integrative" ? "وضعية إدماجية" : "وضعية تعلّمية",
+                      totalMinutes: suggestedStrategy!.totalMinutes,
+                      rationale: suggestedStrategy!.rationale,
+                      phases: suggestedStrategy!.phases,
+                      generalTips: suggestedStrategy!.generalTips,
                       subject: plan?.subject || "",
                       gradeLevel: plan?.gradeLevel || "",
                     });

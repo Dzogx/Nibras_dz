@@ -30,12 +30,15 @@ import {
   getLearningSituations, getLearningSituationsByUserId, getPendingOperationalLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
   listSavedStrategies, getSavedStrategyById, saveStrategy, updateSavedStrategy, deleteSavedStrategy,
-  listCompetencyModels, getCompetencyModelById, getCompetencyProgress, linkSectionCompetencies, getCompetencySectionSituations, getCompetencySectionContext,
+  listCompetencyModels, getCompetencyModelById, getCompetencyProgress, linkSectionCompetencies,   getCompetencySectionSituations, getCompetencySectionContext,
+  getTermCompetencyReport,
 } from "./db";
 import {
   suggestStrategyForSituation,
   formatStrategyForLesson,
   suggestStrategyWithLLM,
+  type Subject,
+  type GradeLevel,
 } from "./strategies";
 import {
   getAssessmentRule,
@@ -2375,19 +2378,41 @@ ${rulesContext}
       return await getLearningSituationById(input.id);
     }),
     // اقتراح استراتيجية التسيير المناسبة لوضعية: الاستراتيجية + مراحل الحصة الموقوتة + النصائح
-    suggestStrategy: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+    suggestStrategy: protectedProcedure.input(z.object({
+      id: z.number(),
+      mode: z.enum(["fixed", "ai"]).default("fixed"),
+    })).query(async ({ ctx, input }) => {
       const situation = await getLearningSituationById(input.id);
       if (!situation) throw new TRPCError({ code: "NOT_FOUND", message: "الوضعية غير موجودة" });
       // حراسة الملكية عبر القسم
       const section = await getAnnualPlanSectionById(situation.sectionId);
       if (!section || section.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "غير مصرح" });
       const plan = await getAnnualPlanById(section.annualPlanId);
-      return suggestStrategyForSituation({
+      const base = {
         title: situation.title,
         content: situation.content || "",
         subject: plan?.subject || "",
         gradeLevel: plan?.gradeLevel || "",
+      };
+      if (input.mode !== "ai") {
+        return { strategy: suggestStrategyForSituation(base), source: "static" as const };
+      }
+      // ملاحظة للواجهات: جميع الأوضاع تعيد { strategy, source, note? } — الواجهات تستخدم data?.strategy
+      // الوضع الذكي: يولّد استراتيجية مخصصة من سياق الكفاءة الختامية للمقطع
+      const context = await getCompetencySectionContext(
+        base.subject, base.gradeLevel, section.sectionNumber,
+      );
+      if (!context) {
+        const fixed = suggestStrategyForSituation(base);
+        return { strategy: fixed, source: "static" as const, note: "تعذر تحميل سياق الكفاءة — اعتمدنا المطابقة الثابتة." };
+      }
+      const generated = await suggestStrategyWithLLM({
+        ...context,
+        situationTitle: base.title,
+        subject: base.subject as Subject,
+        gradeLevel: base.gradeLevel as GradeLevel | undefined,
       });
+      return generated;
     }),
     create: protectedProcedure.input(z.object({
       sectionId: z.number(),
@@ -2708,6 +2733,55 @@ ${rulesContext}
         model = await getCompetencyModelById(input.id, ctx.user.openId);
       }
       return model;
+    }),
+    /**
+     * كشف التقدم الفصلي للكفاءات: نموذج الكفاءة الشاملة + كفاءات ختامية لكل مقطع
+     * مع حصيلة الوضعيات المنجزة ونسبة التملك، موزعة على الفصول الثلاثة.
+     */
+    termReport: protectedProcedure.input(z.object({
+      subject: z.string().min(1),
+      gradeLevel: z.string().min(1),
+    })).query(async ({ ctx, input }) => {
+      const activeYear = await getActiveAcademicYear();
+      if (!activeYear) return { model: null, report: [], academicYear: "", terms: [] as any[], overallPct: 0, overallTotal: 0, overallDone: 0 };
+      const data = await getTermCompetencyReport(
+        Number(ctx.user.id), input.subject, input.gradeLevel, activeYear,
+      );
+      if (!data) return { model: null, report: [], academicYear: activeYear, terms: [] as any[], overallPct: 0, overallTotal: 0, overallDone: 0 };
+      const rows = data.report;
+      const total = rows.reduce((acc, r) => acc + r.situationsTotal, 0);
+      const done = rows.reduce((acc, r) => acc + r.situationsCompleted + r.situationsPartial, 0);
+      const terms = [
+        {
+          label: "الفصل الأول",
+          rows: rows.filter(r => r.sectionNumber <= 3),
+          pct: 0, total: 0, done: 0,
+        },
+        {
+          label: "الفصل الثاني",
+          rows: rows.filter(r => r.sectionNumber >= 4 && r.sectionNumber <= 6),
+          pct: 0, total: 0, done: 0,
+        },
+        {
+          label: "الفصل الثالث",
+          rows: rows.filter(r => r.sectionNumber >= 7),
+          pct: 0, total: 0, done: 0,
+        },
+      ].map(t => {
+        t.total = t.rows.reduce((acc, r) => acc + r.situationsTotal, 0);
+        t.done = t.rows.reduce((acc, r) => acc + r.situationsCompleted + r.situationsPartial, 0);
+        t.pct = t.total > 0 ? Math.round((t.done / t.total) * 100) : 0;
+        return t;
+      });
+      return {
+        model: data.model,
+        report: rows,
+        academicYear: activeYear,
+        terms,
+        overallPct: total > 0 ? Math.round((done / total) * 100) : 0,
+        overallTotal: total,
+        overallDone: done,
+      };
     }),
     /** تقدم الأستاذ في بلوغ الكفاءات الختامية بمستوى ومادة معينين في الموسم المفعّل. */
     progress: protectedProcedure.input(z.object({

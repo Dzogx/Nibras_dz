@@ -18,6 +18,7 @@ import {
   XCircle,
   Compass,
   Printer,
+  Brain,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -140,8 +141,9 @@ export default function Dashboard() {
   const [sessionNote, setSessionNote] = useState("");
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
   const [strategySituationId, setStrategySituationId] = useState<number | null>(null);
+  const [strategyAiMode, setStrategyAiMode] = useState(false);
   const strategyQuery = trpc.situations.suggestStrategy.useQuery(
-    { id: strategySituationId ?? 0 },
+    { id: strategySituationId ?? 0, mode: strategyAiMode ? "ai" : "fixed" },
     { enabled: Boolean(strategySituationId) },
   );
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
@@ -290,7 +292,10 @@ export default function Dashboard() {
     return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
   }
 
-  const strategy = strategyQuery.data;
+  // توحيد شكل الإرجاع: الاستراتيجية المقترحة مباشرةً (الموقع كله مبني على الحقول المباشرة)
+  const strategy = strategyQuery.data?.strategy as
+    | { kind: "learning" | "integrative"; name: string; rationale: string; phases: Array<{ stage: string; minutes: number; teacherRole: string; studentRole: string; tips?: string }> ; totalMinutes: number; generalTips: string[] }
+    | undefined;
   const [strategySaved, setStrategySaved] = useState(false);
   const saveToLogMutation = trpc.savedStrategies.save.useMutation({
     onSuccess: () => {
@@ -339,9 +344,9 @@ export default function Dashboard() {
       <tr><td><strong>${escapeHtml(phase.stage)}</strong></td><td>${phase.minutes} د</td><td>${escapeHtml(phase.teacherRole)}</td><td>${escapeHtml(phase.studentRole)}</td></tr>`).join("")}
     </tbody>
   </table>
-  ${strategy.phases.some((phase) => phase.tips) ? `<h2>ملاحظات كل مرحلة</h2><ul>${strategy.phases.map((phase) => (phase.tips ? `<li><strong>${escapeHtml(phase.stage)}:</strong> ${escapeHtml(phase.tips)}</li>` : "")).filter(Boolean).join("")}</ul>` : ""}
+  ${(strategy?.phases || []).some((phase) => phase.tips) ? `<h2>ملاحظات كل مرحلة</h2><ul>${(strategy?.phases || []).map((phase) => (phase.tips ? `<li><strong>${escapeHtml(phase.stage)}:</strong> ${escapeHtml(phase.tips)}</li>` : "")).filter(Boolean).join("")}</ul>` : ""}
   <h2>نصائح تربوية عامة</h2>
-  <ul>${strategy.generalTips.map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>
+  <ul>${(strategy?.generalTips || []).map((tip) => `<li>${escapeHtml(tip)}</li>`).join("")}</ul>
   <p class="note">في حال عدم كفاية الوقت لإتمام المراحل، يُكمل الأستاذ ما أمكن ثم يؤجل بقية المراحل للحصة الموالية عبر خيار «سجّل نتيجة الحصة».</p>
   <div class="footer">وثيقة عمل تربوية — تُعدّ داخل الحصص التعليمية وتُقدّم عند الحاجة.</div>
 </body></html>`;
@@ -943,15 +948,33 @@ export default function Dashboard() {
         </DialogHeader>
         {strategyQuery.isLoading ? (
           <div className="flex items-center justify-center py-10 text-sm text-muted-foreground">
-            <span className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" /> جارٍ تحليل الوضعية واستخراج الاستراتيجية المناسبة…
+            <span className="ml-2 h-4 w-4 animate-spin rounded-full border-2 border-primary/30 border-t-primary" /> {strategyAiMode ? "جارٍ تصميم الاستراتيجية بالذكاء الاصطناعي من سياق الكفاءات…" : "جارٍ تحليل الوضعية واستخراج الاستراتيجية المناسبة…"}
           </div>
         ) : strategy ? (
+          <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Brain className="h-3.5 w-3.5" />
+              <span>المصدر: {strategyQuery.data?.source === "ai" ? "الذكاء الاصطناعي (توليد مخصص من سياق الكفاءات)" : "مصفوفة التعلم النشط الثابتة"}</span>
+            </div>
+            <Button
+              variant={strategyAiMode ? "default" : "outline"}
+              size="sm"
+              className={strategyAiMode ? "bg-amber-600 hover:bg-amber-700" : ""}
+              disabled={strategyQuery.isRefetching}
+              onClick={() => setStrategyAiMode(m => !m)}
+            >
+              {strategyAiMode ? "الاستراتيجية المخصصة (AI)" : "ولّد استراتيجية مخصصة بالذكاء الاصطناعي"}
+              <Sparkles className="h-3.5 w-3.5 ml-1" />
+            </Button>
+          </div>
           <div className="space-y-4">
             <div>
               <p className="text-sm font-bold text-foreground">{strategy.name}</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {strategy.kind === "learning" ? "وضعية تعلمية" : strategy.kind === "integrative" ? "وضعية إدماجية" : "تقويم"}
                 {" · "}{strategy.totalMinutes} دقيقة · {dailySituation?.title}
+                {strategyQuery.data?.source === "ai" && strategyQuery.data?.note ? ` — ملاحظة: ${strategyQuery.data.note}` : ""}
               </p>
             </div>
             <div className="rounded-lg bg-accent/50 p-3 text-sm leading-6">
@@ -980,7 +1003,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
-            {strategy.phases.some((phase) => phase.tips) && (
+            {(strategy?.phases || []).some((phase) => phase.tips) && (
               <div>
                 <p className="text-xs font-bold text-muted-foreground mb-1.5">ملاحظات لكل مرحلة</p>
                 <ul className="space-y-1">
@@ -997,7 +1020,7 @@ export default function Dashboard() {
             <div>
               <p className="text-xs font-bold text-muted-foreground mb-1.5">نصائح تربوية عامة</p>
               <ul className="space-y-1">
-                {strategy.generalTips.map((tip, index) => (
+                {(strategy?.generalTips || []).map((tip, index) => (
                   <li key={index} className="flex gap-1.5 text-xs leading-5 text-foreground/80">
                     <span className="text-brand-wax-600 mt-0.5">●</span>
                     {tip}
@@ -1005,6 +1028,7 @@ export default function Dashboard() {
                 ))}
               </ul>
             </div>
+          </div>
           </div>
         ) : (
           <p className="py-8 text-center text-sm text-muted-foreground">

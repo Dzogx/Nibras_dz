@@ -14,6 +14,7 @@ import {
   Printer,
   Brain,
   Sparkles,
+  BarChart3,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,10 +31,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocation } from "wouter";
 
 const SUBJECTS = ["التاريخ والجغرافيا", "التاريخ", "الجغرافيا", "التربية المدنية"] as const;
@@ -125,6 +128,106 @@ function buildCompetencyPathPrintHtml(opts: {
     </thead>
     <tbody>${rows}</tbody>
   </table>
+  <div class="footer">
+    <div class="sig">إمضاء الأستاذ</div>
+    <div class="sig">إمضاء مدير المؤسسة</div>
+  </div>
+</body>
+</html>`;
+}
+
+/** بناء HTML كشف التقدم الفصلي للكفاءات A4 محايد (بلا إشارة للمنصة). */
+function buildTermCompetencyPrintHtml(opts: {
+  gradeLevel: string;
+  subject: string;
+  academicYear: string;
+  globalCompetency: string;
+  terms: Array<{
+    label: string;
+    pct: number;
+    total: number;
+    done: number;
+    rows: Array<{
+      sectionNumber: number;
+      sectionTitle: string;
+      termCompetency: string;
+      competencyAction: string;
+      situationsTotal: number;
+      situationsCompleted: number;
+      situationsPartial: number;
+      situationsPostponed: number;
+      situationsCancelled: number;
+      masteryPct: number;
+    }>;
+  }>;
+  overallPct: number;
+  overallTotal: number;
+  overallDone: number;
+}): string {
+  const now = new Date().toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" });
+  const bar = (pct: number) => `<div style="background:#e5e7eb;border-radius:4px;height:8px;width:100%;"><div style="background:${pct >= 80 ? "#16a34a" : pct >= 40 ? "#d97706" : "#6b7280"};height:8px;border-radius:4px;width:${pct}%;"></div></div>`;
+  const termHtml = opts.terms.map(t => `{
+    <div style="margin-top:14px;border:1px solid #9ca3af;border-radius:6px;overflow:hidden;page-break-inside:avoid;">
+      <div style="background:#f3f4f6;padding:6px 10px;font-weight:bold;font-size:10.5pt;border-bottom:1px solid #9ca3af;display:flex;justify-content:space-between;">
+        <span>${t.label}</span>
+        <span>${t.pct}% (${t.done}/${t.total} وضعية)</span>
+      </div>
+      ${t.rows.length === 0
+        ? `<div style="padding:8px 10px;font-size:9pt;color:#6b7280">لا توجد مقاطع لهذا الفصل</div>`
+        : `<table style="width:100%;border-collapse:collapse;font-size:9pt;margin:0;">
+        <thead><tr>
+          <th style="background:#f9fafb;border-bottom:1px solid #d1d5db;padding:4px 6px;text-align:right;width:5%">رقم</th>
+          <th style="background:#f9fafb;border-bottom:1px solid #d1d5db;padding:4px 6px;text-align:right">المقطع</th>
+          <th style="background:#f9fafb;border-bottom:1px solid #d1d5db;padding:4px 6px;text-align:right">الكفاءة الختامية</th>
+          <th style="background:#f9fafb;border-bottom:1px solid #d1d5db;padding:4px 6px;text-align:right;width:7%">الإجراء</th>
+          <th style="background:#f9fafb;border-bottom:1px solid #d1d5db;padding:4px 6px;text-align:right;width:13%">الوضعيات</th>
+          <th style="background:#f9fafb;border-bottom:1px solid #d1d5db;padding:4px 6px;text-align:right;width:16%">نسبة البلوغ</th>
+        </tr></thead>
+        <tbody>${t.rows.map(r => `<tr>
+          <td style="border-bottom:1px solid #e5e7eb;padding:5px 6px;text-align:center">${r.sectionNumber}</td>
+          <td style="border-bottom:1px solid #e5e7eb;padding:5px 6px">${r.sectionTitle}</td>
+          <td style="border-bottom:1px solid #e5e7eb;padding:5px 6px;font-size:8.5pt">${r.termCompetency}</td>
+          <td style="border-bottom:1px solid #e5e7eb;padding:5px 6px;text-align:center">${r.competencyAction}</td>
+          <td style="border-bottom:1px solid #e5e7eb;padding:5px 6px;text-align:center;font-size:8.5pt">${r.situationsCompleted} منجز · ${r.situationsPartial} جزئي · ${r.situationsPostponed} مؤجل · ${r.situationsCancelled} ملغى</td>
+          <td style="border-bottom:1px solid #e5e7eb;padding:5px 6px">${bar(r.masteryPct)}<div style="font-size:8pt;text-align:center;margin-top:2px">${r.masteryPct}%</div></td>
+        </tr>`).join("")}</tbody>
+      </table>`}
+    </div>
+  }`.replaceAll("{\n", "<div").replaceAll("\n}", "</div>")).join("");
+  return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"/>
+<style>
+  @page { size: A4; margin: 14mm 15mm; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:"Amiri","Noto Naskh Arabic",serif; color:#111827; font-size:10pt; line-height:1.65; }
+  .header { text-align:center; border-bottom:2px solid #1f2937; padding-bottom:8px; margin-bottom:12px; }
+  .header .line1 { font-size:11pt; font-weight:bold; }
+  .header .line2 { font-size:10pt; }
+  .meta { display:flex; justify-content:space-between; font-size:9.5pt; margin-bottom:10px; }
+  h1 { font-size:13pt; text-align:center; margin:8px 0 6px; }
+  .global { border:1px solid #d1d5db; border-radius:6px; padding:8px 12px; margin:8px 0 6px; background:#fffbeb; font-size:10pt; }
+  .overall { text-align:center; font-size:11pt; margin:10px 0; }
+  .overall b { font-size:14pt; }
+  .footer { margin-top:18px; display:flex; justify-content:space-between; font-size:9.5pt; }
+  .sig { border-top:1px solid #111827; padding-top:4px; margin-top:26px; min-width:30%; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="line1">الجمهورية الجزائرية الديمقراطية الشعبية</div>
+    <div class="line1">وزارة التربية الوطنية</div>
+    <div class="line2">مادة: ${opts.subject} — ${opts.gradeLevel}</div>
+  </div>
+  <div class="meta">
+    <div>التاريخ: ${now}</div>
+    <div>السنة الدراسية: ${opts.academicYear}</div>
+  </div>
+  <h1>كشف التقدم الفصلي نحو الكفاءة الشاملة</h1>
+  <div class="global"><strong>الكفاءة الشاملة:</strong> ${opts.globalCompetency || "—"}</div>
+  <div class="overall">نسبة البلوغ الإجمالية في الموسم: <b>${opts.overallPct}%</b> (${opts.overallDone}/${opts.overallTotal} وضعية)</div>
+  ${termHtml}
   <div class="footer">
     <div class="sig">إمضاء الأستاذ</div>
     <div class="sig">إمضاء مدير المؤسسة</div>
@@ -263,12 +366,120 @@ function SectionStrategyDialog({ open, onOpenChange, subject, gradeLevel, sectio
   );
 }
 
+// ─── مكوّن حوار كشف التقدم الفصلي للكفاءات ────────────────────────
+function TermReportDialog({ open, onOpenChange, subject, gradeLevel }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  subject: string;
+  gradeLevel: string;
+}) {
+  const reportQuery = trpc.competencyModel.termReport.useQuery(
+    { subject, gradeLevel },
+    { enabled: open },
+  );
+  const data = reportQuery.data;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[88vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <BarChart3 className="size-5 text-amber-500" />
+            كشف التقدم الفصلي نحو الكفاءة الشاملة — {subject} / {gradeLevel}
+          </DialogTitle>
+        </DialogHeader>
+        {reportQuery.isLoading && (
+          <div className="flex items-center gap-2 py-10 justify-center text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" /> جارٍ تجميع حصيلة الوضعيات عبر الفصول…
+          </div>
+        )}
+        {reportQuery.error && (
+          <p className="text-sm text-destructive py-6 text-center">{reportQuery.error.message}</p>
+        )}
+        {data?.model && data.terms.length > 0 && (
+          <ScrollArea className="max-h-[62vh] px-1">
+            <div className="space-y-3">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 p-3 text-sm">
+                <p className="font-bold text-amber-900 dark:text-amber-200 mb-1">الكفاءة الشاملة</p>
+                <p className="leading-relaxed">{data.model.globalCompetency}</p>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground shrink-0">البلوغ الإجمالي في الموسم:</span>
+                <Progress value={data.overallPct} className="h-2 flex-1" />
+                <span className="font-bold shrink-0">{data.overallPct}% ({data.overallDone}/{data.overallTotal})</span>
+              </div>
+              {data.terms.map((term, ti) => (
+                <div key={ti} className="rounded-lg border">
+                  <div className="flex items-center justify-between bg-muted/60 px-3 py-2">
+                    <span className="text-sm font-bold">{term.label}</span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{term.done}/{term.total} وضعية</span>
+                      <span className="font-bold text-foreground">{term.pct}%</span>
+                      <Progress value={term.pct} className="h-1.5 w-24" />
+                    </div>
+                  </div>
+                  <div className="divide-y">
+                    {term.rows.length === 0 ? (
+                      <p className="px-3 py-2.5 text-xs text-muted-foreground">لا توجد مقاطع مخصصة لهذا الفصل</p>
+                    ) : term.rows.map(r => (
+                      <div key={r.sectionNumber} className="px-3 py-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <Badge className="bg-amber-600 text-white">{r.sectionNumber}</Badge>
+                            <span className="font-medium">{r.sectionTitle}</span>
+                            <Badge className={actionStyles(r.competencyAction).className}>{actionStyles(r.competencyAction).label}</Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {r.situationsCompleted} منجز · {r.situationsPartial} جزئي · {r.situationsPostponed} مؤجل · {r.situationsCancelled} ملغى
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-relaxed text-foreground/80">{r.termCompetency}</p>
+                        <div className="mt-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+                          <Progress value={r.masteryPct} className="h-1.5 flex-1" />
+                          <span className="shrink-0">نسبة البلوغ: <strong className="text-foreground">{r.masteryPct}%</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+        <DialogFooter className="pt-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>إغلاق</Button>
+          <Button
+            disabled={!data?.model || data.terms.length === 0}
+            onClick={() => {
+              if (!data?.model) return;
+              const printData = {
+                gradeLevel: data.model.gradeLevel,
+                subject: data.model.subject,
+                academicYear: data.academicYear,
+                globalCompetency: data.model.globalCompetency,
+                terms: data.terms.map(t => ({ ...t, rows: t.rows })),
+                overallPct: data.overallPct,
+                overallTotal: data.overallTotal,
+                overallDone: data.overallDone,
+              };
+              printHtml(buildTermCompetencyPrintHtml(printData));
+              toast.success("جارٍ فتح كشف التقدم الفصلي للطباعة");
+            }}
+          >
+            <Printer className="size-4 ml-1" />اطبع الكشف الفصلي
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Competencies() {
   const [, setLocation] = useLocation();
   const [selectedGrade, setSelectedGrade] = useState<string>(GRADE_LEVELS[0]);
   const [selectedSubject, setSelectedSubject] = useState<string>(SUBJECTS[0]);
   const [selectedModel, setSelectedModel] = useState<number | null>(null);
   const [strategySection, setStrategySection] = useState<{ sectionNumber: number; sectionTitle: string } | null>(null);
+  const [termReportOpen, setTermReportOpen] = useState(false);
 
   const modelsQuery = trpc.competencyModel.list.useQuery(undefined);
   const progressQuery = trpc.competencyModel.progress.useQuery(
@@ -327,6 +538,14 @@ export default function Competencies() {
             {SUBJECTS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          className="gap-1.5 bg-white dark:bg-zinc-900"
+          onClick={() => setTermReportOpen(true)}
+        >
+          <BarChart3 className="size-4 text-amber-600" />
+          كشف التقدم الفصلي
+        </Button>
       </div>
 
       {modelsQuery.isLoading ? (
@@ -598,6 +817,13 @@ export default function Competencies() {
         </Card>
       )}
 
+      {/* حوار كشف التقدم الفصلي للكفاءات */}
+      <TermReportDialog
+        open={termReportOpen}
+        onOpenChange={setTermReportOpen}
+        subject={selectedSubject}
+        gradeLevel={selectedGrade}
+      />
       {/* حوار استراتيجية التسيير لمقطع الكفاءة */}
       {strategySection && currentModel && (
         <SectionStrategyDialog

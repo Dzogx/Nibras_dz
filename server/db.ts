@@ -1738,8 +1738,8 @@ export async function getCompetencySectionContext(
     termCompetency: section.termCompetency,
     competencyAction: section.competencyAction,
     durationHours: section.durationHours,
-    criteria: (section.criteria as unknown) ?? undefined,
-    knowledgeResources: (section.knowledgeResources as unknown) ?? undefined,
+    criteria: Array.isArray(section.criteria) ? (section.criteria as any) : undefined,
+    knowledgeResources: Array.isArray(section.knowledgeResources) ? (section.knowledgeResources as any) : undefined,
     sectionTitle: section.sectionTitle,
     subject: resolved,
     gradeLevel: model.gradeLevel,
@@ -1863,6 +1863,104 @@ export async function getCompetencySectionSituations(
  * تقدم الأستاذ في بلوغ الكفاءات الختامية بمستوى ومادة معينين:
  * نسبة الوضعيات المنجزة في كل مقطع، مع ربط كل مقطع بمقطع الكفاءة المقابلة.
  */
+/**
+ * كشف التقدم الفصلي للكفاءات: لكل فصل (المقاطع 1-3، 4-6، 7+) يجمع نموذج الكفاءة الشاملة
+ * مع الكفاءات الختامية المرتبطة بأقسام خطة الأستاذ التشغيلية، وحصيلة الوضعيات المنجزة
+ * (إجمالي/منجز/مؤجل/ملغى) ونسبة التملك التقديرية.
+ */
+export async function getTermCompetencyReport(userId: number, subject: string, gradeLevel: string, academicYear: string) {
+  const db = await getDb();
+  if (!db) return null;
+  // نموذج الكفاءة الشاملة (المرجعي بمستوى/مادة، أو تشغيلي إن وجد للأستاذ)
+  const models = await db.select().from(competencyModels)
+    .where(and(
+      eq(competencyModels.subject, subject as any),
+      eq(competencyModels.gradeLevel, gradeLevel as any),
+      eq(competencyModels.userId, String(userId)),
+    ))
+    .orderBy(desc(competencyModels.id));
+  const model = models[0] ?? (await db.select().from(competencyModels)
+    .where(and(
+      eq(competencyModels.subject, subject as any),
+      eq(competencyModels.gradeLevel, gradeLevel as any),
+    ))
+    .orderBy(competencyModels.id).limit(1))[0];
+  if (!model) return null;
+  const sections = await db.select().from(sectionCompetencies)
+    .where(eq(sectionCompetencies.competencyModelId, model.id))
+    .orderBy(sectionCompetencies.sectionNumber);
+  if (sections.length === 0) return { model, report: [] as any[] };
+  // الأقسام التشغيلية للأستاذ في الخطة السنوية المفعّلة (حسب رقم المقطع)
+  const operationalPlanSections = await db.select({
+    id: annualPlanSections.id,
+    sectionNumber: annualPlanSections.sectionNumber,
+  }).from(annualPlanSections)
+    .innerJoin(annualPlans, eq(annualPlanSections.annualPlanId, annualPlans.id))
+    .where(and(
+      eq(annualPlans.userId, userId),
+      eq(annualPlans.subject, subject as any),
+      eq(annualPlans.gradeLevel, gradeLevel as any),
+      eq(annualPlans.academicYear, academicYear),
+    ));
+  const operationalByNumber = new Map(operationalPlanSections.map(s => [s.sectionNumber, s.id]));
+  const rows = [] as Array<{
+    sectionNumber: number;
+    sectionTitle: string;
+    termCompetency: string;
+    competencyAction: string;
+    criteria: unknown;
+    knowledgeResources: unknown;
+    situationsTotal: number;
+    situationsCompleted: number;
+    situationsPartial: number;
+    situationsPostponed: number;
+    situationsCancelled: number;
+    masteryPct: number;
+    operational: boolean;
+  }>;
+  const sectionIds = operationalPlanSections.map(s => s.id).concat(
+    sections.filter(s => !operationalByNumber.has(s.sectionNumber)).map(s => s.linkedSectionId ?? 0).filter(Boolean),
+  );
+  const allTargetIds = operationalPlanSections.map(s => s.id);
+  let situationCounts = [] as Array<{ sectionId: number; total: number; completed: number; partial: number; postponed: number; cancelled: number }>;
+  if (allTargetIds.length > 0) {
+    situationCounts = await db.select({
+      sectionId: learningSituations.sectionId,
+      total: count(),
+      completed: sql<number>`SUM(CASE WHEN ${learningSituations.isCompleted} = 1 THEN 1 ELSE 0 END)`,
+      partial: sql<number>`SUM(CASE WHEN ${learningSituations.sessionStatus} = 'partial' THEN 1 ELSE 0 END)`,
+      postponed: sql<number>`SUM(CASE WHEN ${learningSituations.sessionStatus} = 'postponed' THEN 1 ELSE 0 END)`,
+      cancelled: sql<number>`SUM(CASE WHEN ${learningSituations.sessionStatus} = 'cancelled' THEN 1 ELSE 0 END)`,
+    }).from(learningSituations)
+      .where(sql`learningSituations.sectionId IN (${sql.join(allTargetIds, sql`, `)})`)
+      .groupBy(learningSituations.sectionId);
+  }
+  const countsBySection = new Map(situationCounts.map(c => [c.sectionId, c]));
+  for (const s of sections) {
+    const opId = operationalByNumber.get(s.sectionNumber);
+    const targetId = opId ?? (s.linkedSectionId ?? 0);
+    const c = targetId ? (countsBySection.get(targetId) ?? { sectionId: targetId, total: 0, completed: 0, partial: 0, postponed: 0, cancelled: 0 }) : { sectionId: 0, total: 0, completed: 0, partial: 0, postponed: 0, cancelled: 0 };
+    const total = Number(c.total);
+    const done = Number(c.completed) + Number(c.partial);
+    rows.push({
+      sectionNumber: s.sectionNumber,
+      sectionTitle: s.sectionTitle,
+      termCompetency: s.termCompetency,
+      competencyAction: s.competencyAction,
+      criteria: s.criteria,
+      knowledgeResources: s.knowledgeResources,
+      situationsTotal: total,
+      situationsCompleted: Number(c.completed),
+      situationsPartial: Number(c.partial),
+      situationsPostponed: Number(c.postponed),
+      situationsCancelled: Number(c.cancelled),
+      masteryPct: total > 0 ? Math.round((done / total) * 100) : 0,
+      operational: !!opId,
+    });
+  }
+  return { model, report: rows };
+}
+
 export async function getCompetencyProgress(userId: number, subject: string, gradeLevel: string, academicYear: string) {
   const db = await getDb();
   if (!db) return [];
