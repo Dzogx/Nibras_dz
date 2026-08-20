@@ -127,12 +127,12 @@ export default function Dashboard() {
     [profile, activeYears],
   );
   const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery(
-    { academicYear: academicYear ?? "" },
+    { academicYear },
     { enabled: Boolean(academicYear) },
   );
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery(
-    { academicYear: academicYear ?? "" },
+    { academicYear },
     { enabled: Boolean(academicYear) },
   );
   const { data: weeklyReadiness } = trpc.ai.weeklyReadinessSummary.useQuery();
@@ -182,6 +182,17 @@ export default function Dashboard() {
   const needsScheduleSetup = Boolean(activeClass && weeklySchedule && weeklySchedule.length === 0);
   const activePlan = annualPlans?.find((plan) => plan.classId === activeClassId && (!scheduledSlot?.subject || plan.subject === scheduledSlot.subject))
     ?? annualPlans?.find((plan) => plan.classId === activeClassId);
+  // اشتقاق دفاعي متقدم للسنة: لا نمرّر "" لأي استعلام — إما سنة محسومة وإما undefined مع تعطيل الاستعلام.
+  // عند تحول السنة من undefined إلى قيمة فعلية نُبطل أي كاش مسموم بمفتاح سنة فارغ.
+  useEffect(() => {
+    if (academicYear) {
+      void utils.ai.getTeacherOSContext.invalidate();
+      void utils.annualPlans.list.invalidate();
+      void utils.weeklySchedule.get.invalidate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(academicYear)]);
+
   const { data: teacherOSContext } = trpc.ai.getTeacherOSContext.useQuery(
     {
       classId: activeClassId ?? -1,
@@ -189,7 +200,7 @@ export default function Dashboard() {
       subject: scheduledSlot?.subject,
     },
     {
-      enabled: Boolean(activeClassId),
+      enabled: Boolean(activeClassId && academicYear),
     }
   );
 
