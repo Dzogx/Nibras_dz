@@ -64,4 +64,11 @@ describe("lessonPlanTemplate", () => {
     expect(tex).toContain("المستوى والقسم: ........................................");
     expect(tex).toContain("\\noindent سطر واحد.\\par");
   });
+
+  it("وثيقة محايدة لا تحمل اسم المنصة في الترويسة أو التذييل أو التذييل الختامي", () => {
+    const tex = buildLessonPlanLatexDocument(baseInput);
+    expect(tex).not.toContain("نبراس");
+    expect(tex).toContain("وثيقة تحضير للأستاذ");
+    expect(tex).toContain("مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي، قابلة للتحرير");
+  });
 });

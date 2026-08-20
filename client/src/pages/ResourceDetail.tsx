@@ -86,8 +86,7 @@ export default function ResourceDetail({ id }: { id: string }) {
   .page + .page { page-break-before: always; }
   .hr-top { display: flex; justify-content: space-between; align-items: flex-start; font-size: 9pt; }
   .hr-top > div { min-width: 30%; }
-  .hr-logo { text-align: center; width: 110px; }
-  .hr-logo img { width: 70px; height: auto; }
+  .hr-logo { text-align: center; width: 110px; font-size: 9.5pt; font-weight: 700; line-height: 1.5; }
   .hr-divider { border-top: 1.5px solid #0f172a; margin: 5px 0; }
   .hr-row { display: flex; justify-content: space-between; font-size: 9pt; }
   .hr-row .main { font-weight: 600; }
@@ -96,14 +95,14 @@ export default function ResourceDetail({ id }: { id: string }) {
   .body { margin-top: 10px; }
   .footer { display: flex; justify-content: space-between; align-items: center; gap: 8px;
     font-size: 8pt; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 4px; margin-top: 18px; }
-  .footer img { width: 42px; }
+  .footer img { display: none; }
 </style>
 </head>
 <body>
 <div class="page">
   <div class="hr-top">
     <div>مديرية التربية لولاية ${profile?.province || "..........................."}</div>
-    <div class="hr-logo"><img src="${LOGO_URL}" alt=""/></div>
+    <div class="hr-logo">الجمهورية الجزائرية الديمقراطية الشعبية<br/>وزارة التربية الوطنية</div>
     <div>متوسطة: ${profile?.school || "......................................."} – المحادمة</div>
     <div>المستوى: ${cls.gradeLevel}${cls.section ? ` - ${sectionName}` : ""}</div>
   </div>
@@ -118,7 +117,7 @@ export default function ResourceDetail({ id }: { id: string }) {
   ${resource?.title ? '<div class="doc-title">' + resource.title.replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</div>" : ""}
   <div class="body">${safeContent}</div>
   <div class="footer">
-    <span style="display:flex;align-items:center;gap:4px"><img src="${LOGO_URL}" alt=""/>نبراس — مساعد التدريس الذكي</span>
+    <span>مذكرة بيداغوجية</span>
     <span>صفحة 1</span>
   </div>
 </div>

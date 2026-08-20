@@ -181,8 +181,8 @@ function buildObjectivesBox(input: LessonPlanLatexInput): string {
 }
 
 /**
- * المذكرة وثيقة عمل للأستاذ تحمل هوية نبراس البصرية وبيانات المعلم،
- * بخلاف وثيقة التقويم الرسمية الحيادية المقدمة للمؤسسة والتلاميذ.
+ * المذكرة وثيقة عمل للأستاذ تحمل بيانات المعلم وترويسة وزارية محايدة،
+ * دون أي إشارة لمنصة التحضير (نفس قاعدة الحياد في وثائق التقويم الرسمية).
  */
 export function buildLessonPlanLatexDocument(input: LessonPlanLatexInput): string {
   const theme = LESSON_PLAN_PRINT_THEMES[input.printTheme ?? "nibras"];
@@ -211,7 +211,7 @@ export function buildLessonPlanLatexDocument(input: LessonPlanLatexInput): strin
 \\fancyhf{}
 \\fancyhead[L]{\\small مذكرة بيداغوجية${input.unitTitle ? ` — ${formatInline(input.unitTitle)}` : ""}}
 \\fancyfoot[C]{\\small صفحة \\thepage\\ من \\pageref{LastPage}}
-\\fancyfoot[R]{\\small نبراس — أداة تحضير للأستاذ}
+\\fancyfoot[R]{\\small وثيقة تحضير للأستاذ}
 \\begin{document}
 
 \\begin{center}
@@ -226,7 +226,7 @@ ${markdownToLatex(input.content)}
 
 \\vfill
 \\begin{center}
-\\textcolor{NibrasInk}{نبراس — مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي، قابلة للتحرير}
+\\textcolor{NibrasInk}{مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي، قابلة للتحرير}
 \\end{center}
 \\end{document}
 `;

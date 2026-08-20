@@ -26,6 +26,12 @@ queryClient.getQueryCache().subscribe(event => {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
     console.error("[API Query Error]", error);
+    // إصلاح دفاعي للجلسات المتضررة: استعلامات تُخزَّن خطأ Validation
+    // (مثل academicYear="" قبل التصحيح) لا تعاد المحاولة تلقائيًا. نبطلها
+    // لنجبر إعادة التنفيذ — الخادم الآن يشتق السنة الفعالة بنفسه.
+    if (error instanceof TRPCClientError && String(error.message).includes("too_small")) {
+      void queryClient.invalidateQueries({ queryKey: event.query.queryKey, refetchType: "all" });
+    }
   }
 });
 

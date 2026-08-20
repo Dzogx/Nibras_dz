@@ -28,7 +28,7 @@ export interface PrintMeta {
   title: string;
   /** سطر فرعي تحت العنوان */
   subtitle?: string;
-  /** اسم الأستاذ من الملف الشخصي */
+  /** اسم الأستاذ من الملف الشخصي (تُخفى الهوية البرمجية من التذييل التزامًا بحياد الوثائق الرسمية) */
   teacherName?: string;
   /** اسم المؤسسة التعليمية (المدرسة المتوسطة) */
   school?: string;
@@ -99,7 +99,10 @@ export function A4PrintContent({
             <div className="print-office print-office-main">مديرية التربية لولاية {province || "..........................."}</div>
           </div>
           <div className="print-header-logo">
-            <img src={LOGO_URL} alt="نبراس" className="print-logo-img" />
+            <div className="print-state-emblem">
+              الجمهورية الجزائرية الديمقراطية الشعبية<br />
+              وزارة التربية الوطنية
+            </div>
           </div>
           <div className="print-header-left">
             <div className="print-office print-office-main">متوسطة: {school || "......................................."} – المحادمة</div>
@@ -156,8 +159,7 @@ export function A4PrintContent({
       {/* ===== تذييل: الترويسة البصرية، الرمز التسلسلي، رموز QR للتحقق والإجابات ===== */}
       <div className="print-footer print-footer-identity">
         <div className="print-footer-brand">
-          <img src={LOGO_URL} alt="نبراس" className="print-footer-logo" />
-          <span>نبراس — مساعد التدريس الذكي لأستاذ الاجتماعيات</span>
+          <span className="print-footer-doc-type">{title}{subject ? <> — {subject}</> : null}</span>
         </div>
         {serialNumber && (
           <div className="print-qr-block">

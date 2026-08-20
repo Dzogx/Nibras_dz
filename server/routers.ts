@@ -166,6 +166,16 @@ function getNextOccurrence(dayOfWeek: WeekDay, from = new Date()): Date {
   return target;
 }
 
+/**
+ * اشتقاق دفاعي للسنة الدراسية: متى لم تُمرَّر أو كانت فارغة أو غير صالحة (أقل
+ * من 4 خانات) نشتقها من الموسم المفعّل في النظام. تمنع فشل استعلامات كاملة
+ * بسبب سنة فارغة تُمرَّر مؤقتًا من الواجهة أثناء تحميل الملف الشخصي.
+ */
+async function resolveAcademicYear(candidate: string | null | undefined): Promise<string | undefined> {
+  if (candidate && candidate.length >= 4 && candidate.length <= 16) return candidate;
+  return await getActiveAcademicYear();
+}
+
 export const appRouter = router({
   system: systemRouter,
 
@@ -331,9 +341,11 @@ export const appRouter = router({
   // ─── Weekly Schedule ─────────────────────────────────────────
   weeklySchedule: router({
     get: protectedProcedure.input(z.object({
-      academicYear: z.string().min(4).max(16),
-    })).query(async ({ ctx, input }) => {
-      return await getWeeklyScheduleEntries(ctx.user.id, input.academicYear);
+      academicYear: z.string().min(0).max(16).optional(),
+    }).optional()).query(async ({ ctx, input }) => {
+      // اشتقاق دفاعي: سنة فارغة تُستبدل بالسنة المفعّلة بدل رمي خطأ يكسر الصفحة.
+      const year = (await resolveAcademicYear(input?.academicYear)) ?? "";
+      return await getWeeklyScheduleEntries(ctx.user.id, year);
     }),
     save: protectedProcedure.input(z.object({
       academicYear: z.string().min(4).max(16),
@@ -738,14 +750,15 @@ export const appRouter = router({
   // ─── Season Readiness ───────────────────────────────────────
   seasonReadiness: router({
     get: protectedProcedure.input(z.object({
-      academicYear: z.string().min(4).max(16),
-    })).query(async ({ ctx, input }) => {
+      academicYear: z.string().min(0).max(16).optional(),
+    }).optional()).query(async ({ ctx, input }) => {
+      const year = (await resolveAcademicYear(input?.academicYear)) ?? "";
       const [teacherClasses, plans, scheduleEntries] = await Promise.all([
         getClasses(ctx.user.id),
-        getAnnualPlans(ctx.user.id, { academicYear: input.academicYear }),
-        getWeeklyScheduleEntries(ctx.user.id, input.academicYear),
+        getAnnualPlans(ctx.user.id, year ? { academicYear: year } : undefined),
+        getWeeklyScheduleEntries(ctx.user.id, year),
       ]);
-      return buildSeasonReadiness(teacherClasses, plans, scheduleEntries, input.academicYear);
+      return buildSeasonReadiness(teacherClasses, plans, scheduleEntries, year);
     }),
   }),
 
@@ -873,9 +886,10 @@ export const appRouter = router({
       return { success: true, id: created?.id } as const;
     }),
     list: protectedProcedure.input(z.object({
-      academicYear: z.string().min(4).max(16),
-    })).query(async ({ ctx, input }) => {
-      return await getUpcomingCompensatorySessions(ctx.user.id, input.academicYear);
+      academicYear: z.string().min(0).max(16).optional(),
+    }).optional()).query(async ({ ctx, input }) => {
+      const year = (await resolveAcademicYear(input?.academicYear)) ?? "";
+      return await getUpcomingCompensatorySessions(ctx.user.id, year);
     }),
     cancel: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       await updateCompensatorySessionStatus(input.id, ctx.user.id, "cancelled");
@@ -1358,6 +1372,21 @@ ${curriculumContext}`
       const canonicalTitle = useOfficialSituationTitle && officialSituationTitle ? officialSituationTitle : input.title;
       const canonicalSituationTitle = officialSituationTitle || input.unitTitle;
 
+      // اسم المقطع الرسمي من بيانات الوضعية المرتبطة (لا نص عام)
+      let officialSectionTitle: string | undefined;
+      if (input.situationId) {
+        try {
+          const userSituations = await getLearningSituationsByUserId(ctx.user.id);
+          const officialSituation = userSituations.find(situation => situation.id === input.situationId);
+          if (officialSituation?.sectionId) {
+            const section = await getAnnualPlanSectionById(officialSituation.sectionId);
+            officialSectionTitle = section?.title;
+          }
+        } catch {
+          // لا نمنع التوليد إذا تعذر جلب المقطع — يبقى حقل المقطع اختياريًا
+        }
+      }
+
       // Build differentiation context
       const diffContext: string[] = [];
       if (input.enableDifferentiation) {
@@ -1475,7 +1504,7 @@ ${docExcerpts}
 
 المخطط السنوي الرسمي مرجع منهجي ملزم يحدد الكفاءات والوضعيات والتدرج الزمني. لا تكتب أي تنبيه عن غياب المرجع الرسمي ما دام حاضرًا ضمن هذه المراجع.
 
-استشهد بهذه الوثائق عند التوليد بالصيغة: [مرجع: ${docs.length > 0 ? docs[0].id : 0} — ${docs.length > 0 ? docs[0].title : "غير متوفر"}]`;
+استند إلى هذه الوثائق كمرجع للمحتوى دون كتابة أي علامات استشهاد داخل النص المولد؛ المخرج النهائي وثيقة رسمية يقرؤها الأستاذ مباشرة فلا يجوز أن يظهر فيها أي [مرجع: ...] ولا أي إشارة لمعرف الوثيقة.`;
         } else {
           curriculumContext = "\n\nتنبيه: لم يتم العثور على وثائق منهاج رسمية مطابقة. صرّح بذلك صراحةً ولا تخترع معلومات منهاجية.";
         }
@@ -1490,6 +1519,7 @@ ${docExcerpts}
 - المادة: ${input.subject}
 - المستوى: ${input.gradeLevel}
 ${canonicalSituationTitle ? `- الوضعية التعليمية: ${canonicalSituationTitle}` : ""}
+${officialSectionTitle ? `- المقطع: ${officialSectionTitle}` : ""}
 ${input.unitNumber ? `- رقم الوضعية في المقطع: ${input.unitNumber}` : ""}
 ${input.lessonNumber ? `- رقم الدرس: ${input.lessonNumber}` : ""}
 ${input.duration ? `- المدة: ${input.duration}` : ""}
@@ -1557,7 +1587,15 @@ ${curriculumContext}`,
         ...(input.llmModel ? { model: input.llmModel } : {}),
       });
 
-      const content = getLLMTextContent(response);
+      let content = getLLMTextContent(response);
+      // تنظيف دفاعي: إزالة أي علامات استشهاد بوثائق قاعدة المنهاج تبقى عالقة في النص المولد،
+      // لأن المخرج النهائي وثيقة رسمية يقرؤها الأستاذ مباشرة دون علامات تقنية.
+      if (content) {
+        content = content
+          .replace(/\s*\[مرجع:[^\]]*\]/g, "")
+          .replace(/\n{3,}/g, "\n\n")
+          .trim();
+      }
       if (!content) {
         throw new TRPCError({
           code: "BAD_GATEWAY",
@@ -2036,15 +2074,16 @@ ${rulesContext}
       classId: z.number().optional(),
       gradeLevel: z.string().optional(),
       subject: z.string().optional(),
-      academicYear: z.string().min(4).max(16).optional(),
-    })).query(async ({ ctx, input }) => {
-      // عند عدم تحديد السنة صراحة، نشتقها من الموسم المفعّل في النظام حتى لو كان ملف الأستاذ
-      // غير محدّث بها — فلا يعتمد سياق الأستاذ على إدخال يدوي متكرر.
-      const resolvedYear = input.academicYear || (await getActiveAcademicYear());
+      academicYear: z.string().min(0).max(16).optional(),
+    }).optional()).query(async ({ ctx, input }) => {
+      // عند عدم تحديد السنة صراحة أو كانت فارغة، نشتقها من الموسم المفعّل في النظام
+      // حتى لو كان ملف الأستاذ غير محدّث بها — فلا يعتمد سياق الأستاذ على إدخال يدوي متكرر.
+      const resolvedYear = await resolveAcademicYear(input?.academicYear);
       const planFilters = resolvedYear ? { academicYear: resolvedYear } : undefined;
+      const effectiveInput = input ?? { classId: undefined, gradeLevel: undefined, subject: undefined, academicYear: undefined };
       // Auto-import: get completed lessons from Teacher OS
       const lessons = await getLessons(ctx.user.id, {
-        classId: input.classId,
+        classId: effectiveInput.classId,
         isCompleted: true,
       });
 
@@ -2061,9 +2100,9 @@ ${rulesContext}
       }));
 
       // Derive competencies from completed lesson objectives
-      if (input.gradeLevel && input.subject) {
+      if (effectiveInput.gradeLevel && effectiveInput.subject) {
         const applicableCompetencies = COMPETENCY_CATEGORIES.filter(c =>
-          c.applicableSubjects.some(s => input.subject!.includes(s) || s.includes(input.subject!))
+          c.applicableSubjects.some(s => effectiveInput.subject!.includes(s) || s.includes(effectiveInput.subject!))
         );
 
         // Auto-derive: if lessons have objectives, match them to competencies
@@ -2092,12 +2131,12 @@ ${rulesContext}
       let sectionProgressDetailed: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
       let annualProgressPercent = 0;
       try {
-        if (input.classId) {
+        if (effectiveInput.classId) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          let classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
+          let classPlan = plans.find(p => p.classId === effectiveInput.classId && (!effectiveInput.subject || p.subject === effectiveInput.subject));
           // عند تعذر مطابقة المادة صراحة (المخطط موزع على عدة خطط حسب المادة)، نستخدم أي
           // خطة للقسم حتى لا يفقد الأستاذ سياق إنجازاته — فلا يضطر لإعادة إدخال المادة.
-          if (!classPlan) classPlan = plans.find(p => p.classId === input.classId);
+          if (!classPlan) classPlan = plans.find(p => p.classId === effectiveInput.classId);
           if (classPlan) {
             const sections = (await getAnnualPlanSections(classPlan.id)) ?? [];
             const sectionProgressList: { id: number; sectionNumber: number; title: string; total: number; completed: number; percent: number; lastCompletedDate?: string }[] = [];
@@ -2157,10 +2196,10 @@ ${rulesContext}
       // دفتر المتابعة: مؤشّر الرزنامة — مقارنة التقدم الفعلي بالزمن المنقضي منذ بداية التدريس
       let schedulePace: { status: 'ahead' | 'on_track' | 'behind' | 'not_started'; elapsedWeeks: number; expectedPercent: number; actualPercent: number; note: string } | null = null;
       try {
-        if (input.classId && totalSituations > 0) {
+        if (effectiveInput.classId && totalSituations > 0) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          let classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
-          if (!classPlan) classPlan = plans.find(p => p.classId === input.classId);
+          let classPlan = plans.find(p => p.classId === effectiveInput.classId && (!effectiveInput.subject || p.subject === effectiveInput.subject));
+          if (!classPlan) classPlan = plans.find(p => p.classId === effectiveInput.classId);
           if (classPlan) {
             // لا نربط متابعة الأستاذ بسنة جامدة: بداية التدريس تُشتق من موسم الخطة نفسه.
             // المرجع الحالي للتدرج المعتمد هو أول اثنين من أكتوبر، مع الإبقاء على المؤشر
@@ -2201,10 +2240,10 @@ ${rulesContext}
       // Collect completed situations with details
       const completedSituationsList: any[] = [];
       try {
-        if (input.classId) {
+        if (effectiveInput.classId) {
           const plans = await getAnnualPlans(ctx.user.id, planFilters);
-          let classPlan = plans.find(p => p.classId === input.classId && (!input.subject || p.subject === input.subject));
-          if (!classPlan) classPlan = plans.find(p => p.classId === input.classId);
+          let classPlan = plans.find(p => p.classId === effectiveInput.classId && (!effectiveInput.subject || p.subject === effectiveInput.subject));
+          if (!classPlan) classPlan = plans.find(p => p.classId === effectiveInput.classId);
           if (classPlan) {
             const sections = (await getAnnualPlanSections(classPlan.id)) ?? [];
             for (const section of sections) {

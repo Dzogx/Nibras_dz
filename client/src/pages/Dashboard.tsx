@@ -115,11 +115,16 @@ export default function Dashboard() {
   const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery();
   const { data: profile } = trpc.profile.get.useQuery();
   const { data: activeYears } = trpc.academicYears.list.useQuery();
-  const resolvedYear = useMemo(
-    () => (profile?.academicYear ?? (activeYears?.find((y: any) => y.isActive)?.year ?? activeYears?.[0]?.year ?? "")),
+  // اشتقاق السنة دون لحظة وسيطة فارغة: الموسم المفعّل هو المرجع الأول، ثم ملف الأستاذ.
+  // لا نمرّر "" لأي استعلام حتى لا تُخزَّن استجابات خطأ دائمة في ذاكرة الاستعلامات.
+  const academicYear = useMemo(
+    () =>
+      activeYears?.find((y: any) => y.isActive)?.year ??
+      (profile?.academicYear && profile.academicYear.length >= 4 ? profile.academicYear : undefined) ??
+      activeYears?.[0]?.year ??
+      "",
     [profile, activeYears],
   );
-  const academicYear = resolvedYear;
   const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery({ academicYear });
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery({ academicYear });
@@ -374,7 +379,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm bg-white/10 border border-white/15 px-3 py-1.5 rounded-lg backdrop-blur">
-              السنة الدراسية {resolvedYear}
+              السنة الدراسية {academicYear || "—"}
             </span>
           </div>
         </div>
