@@ -534,9 +534,14 @@ export default function Dashboard() {
               <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Clock className="ml-2 h-4 w-4" />إعداد جدولي الأسبوعي</Button>
             </div>
           ) : !classesSettled ? (
+            // التحميل جارٍ: نُبقي الرسالة قصيرة وواضحة، ونخفيها عمليًا بمجرد وصول classes
+            // (classesSettled) — لا نعرضها إلا في أول تحميل فعلي.
             <div className="pt-7">
               <h3 className="text-xl font-bold">جارٍ تجهيز مساحة عملك…</h3>
               <p className="mt-2 text-sm text-white/75">يلتقط نبراس أقسامك وسنتك الدراسية من بياناتك المسجّلة.</p>
+              <div className="mt-4 h-1.5 w-40 overflow-hidden rounded-full bg-white/15">
+                <div className="h-full w-1/2 animate-pulse rounded-full bg-brand-wax-300" />
+              </div>
             </div>
           ) : classesLoadedEmpty ? (
             <div className="pt-7">

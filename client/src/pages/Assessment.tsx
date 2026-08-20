@@ -769,6 +769,12 @@ export default function Assessment() {
                 <Sparkles className="w-4 h-4 ml-2" />توليد التقييم
               </>}
             </Button>
+            {/* رسالة سبب تعطيل الزر: يوضح للأستاذ ما ينقص دون تخمين */}
+            {!generateMutation.isPending && !form.title && form.situationIds.length === 0 && (
+              <p className="mt-2 text-xs text-muted-foreground" dir="rtl">
+                لا يمكن التوليد بعد: أدخل عنوان التقييم أو اختر درسًا/وضعية منجزة من خيارات Teacher OS.
+              </p>
+            )}
           </CardContent>
         </Card>
 
