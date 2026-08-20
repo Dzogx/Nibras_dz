@@ -6,6 +6,9 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-ins
     texlive-lang-arabic \
     fonts-hosny-amiri \
     fontconfig \
+    python3 \
+    make \
+    g++ \
     && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
