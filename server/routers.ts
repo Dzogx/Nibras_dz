@@ -29,6 +29,7 @@ import {
   getAnnualPlanSections, getAnnualPlanSectionById, createAnnualPlanSection, updateAnnualPlanSection, deleteAnnualPlanSection,
   getLearningSituations, getLearningSituationsByUserId, getPendingOperationalLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
+  listSavedStrategies, getSavedStrategyById, saveStrategy, updateSavedStrategy, deleteSavedStrategy,
 } from "./db";
 import {
   suggestStrategyForSituation,
@@ -2435,6 +2436,117 @@ ${rulesContext}
     delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
       await requireEditableSituation(input.id, ctx.user.id);
       await deleteLearningSituation(input.id);
+      return { success: true } as const;
+    }),
+  }),
+
+  // ─── دفتر التجارب: الاستراتيجيات المحفوظة لإعادة الاستخدام ──────────
+  savedStrategies: router({
+    // سرد دفتر التجارب مع فلترة اختيارية
+    list: protectedProcedure.input(z.object({
+      subject: z.string().optional(),
+      situationType: z.string().optional(),
+      minRating: z.number().min(1).max(5).optional(),
+      search: z.string().trim().max(200).optional(),
+    })).query(async ({ ctx, input }) => {
+      return await listSavedStrategies(ctx.user.id, {
+        subject: input.subject || undefined,
+        situationType: input.situationType || undefined,
+        minRating: input.minRating,
+        search: input.search || undefined,
+      });
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+      const row = await getSavedStrategyById(input.id, ctx.user.id);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "الاستراتيجية غير موجودة" });
+      return row;
+    }),
+    // حفظ استراتيجية من بطاقة تسيير الحصة في دفتر التجارب
+    save: protectedProcedure.input(z.object({
+      strategy: z.object({
+        kind: z.string(),
+        name: z.string().min(1).max(512),
+        rationale: z.string(),
+        phases: z.array(z.object({
+          stage: z.string(),
+          minutes: z.number(),
+          teacherRole: z.string(),
+          studentRole: z.string(),
+          tips: z.string().optional(),
+        })),
+        totalMinutes: z.number(),
+        generalTips: z.array(z.string()),
+      }),
+      situationType: z.enum(["learning", "integrative", "assessment"]),
+      subject: z.string().min(1).max(64),
+      situationTitle: z.string().max(255).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await saveStrategy(ctx.user.id, {
+        source: "engine",
+        situationType: input.situationType as any,
+        subject: input.subject,
+        name: input.strategy.name,
+        rationale: input.strategy.rationale,
+        phases: input.strategy.phases,
+        totalMinutes: input.strategy.totalMinutes || 55,
+        generalTips: input.strategy.generalTips,
+        teacherRoleSummary: input.strategy.phases.map(p => `${p.stage}: ${p.teacherRole}`).join("\n"),
+        studentRoleSummary: input.strategy.phases.map(p => `${p.stage}: ${p.studentRole}`).join("\n"),
+        materials: "", // وسائل مقترحة (تُكمّل يدويًا لاحقًا عند الحاجة)
+        situationTitle: input.situationTitle || null,
+      } as any);
+      return { id: result?.id || 0, success: true } as const;
+    }),
+    // حفظ استراتيجية عامة من تأليف الأستاذ (لا تأتي من المحرك)
+    saveCustom: protectedProcedure.input(z.object({
+      name: z.string().min(1).max(512),
+      situationType: z.enum(["learning", "integrative", "assessment"]),
+      subject: z.string().min(1).max(64),
+      rationale: z.string().optional(),
+      description: z.string().optional(),
+      materials: z.string().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const result = await saveStrategy(ctx.user.id, {
+        source: "custom",
+        situationType: input.situationType as any,
+        subject: input.subject,
+        name: input.name,
+        rationale: input.rationale || null,
+        phases: [],
+        generalTips: [],
+        materials: input.materials || null,
+      } as any);
+      return { id: result?.id || 0, success: true } as const;
+    }),
+    // تسجيل استخدام استراتيجية محفوظة (عند توظيفها في حصة جديدة)
+    markUsed: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      const row = await getSavedStrategyById(input.id, ctx.user.id);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "الاستراتيجية غير موجودة" });
+      await updateSavedStrategy(input.id, ctx.user.id, { useCount: (row.useCount || 0) + 1, lastUsedAt: new Date() });
+      return { success: true, useCount: (row.useCount || 0) + 1 } as const;
+    }),
+    // تسجيل تقييم الأستاذ وملاحظاته بعد تجربة الاستراتيجية
+    review: protectedProcedure.input(z.object({
+      id: z.number(),
+      rating: z.number().min(1).max(5).optional(),
+      experienceNotes: z.string().trim().max(5000).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const row = await getSavedStrategyById(input.id, ctx.user.id);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "الاستراتيجية غير موجودة" });
+      const patch: Record<string, unknown> = {};
+      if (input.rating !== undefined) patch.rating = input.rating;
+      if (input.experienceNotes !== undefined) {
+        // إلحاق الملاحظة الجديدة بالملاحظات السابقة بدل استبدالها
+        const merged = [row.experienceNotes || "", input.experienceNotes].filter(Boolean).join("\n---\n");
+        patch.experienceNotes = merged || null;
+      }
+      await updateSavedStrategy(input.id, ctx.user.id, patch as any);
+      return { success: true } as const;
+    }),
+    delete: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+      const row = await getSavedStrategyById(input.id, ctx.user.id);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "الاستراتيجية غير موجودة" });
+      await deleteSavedStrategy(input.id, ctx.user.id);
       return { success: true } as const;
     }),
   }),

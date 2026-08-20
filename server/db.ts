@@ -22,6 +22,8 @@ import {
   gradebookEntries,
   InsertGradebookEntry,
   gradebookRoster,
+  savedStrategies,
+  InsertSavedStrategy,
   InsertAnnualPlanSection,
   InsertLearningSituation,
   InsertAssessmentResult,
@@ -1589,4 +1591,49 @@ export async function getStudentGradesAnalytics(userId: number, classId: number,
     weakCount,
     weakStudents,
   };
+}
+
+// ─── دفتر التجارب: الاستراتيجيات المحفوظة ─────────────────────
+/** سرد استراتيجيات دفتر التجارب للأستاذ مع فلترة اختيارية (المادة، نوع الوضعية، الحد الأدنى للتقييم، البحث). */
+export async function listSavedStrategies(userId: number, filters: { subject?: string; situationType?: string; minRating?: number; search?: string } = {}) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [eq(savedStrategies.userId, userId)];
+  if (filters.subject) conditions.push(eq(savedStrategies.subject, filters.subject));
+  if (filters.situationType) conditions.push(eq(savedStrategies.situationType, filters.situationType as any));
+  if (filters.minRating) conditions.push(gte(savedStrategies.rating, filters.minRating));
+  if (filters.search) {
+    const kw = filters.search.trim();
+    if (kw) {
+      // CONCAT يجمع الأعمدة الاختيارية في نص واحد قابل للبحث (NULL → '') لتفادي مطابقة Drizzle الصارمة.
+      conditions.push(like(sql`CONCAT(${savedStrategies.name}, ' ', COALESCE(${savedStrategies.situationTitle}, ''), ' ', COALESCE(${savedStrategies.experienceNotes}, ''), ' ', COALESCE(${savedStrategies.rationale}, ''))`, `%${kw}%`));
+    }
+  }
+  return await db.select().from(savedStrategies).where(and(...conditions)).orderBy(desc(savedStrategies.rating), desc(savedStrategies.useCount), desc(savedStrategies.updatedAt));
+}
+
+export async function getSavedStrategyById(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(savedStrategies).where(and(eq(savedStrategies.id, id), eq(savedStrategies.userId, userId))).limit(1);
+  return rows.length > 0 ? rows[0] : undefined;
+}
+
+export async function saveStrategy(userId: number, data: InsertSavedStrategy) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [result] = await db.insert(savedStrategies).values({ ...data, userId } as any);
+  return { id: result.insertId };
+}
+
+export async function updateSavedStrategy(id: number, userId: number, data: Partial<InsertSavedStrategy>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(savedStrategies).set(data as any).where(and(eq(savedStrategies.id, id), eq(savedStrategies.userId, userId)));
+}
+
+export async function deleteSavedStrategy(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(savedStrategies).where(and(eq(savedStrategies.id, id), eq(savedStrategies.userId, userId)));
 }

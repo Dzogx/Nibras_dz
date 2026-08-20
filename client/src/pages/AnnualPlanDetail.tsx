@@ -53,6 +53,14 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
     { id: strategySituationId ?? 0 },
     { enabled: strategySituationId !== null && strategySituationId > 0 }
   );
+  const [strategySaved, setStrategySaved] = useState(false);
+  const saveToLogMutation = trpc.savedStrategies.save.useMutation({
+    onSuccess: () => {
+      setStrategySaved(true);
+      toast.success("حُفظت الاستراتيجية في دفتر التجارب — ستجدها في صفحة «دفتر التجارب»");
+    },
+    onError: e => toast.error(e.message),
+  });
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>("completed");
   const [sessionNote, setSessionNote] = useState("");
 
@@ -548,6 +556,30 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                 </div>
               )}
               <div className="flex justify-start gap-2 pt-1">
+                <Button
+                  variant={strategySaved ? "secondary" : "default"}
+                  size="sm"
+                  disabled={strategySaved || saveToLogMutation.isPending}
+                  onClick={() => {
+                    const sit = strategiesBySection.find((s) => s.id === strategySituationId);
+                    saveToLogMutation.mutate({
+                      strategy: {
+                        kind: strategyQuery.data!.kind,
+                        name: strategyQuery.data!.name,
+                        rationale: strategyQuery.data!.rationale,
+                        phases: strategyQuery.data!.phases,
+                        totalMinutes: strategyQuery.data!.totalMinutes,
+                        generalTips: strategyQuery.data!.generalTips,
+                      },
+                      situationType: strategyQuery.data!.kind === "integrative" ? "integrative" : "learning",
+                      subject: plan?.subject || "",
+                      situationTitle: sit?.title,
+                    } as any);
+                  }}
+                >
+                  <Save className="w-4 h-4 ml-1" />
+                  {strategySaved ? "محفوظة في دفتر التجارب" : "احفظ في دفتر التجارب"}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

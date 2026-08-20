@@ -1,0 +1,23 @@
+CREATE TABLE `savedStrategies` (
+	`id` int AUTO_INCREMENT NOT NULL,
+	`userId` int NOT NULL,
+	`source` enum('engine','custom') NOT NULL DEFAULT 'engine',
+	`situationType` enum('learning','integrative','assessment') NOT NULL,
+	`subject` varchar(64) NOT NULL,
+	`name` varchar(512) NOT NULL,
+	`rationale` text,
+	`phases` json,
+	`totalMinutes` int NOT NULL DEFAULT 55,
+	`teacherRoleSummary` text,
+	`studentRoleSummary` text,
+	`generalTips` json,
+	`materials` text,
+	`rating` int,
+	`experienceNotes` text,
+	`situationTitle` varchar(255),
+	`useCount` int NOT NULL DEFAULT 0,
+	`lastUsedAt` timestamp,
+	`createdAt` timestamp NOT NULL DEFAULT (now()),
+	`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	CONSTRAINT `savedStrategies_id` PRIMARY KEY(`id`)
+);

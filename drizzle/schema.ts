@@ -448,3 +448,34 @@ export const gradebookRoster = mysqlTable("gradebookRoster", {
 
 export type GradebookRosterRow = typeof gradebookRoster.$inferSelect;
 export type InsertGradebookRosterRow = typeof gradebookRoster.$inferInsert;
+
+/**
+ * دفتر التجارب: الاستراتيجيات المجربة التي حفظها الأستاذ لإعادة استخدامها.
+ * يحفظ الأستاذ استراتيجية ناجحة مع تقييمه وملاحظاته ويوظفها في الفصول والأقسام اللاحقة.
+ */
+export const savedStrategies = mysqlTable("savedStrategies", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  // المصدر: إما بطاقة من محرك الاستراتيجيات أو استراتيجية عامة من تأليف الأستاذ
+  source: mysqlEnum("source", ["engine", "custom"]).default("engine").notNull(),
+  situationType: mysqlEnum("situationType", ["learning", "integrative", "assessment"]).notNull(),
+  subject: varchar("subject", { length: 64 }).notNull(),
+  name: varchar("name", { length: 512 }).notNull(),
+  rationale: text("rationale"), // لماذا هذه الاستراتيجية
+  // مراحل التسيير (مرحلة × دقائق × دور الأستاذ × دور التلاميذ)
+  phases: json("phases"), // {stage, minutes, teacherRole, studentRole, details}[]
+  totalMinutes: int("totalMinutes").default(55).notNull(),
+  teacherRoleSummary: text("teacherRoleSummary"), // دور الأستاذ العام
+  studentRoleSummary: text("studentRoleSummary"), // دور التلاميذ العام
+  generalTips: json("generalTips"), // نصائح التدخل
+  materials: text("materials"), // وسائل مقترحة
+  rating: int("rating"), // تقييم الأستاذ بعد التجربة (1-5)
+  experienceNotes: text("experienceNotes"), // ملاحظات التجربة الميدانية
+  situationTitle: varchar("situationTitle", { length: 255 }), // الوضعية التي جُرّبت عليها أول مرة
+  useCount: int("useCount").default(0).notNull(), // عدد مرات إعادة الاستخدام
+  lastUsedAt: timestamp("lastUsedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SavedStrategy = typeof savedStrategies.$inferSelect;
+export type InsertSavedStrategy = typeof savedStrategies.$inferInsert;

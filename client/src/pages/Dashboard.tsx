@@ -291,6 +291,14 @@ export default function Dashboard() {
   }
 
   const strategy = strategyQuery.data;
+  const [strategySaved, setStrategySaved] = useState(false);
+  const saveToLogMutation = trpc.savedStrategies.save.useMutation({
+    onSuccess: () => {
+      setStrategySaved(true);
+      toast.success("حُفظت الاستراتيجية في دفتر التجارب — ستجدها في صفحة «دفتر التجارب»");
+    },
+    onError: e => toast.error(e.message),
+  });
   const strategyPrintHtml = useMemo(() => {
     const sit = strategyQuery.data ? dailySituation : null;
     if (!strategy || !sit) return null;
@@ -1005,6 +1013,30 @@ export default function Dashboard() {
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => setStrategySituationId(null)}>إغلاق</Button>
+          {strategy ? (
+            <Button
+              variant={strategySaved ? "secondary" : "default"}
+              disabled={strategySaved || saveToLogMutation.isPending}
+              onClick={() => {
+                saveToLogMutation.mutate({
+                  strategy: {
+                    kind: strategy.kind,
+                    name: strategy.name,
+                    rationale: strategy.rationale,
+                    phases: strategy.phases,
+                    totalMinutes: strategy.totalMinutes,
+                    generalTips: strategy.generalTips,
+                  },
+                  situationType: strategy.kind === "integrative" ? "integrative" : "learning",
+                  subject: activePlan?.subject || scheduledSlot?.subject || "",
+                  situationTitle: dailySituation?.title,
+                } as any);
+              }}
+            >
+              <BookOpen className="ml-2 h-4 w-4" />
+              {strategySaved ? "محفوظة في دفتر التجارب" : "احفظ في دفتر التجارب"}
+            </Button>
+          ) : null}
           <Button
             disabled={!strategyPrintHtml}
             onClick={() => {

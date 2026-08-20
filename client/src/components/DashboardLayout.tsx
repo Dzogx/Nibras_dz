@@ -50,6 +50,7 @@ const menuItems = [
   { icon: Library, label: "المكتبة", path: "/content-library" },
   { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
   { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
+  { icon: BookOpen, label: "دفتر التجارب", path: "/experiment-log" },
 ];
 
 const mobileQuickActions = [
