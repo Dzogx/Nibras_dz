@@ -190,6 +190,7 @@ export default function Gradebook() {
         (e) =>
           e.attendanceScore != null ||
           e.activityScore != null ||
+          e.continuousScore != null ||
           e.quizScore != null ||
           e.assessmentScore != null ||
           e.notes != null,
@@ -510,7 +511,7 @@ function MonthlySummaryButton({
     const y = today.getMonth() >= 9 ? today.getFullYear() : today.getFullYear() - 1;
     return `${y}-${String(m).padStart(2, "0")}`;
   });
-  const enabled = classId != null;
+  const enabled = classId != null && subject.trim() !== "";
   const { data: summary, isLoading } = trpc.gradebook.monthlySummary.useQuery(
     { classId: classId ?? 0, term, subject, monthKey },
     { enabled: enabled && printOpen },

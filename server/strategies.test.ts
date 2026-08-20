@@ -53,22 +53,42 @@ describe("suggestStrategyForSituation", () => {
     }
   });
 
-  it("الإدماجية التاريخية تعتمد منهجية الأدوات", () => {
+  it("الإدماجية التاريخية تعتمد البازل التعاوني (Jigsaw) كاستراتيجية إدماج أولى", () => {
     const s = suggestStrategyForSituation({
       title: "وضعية إدماجية جزئية",
       subject: "التاريخ",
     });
-    expect(s.name).toContain("منهجية الأدوات");
+    expect(s.name).toContain("البازل");
+    expect(s.totalMinutes).toBe(55);
   });
 
-  it("الإدماجية الجغرافية تعتمد منهجية الأدوات نفسها (استراتيجية إدماج موحدة)", () => {
+  it("البازل متاح لكل المواد وليس للتاريخ فقط (منهجية إدماج عامة)", () => {
+    const jigsaw = STRATEGIES.INTEGRATIVE_STRATEGIES.find(m => m.strategy.name.includes("البازل"));
+    expect(jigsaw?.subject).toBe("all");
+  });
+
+  it("الإدماجية التاريخية لا تزال تحتفظ بمنهجية الأدوات في الخزانة", () => {
+    const methods = STRATEGIES.INTEGRATIVE_STRATEGIES.map(m => m.strategy.name);
+    expect(methods).toContain("حل الوضعية الإدماجية بمنهجية الأدوات");
+    expect(methods).toContain("البازل التعاوني (Jigsaw) على مكونات الوضعيات الإدماجية");
+  });
+
+  it("الإدماجية الجغرافية تعطي بازل Jigsaw أولاً (خزانة إدماج موحدة لكل المواد)", () => {
     const s = suggestStrategyForSituation({ title: "وضعية إدماجية", subject: "الجغرافيا" });
-    expect(s.name).toContain("منهجية الأدوات");
+    expect(s.kind).toBe("integrative");
+    expect(s.totalMinutes).toBe(55);
   });
 
-  it("الإدماجية المدنية تعتمد منهجية الأدوات نفسها (استراتيجية إدماج موحدة)", () => {
+  it("الإدماجية المدنية تعطي بازل Jigsaw أولاً (خزانة إدماج موحدة لكل المواد)", () => {
     const s = suggestStrategyForSituation({ title: "وضعية إدماجية", subject: "التربية المدنية" });
-    expect(s.name).toContain("منهجية الأدوات");
+    expect(s.kind).toBe("integrative");
+    expect(s.totalMinutes).toBe(55);
+  });
+
+  it("خزانة الإدماج تضم كلتا استراتيجيتي البازل ومنهجية الأدوات", () => {
+    const names = STRATEGIES.INTEGRATIVE_STRATEGIES.map(m => m.strategy.name);
+    expect(names).toContain("البازل التعاوني (Jigsaw) على مكونات الوضعيات الإدماجية");
+    expect(names).toContain("حل الوضعية الإدماجية بمنهجية الأدوات");
   });
 
   it("التعلمية التاريخية تعتمد التحقيق التاريخي من الوثيقة إلى الاستنتاج", () => {

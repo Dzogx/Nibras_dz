@@ -427,3 +427,21 @@ DB: الوضعيات 240061 و240062 منجزة (isCompleted=1, sessionStatus=co
 2. افتح وضع التحرير (زر «إدخال النقاط» index 16) — ظهر «عدّل أي خانة ثم احفظ الدفتر. حفظ الدفتر».
 3. محاولة تعبئة 5 صفوف عبر console.exec فشلت: inputs لم تُوجد بـ table input[type=text] (الخلايا ربما مكوّن Input شرنكد placeholder «— /») وبعدها تعطل النظام الفرعي.
 المتبقي: إدخال نقاط 5 تلاميذ (عبر browser_fill_form أو console بعد إصلاح selector) → زر «حفظ الدفتر» → التحقق SQL gradebookEntries → ثم صفحة الكفاءات كشف التقدم الفصلي.
+
+### 03:30 — الحالة الحالية (قبل الضغط الأخير)
+أُنجز حتى الآن: حياد HTML (A4Print/ResourceDetail/CSS)، عنوان المقطع في الموجّه، إصلاح noteType، تسجيل حصة ناجح (240061+240062 منجزتان)، إصلاح 9 عناوين OCR في DB (0/264 مصاب)، إصلاح getTeacherOSContext بالوضعيات المشتقة، إصلاح generateAssessment (union + situationIds + إزالة [مرجع] من prompt التقويم)، تصفية [مرجع] من مخرج LLM للتقويم، تحسين عرض الاستشهادات في Assessment.tsx (رقم مرجعي أنظف في المعاينة والطباعة)، زراعة 20 اسمًا واقعيًا لقسم 1م1 التاريخ في gradebookRoster (بعد تنظيف الروستر القديم 3م2 «أ/ب/التلميذ...»).
+**توليد التقويم نجح نظيفًا بلا [مرجع]** (02:50+) لكن يبقى إدخال نقاط دفتر التنقيط (متصفح معطل/يحتاج استعادة) + كشف التقدم الفصلي + حياد بقية القوالب (دفتر التنقيط PDF؟ كشف فصلي؟ بطاقة استراتيجية؟ المراسلات — لم يُفحص بعد) + monthlySummary يحتاج subject غير فارغ.
+
+### 03:32 — تشخيصات جديدة من ملفات Gradebook (مهمة للإصلاح):
+1. **bug: monthlySummary dialog** — MonthlySummaryButton (Gradebook.tsx 492-517) يفعّل الاستعلام بـ classId + printOpen فقط، فيُرسل subject فارغًا → خطأ too_small على subject عند الخادم. الإصلاح: تفعيل monthlySummary بـ subject أيضًا (classId && subject && printOpen)، أو جعل الخادم يتحمل subject فارغًا.
+2. **bug: continuousScore يُفلتر عند الحفظ** — saveGroup filter (189-196) لا يتضمن continuousScore فتُسقط الصفوف التي عُبّئت خانة «/20» للتقويم المستمر فقط. يجب إضافة continuousScore إلى الحقول المحفوظة إن كان موجودًا في schema الحفظ.
+3. **inconsistency: preferredClass محلي** — Gradebook تستخدم localStorage key خاصًا بها بلا scope سنة (سطور 295-321) — قد يسبب انزياح قسم بين الصفحات. الأفضل استخدام usePreferredClass المشترك.
+4. **معلومات عامة من seasonReadiness.ts**: buildWeeklyReadiness يحسب nextSituation عالميًا (كل الأقسام) — موثق في weeklyReadiness.test.ts كسلوك مقصود حاليًا، لا نعدله الآن (خارج النطاق).
+
+### خطة التتمة (بالترتيب):
+1. إصلاح Gradebook: (أ) تفعيل monthlySummary بـ subject، (ب) إصلاح saveGroup filter ليشمل continuousScore، (ج) استخدام usePreferredClass المشترك (اختياري — أولوية أقل).
+2. إعادة المتصفح لإدخال نقاط تجريبية في دفتر 1م1 التاريخ (خانات التقويم المستمر التفصيلية + الفرض) — ملاحظة: الخانات قابلة للتعبئة فقط بعد «إدخال النقاط» (editMode) وتعبئتها عبر input.value + setter React عبر setValueFromInput (native setter).
+3. ختم استيفائي شهري + كشف التقدم الفصلي في صفحة الكفاءات.
+4. فحص حياد بقية قوالب الطباعة HTML: دفتر التنقيط (Gradebook print)، كشف فصلي (competencies termReport dialog)، بطاقة استراتيجية (A4Print — تم)، المراسلات (موجودة؟ بحث nibras-bilingu في client).
+5. اختبارات + tsc + checkpoint + تقرير نهائي للمستخدم.
+6. المرحلة 3 من طلب المستخدم الأخير: بحث GitHub/مواقع عن موارد تعلم نشط جزائري (بعد اكتمال المحاكاة) — المستخدم طلب «أثناء النوم: بحث GitHub عن موارد تفيد نبراس في AI والتعلم النشط».

@@ -750,23 +750,31 @@ describe("ai.getTeacherOSContext", () => {
       { id: 1, sectionNumber: 1, title: "الوثائق التاريخية", isCompleted: false },
       { id: 2, sectionNumber: 2, title: "التاريخ الوطني", isCompleted: true },
     ]);
-    (db.getLearningSituations as any)
-      .mockResolvedValueOnce([
+    // mockResolvedValue موحدة (وليس Once) كي لا يعتمد الاختبار على ترتيب استهلاك الاستعلامات الداخلية:
+    // الاستعلام الأول يُرجع وضعيات المقطع 1 (وضعية 2 غير منجزة) والباقي وضعيات المقطع 2.
+    // محاكاة حسب معرف المقطع (وليس ترتيب الاستدعاءات): getTeacherOSContext يستدعي
+    // getLearningSituations عدة مرات لكل مقطع (دروس مشتقة/تقدم/جاهزية) فترتيب once هش.
+    (db.getLearningSituations as any).mockImplementation(async (sectionId: number) => {
+      if (sectionId === 1) return [
         { id: 101, situationNumber: 1, title: "وضعية 1", isCompleted: true },
         { id: 102, situationNumber: 2, title: "وضعية 2", isCompleted: false },
-      ])
-      .mockResolvedValueOnce([
+      ];
+      if (sectionId === 2) return [
         { id: 201, situationNumber: 1, title: "وضعية 3", isCompleted: true },
-      ]);
+      ];
+      return [];
+    });
 
     const caller = appRouter.createCaller(createMockContext());
     const result = await caller.ai.getTeacherOSContext({ classId: 1, academicYear: "2022/2023" });
 
-    // getAnnualPlans is invoked three times inside getTeacherOSContext: section progress,
-    // calendar-pace estimate, and the completed-situations list
-    expect(db.getAnnualPlans).toHaveBeenCalledTimes(3);
+    // getAnnualPlans يُستدعى أربع مرات داخل getTeacherOSContext: تقدم المقاطع،
+    // تقدير وتيرة التقويم الفصلي، قائمة الوضعيات المنجزة، وقائمة الدروس المشتقة.
+    expect(db.getAnnualPlans).toHaveBeenCalledTimes(4);
     expect(db.getAnnualPlans).toHaveBeenCalledWith(1, { academicYear: "2022/2023" });
     expect(result.currentSection).toBeTruthy();
+    // المنطق الفعلي: الحصة اليومية تُفتح على أول مقطع يحوي وضعية لم تُنجز فعلًا —
+    // المقطع 1 يحوي «وضعية 2» غير منجزة، فالتيار يُربط به وليس بالمقطع المكتمل.
     expect(result.currentSection.title).toBe("الوثائق التاريخية");
     expect(result.nextSituation.title).toBe("وضعية 2");
     expect(result.sectionProgress).toEqual({ completed: 2, total: 3 });
