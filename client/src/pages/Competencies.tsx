@@ -12,6 +12,8 @@ import {
   FileText,
   Lightbulb,
   Printer,
+  Brain,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -156,8 +158,9 @@ interface SectionStrategyDialogProps {
   sectionTitle: string;
 }
 function SectionStrategyDialog({ open, onOpenChange, subject, gradeLevel, sectionNumber, sectionTitle }: SectionStrategyDialogProps) {
+  const [aiMode, setAiMode] = useState(false);
   const strategyQuery = trpc.competencyModel.sectionStrategy.useQuery(
-    { subject, gradeLevel, sectionNumber },
+    { subject, gradeLevel, sectionNumber, mode: aiMode ? "ai" : "static" },
     { enabled: open },
   );
   const data = strategyQuery.data;
@@ -173,11 +176,30 @@ function SectionStrategyDialog({ open, onOpenChange, subject, gradeLevel, sectio
         {strategyQuery.isLoading && (
           <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
             <Loader2 className="size-5 animate-spin" />
-            جارٍ اقتراح الاستراتيجية...
+            {aiMode ? "جارٍ تصميم الاستراتيجية بالذكاء الاصطناعي من سياق الكفاءات..." : "جارٍ اقتراح الاستراتيجية..."}
           </div>
         )}
         {strategyQuery.error && (
           <p className="text-sm text-destructive py-4 text-center">{strategyQuery.error.message}</p>
+        )}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Brain className="size-4" />
+            <span>المصدر: {strategyQuery.data?.source === "ai" ? "الذكاء الاصطناعي (توليد مخصص من سياق الكفاءات)" : "مصفوفة التعلم النشط الثابتة"}</span>
+          </div>
+          <Button
+            variant={aiMode ? "default" : "outline"}
+            size="sm"
+            className={aiMode ? "bg-amber-600 hover:bg-amber-700" : ""}
+            disabled={strategyQuery.isLoading}
+            onClick={() => setAiMode(m => !m)}
+          >
+            {aiMode ? "الاستراتيجية المخصصة (AI)" : "ولّد استراتيجية مخصصة بالذكاء الاصطناعي"}
+            <Sparkles className="size-3.5 ml-1" />
+          </Button>
+        </div>
+        {data?.note && (
+          <p className="text-xs text-muted-foreground bg-muted rounded-md px-3 py-2">{data.note}</p>
         )}
         {data && (
           <div className="space-y-4">

@@ -30,11 +30,12 @@ import {
   getLearningSituations, getLearningSituationsByUserId, getPendingOperationalLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
   listSavedStrategies, getSavedStrategyById, saveStrategy, updateSavedStrategy, deleteSavedStrategy,
-  listCompetencyModels, getCompetencyModelById, getCompetencyProgress, linkSectionCompetencies, getCompetencySectionSituations,
+  listCompetencyModels, getCompetencyModelById, getCompetencyProgress, linkSectionCompetencies, getCompetencySectionSituations, getCompetencySectionContext,
 } from "./db";
 import {
   suggestStrategyForSituation,
   formatStrategyForLesson,
+  suggestStrategyWithLLM,
 } from "./strategies";
 import {
   getAssessmentRule,
@@ -2734,12 +2735,17 @@ ${rulesContext}
         input.sectionNumber,
       );
     }),
-    /** اقتراح استراتيجية تسيير لوضعية من مقطع كفاءة: القراءة متاحة من الوضعيات التشغيلية أو المرجعية. */
+    /**
+     * اقتراح استراتيجية تسيير لوضعية من مقطع كفاءة: القراءة متاحة من الوضعيات
+     * التشغيلية أو المرجعية. الوضع «ai» يولّد استراتيجية مخصصة بالذكاء
+     * الاصطناعي انطلاقًا من سياق الكفاءات الكامل — الافتراضي «static» الثابت.
+     */
     sectionStrategy: protectedProcedure.input(z.object({
       subject: z.string().min(1),
       gradeLevel: z.string().min(1),
       sectionNumber: z.number(),
       situationId: z.number().optional(),
+      mode: z.enum(["static", "ai"]).default("static"),
     })).query(async ({ ctx, input }) => {
       const activeYear = await getActiveAcademicYear();
       if (!activeYear) throw new TRPCError({ code: "BAD_REQUEST", message: "فعّل الموسم الدراسي أولًا" });
@@ -2754,14 +2760,36 @@ ${rulesContext}
       if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "لا توجد وضعيات لهذا المقطع" });
       const section = await getAnnualPlanSectionById(target.sectionId);
       const plan = section ? await getAnnualPlanById(section.annualPlanId) : undefined;
+      const subject = plan?.subject || input.subject;
+      const gradeLevel = plan?.gradeLevel || input.gradeLevel;
+      const staticInput = {
+        title: target.title,
+        content: target.content || "",
+        subject,
+        gradeLevel,
+      };
+      if (input.mode === "ai") {
+        const context = await getCompetencySectionContext(subject, gradeLevel, input.sectionNumber);
+        const result = await suggestStrategyWithLLM({
+          situationTitle: target.title,
+          ...(context ? {
+            globalCompetency: context.globalCompetency,
+            termCompetency: context.termCompetency,
+            competencyAction: context.competencyAction,
+            durationHours: context.durationHours,
+            knowledgeResources: (context.knowledgeResources ?? undefined) as Array<{ title: string; action?: string }> | undefined,
+            criteria: (context.criteria ?? undefined) as Array<{ criterion: string; indicators?: unknown[] }> | undefined,
+          } : {}),
+          subject,
+          gradeLevel,
+        });
+        return { situation: target, strategy: result.strategy, source: result.source, note: result.note };
+      }
       return {
         situation: target,
-        strategy: suggestStrategyForSituation({
-          title: target.title,
-          content: target.content || "",
-          subject: plan?.subject || input.subject,
-          gradeLevel: plan?.gradeLevel || input.gradeLevel,
-        }),
+        strategy: suggestStrategyForSituation(staticInput),
+        source: "static" as const,
+        note: "استراتيجية ثابتة من مصفوفة التعلم النشط" as string | undefined,
       };
     }),
   }),

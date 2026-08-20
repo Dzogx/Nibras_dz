@@ -1700,6 +1700,51 @@ export async function getCompetencyModelById(id: number, userId?: string) {
   return { ...model, sections: sectionsWithSituations };
 }
 
+/**
+ * توحيد مادة نموذج الكفاءة: التاريخ/الجغرافيا المنفصلان يشاركان نموذج
+ * «التاريخ والجغرافيا» الموحّد — مثل مطابقة البذر.
+ */
+function resolveCompetencySubject(subject: string): string {
+  if (subject === "التاريخ" || subject === "الجغرافيا" || subject === "التاريخ والجغرافيا") return "التاريخ والجغرافيا";
+  if (subject === "التربية المدنية") return "التربية المدنية";
+  return subject;
+}
+/**
+ * سياق المقطع التربوي الكامل للمولّد الذكي للاستراتيجيات:
+ * الكفاءة الشاملة للمستوى + الكفاءة الختامية للمقطع + وضع التملك + الموارد المعرفية
+ * + معايير ومؤشرات التملك + الحجم الساعي.
+ */
+export async function getCompetencySectionContext(
+  subject: string,
+  gradeLevel: string,
+  sectionNumber: number,
+) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const resolved = resolveCompetencySubject(subject);
+  const models = await db.select().from(competencyModels)
+    .where(and(eq(competencyModels.subject, resolved as any), eq(competencyModels.gradeLevel, gradeLevel as any)))
+    .orderBy(competencyModels.gradeLevel)
+    .limit(1);
+  if (models.length === 0) return undefined;
+  const model = models[0];
+  const sectionRows = await db.select().from(sectionCompetencies)
+    .where(and(eq(sectionCompetencies.competencyModelId, model.id), eq(sectionCompetencies.sectionNumber, sectionNumber)))
+    .limit(1);
+  const section = sectionRows[0];
+  if (!section) return undefined;
+  return {
+    globalCompetency: model.globalCompetency,
+    termCompetency: section.termCompetency,
+    competencyAction: section.competencyAction,
+    durationHours: section.durationHours,
+    criteria: (section.criteria as unknown) ?? undefined,
+    knowledgeResources: (section.knowledgeResources as unknown) ?? undefined,
+    sectionTitle: section.sectionTitle,
+    subject: resolved,
+    gradeLevel: model.gradeLevel,
+  };
+}
 /** يضيف أو يحدّث نموذج كفاءة شاملة (upsert حسب المادة والمستوى). */
 export async function upsertCompetencyModel(data: InsertCompetencyModel & { gradeLevel: string; subject: string }) {
   const db = await getDb();
