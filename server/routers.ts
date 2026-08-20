@@ -2494,7 +2494,7 @@ ${rulesContext}
           userId: ctx.user.id,
           title: `ملاحظة حصة: ${situation.title}`,
           content: input.note,
-          noteType: "session_reflection",
+          noteType: "ملاحظة تربوية",
         } as any);
       }
       return { success: true, noteSaved: Boolean(input.note), sessionStatus, isCompleted } as const;

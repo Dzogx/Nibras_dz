@@ -35,6 +35,24 @@ queryClient.getQueryCache().subscribe(event => {
   }
 });
 
+// مناعة ضد الكاش المسموم بمفتاح سنة فارغة: عند بدء التطبيق تُزال كل استجابات
+// (حتى الناجحة الفارغة) المخزنة لمفتاح سنة "" أو أقل من 4 أحرف، فتُعاد من الخادم
+// بالسنة المشتقة حديثًا. يحمي الهواتف والمتصفحات ذات الكاش القديم.
+try {
+  queryClient.getQueryCache().findAll().forEach(query => {
+    const key = query.queryKey as unknown[];
+    const hasEmptyYear = key.some(
+      part =>
+        typeof part === "object" && part !== null && "academicYear" in part &&
+        typeof (part as { academicYear?: unknown }).academicYear === "string" &&
+        String((part as { academicYear: string }).academicYear).length < 4,
+    );
+    if (hasEmptyYear) queryClient.removeQueries({ queryKey: query.queryKey });
+  });
+} catch {
+  // لا نتوقف على أي استثناء أثناء تنظيف الكاش
+}
+
 queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;

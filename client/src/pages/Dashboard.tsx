@@ -117,17 +117,24 @@ export default function Dashboard() {
   const { data: activeYears } = trpc.academicYears.list.useQuery();
   // اشتقاق السنة دون لحظة وسيطة فارغة: الموسم المفعّل هو المرجع الأول، ثم ملف الأستاذ.
   // لا نمرّر "" لأي استعلام حتى لا تُخزَّن استجابات خطأ دائمة في ذاكرة الاستعلامات.
+  // إذا لم تُحسم السنة بعد (استعلامات جارية)، تبقى undefined ولا تُمكَّن الاستعلامات التابعة حتى لا
+  // يُسمَّم الكاش بمفتاح سنة فارغ — خاصة بعد تغييرات الخادم أو كاش متصفح قديم.
   const academicYear = useMemo(
     () =>
       activeYears?.find((y: any) => y.isActive)?.year ??
       (profile?.academicYear && profile.academicYear.length >= 4 ? profile.academicYear : undefined) ??
-      activeYears?.[0]?.year ??
-      "",
+      activeYears?.[0]?.year,
     [profile, activeYears],
   );
-  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery({ academicYear });
+  const { data: annualPlans, isLoading: plansLoading } = trpc.annualPlans.list.useQuery(
+    { academicYear: academicYear ?? "" },
+    { enabled: Boolean(academicYear) },
+  );
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
-  const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery({ academicYear });
+  const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery(
+    { academicYear: academicYear ?? "" },
+    { enabled: Boolean(academicYear) },
+  );
   const { data: weeklyReadiness } = trpc.ai.weeklyReadinessSummary.useQuery();
 
   const isLoadingStats = classesLoading || lessonsLoading || plansLoading || resourcesLoading;
@@ -140,7 +147,7 @@ export default function Dashboard() {
   const pendingLessons = pendingSituations.length;
   const pendingLessonsList = pendingSituations;
 
-  const [selectedClassId, setSelectedClassId] = usePreferredClass(academicYear);
+  const [selectedClassId, setSelectedClassId] = usePreferredClass(academicYear ?? "");
   const [followSchedule, setFollowSchedule] = useState(true);
   const [finishSessionOpen, setFinishSessionOpen] = useState(false);
   const [sessionNote, setSessionNote] = useState("");
