@@ -427,7 +427,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Welcome Header — بطاقة hero بهوية نبراس */}
-      <div className="nibras-glow-pattern rounded-2xl nibras-card-hero p-5 md:p-6 shadow-sm">
+      <div className="nibras-glow-pattern nibras-orientation-hero rounded-2xl nibras-card-hero p-5 md:p-6 shadow-sm">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             <img
@@ -436,7 +436,8 @@ export default function Dashboard() {
               className="h-10 w-auto rounded-md bg-white/95 p-1 shrink-0"
             />
             <div>
-              <h1 className="text-xl md:text-2xl font-bold">
+              <p className="nibras-kicker">مساحة الأستاذ اليومية</p>
+              <h1 className="mt-1 text-xl md:text-2xl font-bold">
                 مرحباً، {user?.name || "أستاذ"}
               </h1>
               <p className="text-sm opacity-85 mt-1">
@@ -450,17 +451,26 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
+        <div className="nibras-session-rail" aria-label="مسار العمل التربوي">
+          <span className="is-current">اليوم</span>
+          <i aria-hidden="true" />
+          <span>المذكرة</span>
+          <i aria-hidden="true" />
+          <span>التنفيذ</span>
+          <i aria-hidden="true" />
+          <span>المتابعة</span>
+        </div>
       </div>
 
       {/* نقطة العمل الأساسية: يقود نبراس الأستاذ إلى خطوة اليوم الواحدة. */}
-      <Card className="overflow-hidden border-primary/20 shadow-md">
+      <Card className="nibras-next-action overflow-hidden border-primary/20 shadow-md">
         <CardContent className="p-5 md:p-6 bg-gradient-to-bl from-brand-ink-900 via-brand-ink-800 to-brand-ink-700 text-white">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-wax-400 text-brand-ink-950 font-bold">1</span>
               <div>
-                <p className="text-xs text-white/70">مساحة العمل اليومية</p>
-                <h2 className="font-bold text-lg">خطوتك التالية</h2>
+                <p className="text-xs text-white/70">قرار واحد واضح</p>
+                <h2 className="font-bold text-lg">مسار حصتك الآن</h2>
               </div>
             </div>
             {seasonClasses.length > 1 && (
@@ -567,13 +577,19 @@ export default function Dashboard() {
 
       {/* التقرير الأسبوعي التلقائي: جاهزية الأقسام للأسبوع القادم */}
       {Boolean(weeklyReadiness?.items?.length) && (
-        <Card className="border-brand-wax-400/30">
+        <Card className="nibras-week-ahead border-brand-wax-400/30">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CalendarClock className="h-5 w-5 text-brand-wax-400" />
-              جاهزية الأسبوع القادم
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="nibras-kicker text-primary">نظرة استباقية</p>
+                <CardTitle className="mt-1 text-base flex items-center gap-2">
+                  <CalendarClock className="h-5 w-5 text-brand-wax-400" />
+                  جاهزية الأسبوع القادم
+                </CardTitle>
+              </div>
+              <span className="nibras-count-pill">{weeklyReadiness!.items.length} أقسام</span>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
               {weeklyReadiness!.totalPendingHours > 0
                 ? `حصة متبقية بلا درس منجز: ${weeklyReadiness!.totalPendingHours}`
                 : "كل الحصص التالية لها مذكرات منجزة."}
@@ -588,7 +604,7 @@ export default function Dashboard() {
                 return (
                   <div
                     key={item.classId}
-                    className="rounded-xl border border-border bg-card p-3.5 space-y-2"
+                    className="nibras-week-card rounded-xl border border-border bg-card p-3.5 space-y-2"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="font-semibold text-sm">{classItem?.name ?? `قسم ${item.classId}`}</p>

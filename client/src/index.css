@@ -421,12 +421,8 @@
     display: none !important;
   }
   /* إخفاء ما لا يُطبع على الشاشة */
-  .screen-only {
-    display: block;
-  }
-  .print-hidden-screen {
-    display: none;
-  }
+  .screen-only { display: none !important; }
+  .print-hidden-screen { display: block !important; }
   /* ===== الترويسة الرسمية الجزائرية ===== */
   .print-header-official {
     font-size: 11pt;
@@ -680,5 +676,97 @@
     box-shadow: none;
     margin: 0;
   }
-  .print-nibras-slide:last-child { page-break-after: auto; break-after: auto; }
+.print-nibras-slide:last-child { page-break-after: auto; break-after: auto; }
+}
+
+/* ===== نظام الوثائق الرسمي: حبر هادئ، هرمية واضحة، بلا هوية تجارية ===== */
+.print-hidden-screen { display: none; }
+.print-header-official { color: #172033; font-family: 'Noto Naskh Arabic', 'Cairo', sans-serif; line-height: 1.55; }
+.print-masthead-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(175px,1.15fr) minmax(0,1fr); gap: .9rem; align-items: stretch; padding: .65rem 0 .75rem; border-top: 2px solid #172033; border-bottom: 1px solid #9ca3af; }
+.print-masthead-cell { display:flex; flex-direction:column; gap:.08rem; font-size:10pt; }
+.print-masthead-cell strong { font-size:10.6pt; font-weight:700; }
+.print-masthead-cell small { margin-top:.12rem; font-size:9pt; color:#4b5563; }
+.print-masthead-right { text-align:right; }
+.print-masthead-left { text-align:left; }
+.print-masthead-label, .print-document-label, .print-doc-title > span { color:#6b7280; font-size:8.2pt; letter-spacing:.02em; }
+.print-state-emblem { display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding-inline:.7rem; border-inline:1px solid #d1d5db; font-size:9.6pt; }
+.print-state-emblem span { font-size:8.9pt; color:#4b5563; margin-top:.1rem; }
+.print-document-band { display:flex; justify-content:space-between; gap:1rem; align-items:stretch; padding:.65rem 0; border-bottom:1px solid #d1d5db; }
+.print-document-kind { display:flex; flex-direction:column; gap:.08rem; }
+.print-document-kind strong { font-size:12pt; }
+.print-document-kind small { color:#4b5563; font-size:8.8pt; }
+.print-document-facts { display:grid; grid-template-columns:repeat(2,minmax(95px,auto)); gap:.65rem; margin:0; }
+.print-document-facts > div { padding-inline-start:.65rem; border-inline-start:2px solid #9ca3af; }
+.print-document-facts dt { color:#6b7280; font-size:8pt; }
+.print-document-facts dd { margin:.08rem 0 0; font-weight:700; font-size:9pt; white-space:nowrap; }
+.print-teacher-line { display:flex; gap:.5rem; padding:.38rem 0; border-bottom:1px solid #d1d5db; font-size:9.3pt; }
+.print-teacher-line span { color:#6b7280; }
+.print-doc-title { display:flex; flex-direction:column; gap:.05rem; padding:.85rem 0 .7rem; text-align:right; border-bottom:2px solid #172033; }
+.print-doc-title strong { font-size:14.5pt; line-height:1.35; }
+.print-footer-neutral { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:end; gap:.8rem; margin-top:1.35rem; padding-top:.45rem; border-top:1px solid #9ca3af; color:#4b5563; font-size:8pt; }
+.print-page-label, .print-page-num { white-space:nowrap; }
+.print-preview-surface { background:radial-gradient(circle at 50% 0%,rgba(229,231,235,.9),transparent 38%),#d1d5db; }
+.document-section-heading { position:relative; padding-inline-start:.75rem; margin-bottom:.6rem; font-size:1.02rem; font-weight:800; color:var(--brand-ink-900); }
+.document-section-heading::before { content:""; position:absolute; inset-inline-start:0; top:.25rem; width:3px; height:1.15rem; border-radius:999px; background:var(--brand-copper-500); }
+
+/* ===== مساحة عمل المذكرة: تسلسل بصري بدل شريط أزرار متزاحم ===== */
+.lesson-workspace-header { overflow:hidden; padding:1.15rem 1.2rem 1.05rem; border:1px solid var(--brand-ink-200); border-radius:1.15rem; background:linear-gradient(135deg,#fffdfb,#f8f2f7 64%,#fdf4e9); box-shadow:0 16px 36px rgba(58,31,51,.07); }
+.lesson-back-button { color:var(--brand-ink-700); }
+.lesson-document-type { display:inline-flex; align-items:center; gap:.35rem; padding:.3rem .55rem; border-radius:999px; background:var(--brand-wax-100); color:var(--brand-wax-900); font-size:.72rem; font-weight:700; }
+.lesson-meta-row { display:flex; flex-wrap:wrap; gap:.4rem; color:var(--brand-ink-600); font-size:.78rem; }
+.lesson-meta-row > span:not(.nibras-tag-history) { padding:.22rem .5rem; border-radius:999px; background:rgba(255,255,255,.72); border:1px solid var(--brand-ink-100); }
+.lesson-meta-row .nibras-tag-history { padding:.22rem .5rem; border-radius:999px; }
+.lesson-action-bar { display:flex; flex-wrap:wrap; gap:.5rem; padding-top:.75rem; border-top:1px solid rgba(223,191,218,.8); }
+.lesson-action-bar > button { box-shadow:0 1px 0 rgba(255,255,255,.7) inset; }
+.nibras-decision-card { overflow:hidden; position:relative; }
+.nibras-decision-card::before { content:""; position:absolute; inset:0 auto 0 0; width:4px; background:linear-gradient(var(--brand-wax-500),var(--brand-copper-500)); }
+.nibras-template-card { position:relative; min-height:5.7rem; }
+.nibras-template-card::after { content:""; position:absolute; inset:0; border-radius:inherit; background:linear-gradient(135deg,transparent 55%,rgba(232,184,75,.08)); pointer-events:none; }
+.nibras-template-card.is-selected { border-width:2px; }
+
+/* ===== الهاتف: أربع وجهات يومية واضحة بدل التفاف سبع أيقونات ===== */
+.nibras-mobile-nav { background:rgba(255,253,251,.93); box-shadow:0 -10px 28px rgba(58,31,51,.1); }
+.nibras-login-portal { padding:1.25rem; }
+.nibras-login-card { position:relative; border:1px solid var(--brand-ink-100); border-radius:1.4rem; background:rgba(255,253,251,.82); box-shadow:0 22px 52px rgba(58,31,51,.1); }
+
+/* ===== صفحة اليوم: مسار حصة واحد واضح بدل جدار من البطاقات ===== */
+.nibras-kicker { color:var(--brand-wax-300); font-size:.65rem; font-weight:800; letter-spacing:.075em; line-height:1.2; }
+.nibras-orientation-hero { position:relative; overflow:hidden; }
+.nibras-orientation-hero::after { position:absolute; inset:auto -2rem -3.25rem auto; width:9.5rem; height:9.5rem; border:1px solid rgb(255 250 236 / .18); border-radius:999px; box-shadow:0 0 0 1.2rem rgb(255 250 236 / .035),0 0 0 2.4rem rgb(255 250 236 / .025); content:""; pointer-events:none; }
+.nibras-session-rail { position:relative; z-index:1; display:flex; align-items:center; gap:.5rem; width:fit-content; max-width:100%; margin-top:1.5rem; padding:.5rem .7rem; overflow:auto; border:1px solid rgb(255 255 255 / .13); border-radius:.75rem; background:rgb(255 255 255 / .055); color:rgb(255 255 255 / .57); font-size:.7rem; font-weight:650; white-space:nowrap; }
+.nibras-session-rail i { width:.9rem; height:1px; background:rgb(255 255 255 / .25); }
+.nibras-session-rail .is-current { color:var(--brand-wax-300); }
+.nibras-next-action { position:relative; border-width:0 1px 1px 1px; }
+.nibras-next-action::before { position:absolute; z-index:1; inset:.75rem auto .75rem 0; width:.22rem; border-radius:999px; background:var(--brand-wax-400); content:""; }
+.nibras-week-ahead { background:linear-gradient(155deg,rgb(255 255 255) 0%,rgb(255 251 245) 100%); }
+.nibras-count-pill { display:inline-flex; flex:none; align-items:center; min-height:1.75rem; padding:.2rem .55rem; border:1px solid rgb(182 137 47 / .25); border-radius:999px; background:rgb(255 249 235 / .9); color:#70501b; font-size:.7rem; font-weight:750; }
+.nibras-week-card { box-shadow:inset .2rem 0 0 rgb(98 59 86 / .16); transition:transform 160ms var(--ease-out),box-shadow 160ms var(--ease-out); }
+@media (hover:hover) { .nibras-week-card:hover { box-shadow:inset .2rem 0 0 var(--brand-ink-700),0 .6rem 1.25rem rgb(61 32 53 / .08); transform:translateY(-2px); } }
+
+/* ===== مكتبة المحتوى: موارد قابلة للمسح لا بطاقات نصية مكررة ===== */
+.nibras-library-heading .nibras-kicker { color:var(--brand-copper-700); }
+.nibras-library-tools { padding:.75rem; border:1px solid var(--brand-ink-100); border-radius:1rem; background:linear-gradient(100deg,#fffdfb,#f8f2f7); }
+.nibras-library-result-count { margin-bottom:.2rem; color:var(--brand-ink-600); font-size:.73rem; font-weight:700; }
+.nibras-resource-card { position:relative; overflow:hidden; border-color:var(--brand-ink-100); background:linear-gradient(105deg,#fff 0%,#fffdfb 100%); box-shadow:0 3px 0 rgba(58,31,51,.02); transition:transform 160ms var(--ease-out),box-shadow 160ms var(--ease-out),border-color 160ms var(--ease-out); }
+.nibras-resource-card::before { position:absolute; inset:.9rem auto .9rem 0; width:3px; border-radius:999px; background:linear-gradient(var(--brand-ink-500),var(--brand-copper-500)); content:""; opacity:.68; }
+.nibras-resource-card:hover { border-color:var(--brand-ink-200); box-shadow:0 14px 28px rgba(58,31,51,.09); transform:translateY(-2px); }
+.nibras-resource-kind { display:inline-flex; align-items:center; gap:.3rem; padding:.25rem .5rem; border:1px solid var(--brand-wax-200); border-radius:999px; background:var(--brand-wax-50); color:var(--brand-wax-900); font-size:.7rem; font-weight:800; }
+.nibras-resource-title { overflow:hidden; color:var(--brand-ink-900); font-size:1rem; font-weight:800; line-height:1.65; text-overflow:ellipsis; white-space:nowrap; }
+.nibras-resource-tag { padding:.18rem .45rem; border-radius:.45rem; background:var(--brand-ink-50); color:var(--brand-ink-600); font-size:.67rem; font-weight:650; }
+.nibras-resource-open { border-color:var(--brand-ink-200); background:#fff; color:var(--brand-ink-700); }
+
+@media screen and (max-width:640px) {
+  .print-preview-page { width:100% !important; min-height:0 !important; transform:none; margin-bottom:0; padding:1.1rem !important; box-shadow:0 12px 28px rgba(23,32,51,.18) !important; }
+  .print-masthead-grid { grid-template-columns:1fr; gap:.55rem; }
+  .print-state-emblem { order:-1; border-inline:0; border-bottom:1px solid #d1d5db; padding-bottom:.55rem; }
+  .print-masthead-left { text-align:right; }
+  .print-document-band { flex-direction:column; gap:.55rem; }
+  .print-document-facts { width:100%; }
+  .print-footer-neutral { grid-template-columns:1fr auto; }
+  .print-footer-neutral > :nth-child(2) { grid-column:1 / -1; }
+  .lesson-workspace-header { padding:1rem; border-radius:1rem; }
+  .lesson-action-bar > button { flex:1 1 calc(50% - .3rem); justify-content:center; }
+  .nibras-library-tools { padding:.65rem; border-radius:.85rem; }
+  .nibras-resource-card::before { inset:.75rem auto .75rem 0; }
+  .nibras-resource-title { white-space:normal; }
 }

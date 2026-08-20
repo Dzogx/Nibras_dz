@@ -14,6 +14,7 @@ import { Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePrintQrCodes } from "@/hooks/usePrintQrCodes";
+import { OfficialDocumentFooter, OfficialDocumentHeader } from "@/components/OfficialDocumentChrome";
 
 const NIBRAS_BASE_URL = (() => {
   if (typeof window !== "undefined") return window.location.origin;
@@ -91,60 +92,8 @@ export function A4PrintContent({
   const qrCodeUrls = usePrintQrCodes(serialNumber, examEndsAt);
   return (
     <div className="print-container" dir="rtl">
-      {/* ===== الترويسة الرسمية الجزائرية (تظهر فقط عند الطباعة) ===== */}
-      {/* مطابقة لنموذج الورقة اليدوية الرسمي: سطران محددان بخط واضح بدون شعار وزارة في الأعلى */}
-      <div className="print-header-official print-hidden-screen">
-        <div className="print-header-row print-header-top">
-          <div className="print-header-right">
-            <div className="print-office print-office-main">مديرية التربية لولاية {province || "..........................."}</div>
-          </div>
-          <div className="print-header-logo">
-            <div className="print-state-emblem">
-              الجمهورية الجزائرية الديمقراطية الشعبية<br />
-              وزارة التربية الوطنية
-            </div>
-          </div>
-          <div className="print-header-left">
-            <div className="print-office print-office-main">متوسطة: {school || "......................................."} – المحادمة</div>
-          </div>
-          <div className="print-header-far-left">
-            <div className="print-office print-office-main">المستوى: {levelSection || "...................."}</div>
-          </div>
-        </div>
-        <div className="print-header-divider" />
-        <div className="print-header-row">
-          <div className="print-header-right">
-            <div className="print-office print-office-main">
-              {title}
-              {subject ? <> في مادة: {subject}</> : null}
-              {extra ? <span className="print-doc-extra">{extra}</span> : null}
-            </div>
-          </div>
-          <div className="print-header-left">
-            <div className="print-office print-office-main">{date ? `التاريخ: ${date}` : "التاريخ: ............../............../.............."}</div>
-          </div>
-          <div className="print-header-far-left">
-            <div className="print-office print-office-main">{duration ? `المدة: ${duration}` : "المدة: ......................."}</div>
-          </div>
-        </div>
-        <div className="print-header-divider" />
-        {/* صف بيانات الأستاذ (تظهر عند توفر اسم الأستاذ، تُخفى لورقة الاختبار التي توزع على التلاميذ) */}
-        {teacherName ? (
-          <>
-            <div className="print-header-fields">
-              <div className="print-field">
-                <span className="print-field-label">الأستاذ(ة):</span>
-                <span className="print-field-value">{teacherName}</span>
-              </div>
-            </div>
-            <div className="print-header-divider" />
-          </>
-        ) : null}
-        {subtitle ? (
-          <div className="print-doc-title">
-            {subtitle}
-          </div>
-        ) : null}
+      <div className="print-hidden-screen">
+        <OfficialDocumentHeader meta={{ title, subtitle, teacherName, school, province, subject, levelSection, duration, date, extra, serialNumber, examEndsAt }} />
       </div>
       {/* عنوان مبسط للمعاينة على الشاشة فقط */}
       <div className="screen-only print-container-preview-title">
@@ -157,10 +106,7 @@ export function A4PrintContent({
       {/* ===== محتوى الوثيقة ===== */}
       <div className="print-body">{children}</div>
       {/* ===== تذييل: الترويسة البصرية، الرمز التسلسلي، رموز QR للتحقق والإجابات ===== */}
-      <div className="print-footer print-footer-identity">
-        <div className="print-footer-brand">
-          <span className="print-footer-doc-type">{title}{subject ? <> — {subject}</> : null}</span>
-        </div>
+      <OfficialDocumentFooter title={title} subject={subject}>
         {serialNumber && (
           <div className="print-qr-block">
             {qrCodeUrls.verification && (
@@ -178,8 +124,7 @@ export function A4PrintContent({
             <span className="print-serial" dir="ltr">{serialNumber}</span>
           </div>
         )}
-        <span className="print-page-num" />
-      </div>
+      </OfficialDocumentFooter>
     </div>
   );
 }

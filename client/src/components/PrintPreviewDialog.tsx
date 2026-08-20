@@ -18,7 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { PrintMeta } from "@/components/A4Print";
-import { cn } from "@/lib/utils";
+import { OfficialDocumentFooter, OfficialDocumentHeader } from "@/components/OfficialDocumentChrome";
 
 interface PrintPreviewDialogProps {
   open: boolean;
@@ -34,8 +34,8 @@ export function PrintPreviewDialog({ open, onOpenChange, meta, children }: Print
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92vw] w-[900px] max-h-[92vh] p-0 gap-0 overflow-hidden" dir="rtl">
-        <DialogHeader className="px-5 pt-4 pb-2 border-b bg-muted/40 shrink-0">
+      <DialogContent className="w-[min(94vw,900px)] max-h-[92vh] p-0 gap-0 overflow-hidden rounded-2xl" dir="rtl">
+        <DialogHeader className="px-5 pt-4 pb-3 border-b bg-brand-sand-50 shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <DialogTitle className="text-base">معاينة قبل الطباعة</DialogTitle>
@@ -57,7 +57,7 @@ export function PrintPreviewDialog({ open, onOpenChange, meta, children }: Print
         </DialogHeader>
 
         {/* منطقة المعاينة: خلفية رمادية تحاكي سطح المكتب، والصفحة بيضاء بحجم A4 */}
-        <div className="flex-1 overflow-y-auto bg-neutral-200/80 px-4 py-6 min-h-0">
+        <div className="print-preview-surface flex-1 overflow-y-auto px-4 py-6 min-h-0">
           {/* صفحة A4 محاكاة (210mm × 297mm بمقياس 72% لعرضها داخل الشاشة) */}
           <div
             className="print-preview-page mx-auto"
@@ -73,70 +73,15 @@ export function PrintPreviewDialog({ open, onOpenChange, meta, children }: Print
               color: "#0f172a",
             }}
           >
-            {/* الترويسة الرسمية الجزائرية (تطابق نسخة الطباعة تماماً) */}
-            <div className="print-header-official">
-              <div className="print-header-row print-header-top">
-                <div className="print-header-right">
-                  <div className="print-office print-office-main">مديرية التربية لولاية {meta.province || "..........................."}</div>
-                </div>
-                <div className="print-header-left">
-                  <div className="print-office print-office-main">متوسطة: {meta.school || "......................................."} – المحادمة</div>
-                </div>
-                <div className="print-header-far-left">
-                  <div className="print-office print-office-main">المستوى: {meta.levelSection || "...................."}</div>
-                </div>
-              </div>
-              <div className="print-header-divider" />
-              <div className="print-header-row">
-                <div className="print-header-right">
-                  <div className="print-office print-office-main">
-                    {meta.title}
-                    {meta.subject ? <> في مادة: {meta.subject}</> : null}
-                    {meta.extra ? <span className="print-doc-extra">{meta.extra}</span> : null}
-                  </div>
-                </div>
-                <div className="print-header-left">
-                  <div className="print-office print-office-main">{meta.date ? `التاريخ: ${meta.date}` : "التاريخ: ............../............../.............."}</div>
-                </div>
-                <div className="print-header-far-left">
-                  <div className="print-office print-office-main">{meta.duration ? `المدة: ${meta.duration}` : "المدة: ......................."}</div>
-                </div>
-              </div>
-              <div className="print-header-divider" />
-              {meta.teacherName ? (
-                <>
-                  <div className="print-header-fields">
-                    <div className="print-field">
-                      <span className="print-field-label">الأستاذ(ة):</span>
-                      <span className="print-field-value">{meta.teacherName}</span>
-                    </div>
-                  </div>
-                  <div className="print-header-divider" />
-                </>
-              ) : null}
-              {meta.subtitle ? (
-                <div className="print-doc-title">{meta.subtitle}</div>
-              ) : null}
-            </div>
+            <OfficialDocumentHeader meta={meta} />
 
             {/* محتوى الوثيقة */}
             <div className="print-body">{children}</div>
 
             {/* التذييل */}
-            <div
-              className={cn(
-                "flex justify-between items-center gap-2",
-                "text-[8.5pt] text-slate-500 border-t border-slate-300 pt-1.5 mt-5"
-              )}
-            >
-              <span>نبراس — مساعد التدريس الذكي لأستاذ الاجتماعيات</span>
-              {meta.serialNumber && (
-                <span className="font-mono text-[8pt] border border-dashed border-slate-400 rounded px-1" dir="ltr">
-                  {meta.serialNumber}
-                </span>
-              )}
-              <span>صفحة 1</span>
-            </div>
+            <OfficialDocumentFooter title={meta.title} subject={meta.subject} pageLabel="صفحة 1">
+              {meta.serialNumber && <span className="print-serial" dir="ltr">{meta.serialNumber}</span>}
+            </OfficialDocumentFooter>
           </div>
         </div>
 

@@ -168,86 +168,62 @@ export default function LessonDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/lessons")}>
-          <ArrowRight className="w-4 h-4" />
-        </Button>
-        <h1 className="text-2xl font-bold">{lesson.title}</h1>
-      </div>
-
-      {/* Status */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant={lesson.isCompleted ? "default" : "outline"}
-          size="sm"
-          onClick={() => toggleMutation.mutate({ id: lessonId, isCompleted: !lesson.isCompleted })}
-        >
-          {lesson.isCompleted ? <><CheckCircle2 className="w-4 h-4 ml-1" />منجز</> : <><Clock className="w-4 h-4 ml-1" />معلّق</>}
-        </Button>
-        {lesson.subject && <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{lesson.subject}</span>}
-        {lesson.gradeLevel && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.gradeLevel}</span>}
-        {lesson.unitTitle && <span className="text-xs bg-muted px-2 py-0.5 rounded">{lesson.unitTitle}</span>}
-        <Button variant="outline" size="sm" className="print:hidden" onClick={() => setSlidesOpen(true)}>
-          <Presentation className="w-4 h-4 ml-1" />
-          خطة العرض الصفي
-        </Button>
-        <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}>
-          <Eye className="w-4 h-4 ml-1" />
-          معاينة
-        </Button>
-        <A4PrintButton
-          title="مذكرة بيداغوجية"
-          subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`}
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={exportPdf.isPending}
-          onClick={() =>
-            exportPdf.mutate({
-              title: lesson?.title || "مذكرة بيداغوجية",
-              content: [lesson.plan, lesson.objectives, lesson.content].filter(Boolean).join("\n\n"),
-              subject: lesson?.subject || "",
-              gradeLevel: cls ? `${cls.gradeLevel} — ${cls.section ? `القسم ${cls.section}` : ""}`.trim() : (lesson?.gradeLevel || ""),
-              teacherName: profile?.displayName || "",
-              school: cls?.name || profile?.school || "",
-              date: lessonPlanPdfDate,
-            })
-          }
-        >
-          {exportPdf.isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 ml-1 animate-spin" />
-              جارٍ التجميع...
-            </>
-          ) : (
-            <>
-              <FileDown className="w-4 h-4 ml-1" />
-              PDF
-            </>
-          )}
-        </Button>
-        <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
-      </div>
+      <header className="lesson-workspace-header nibras-glow-pattern">
+        <div className="flex items-center justify-between gap-3">
+          <Button variant="ghost" size="sm" className="lesson-back-button" onClick={() => setLocation("/lessons")}>
+            <ArrowRight className="w-4 h-4" />
+            كل المذكرات
+          </Button>
+          <span className="lesson-document-type"><FileText className="w-3.5 h-3.5" /> مذكرة الحصة</span>
+        </div>
+        <div className="mt-5">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{lesson.title}</h1>
+          <div className="lesson-meta-row mt-3">
+            {lesson.subject && <span className="nibras-tag-history">{lesson.subject}</span>}
+            {lesson.gradeLevel && <span>{lesson.gradeLevel}</span>}
+            {lesson.unitTitle && <span className="truncate max-w-[20rem]">{lesson.unitTitle}</span>}
+          </div>
+        </div>
+        <div className="lesson-action-bar mt-6">
+          <Button variant={lesson.isCompleted ? "default" : "outline"} size="sm" onClick={() => toggleMutation.mutate({ id: lessonId, isCompleted: !lesson.isCompleted })}>
+            {lesson.isCompleted ? <><CheckCircle2 className="w-4 h-4 ml-1" />تم الإنجاز</> : <><Clock className="w-4 h-4 ml-1" />في انتظار التنفيذ</>}
+          </Button>
+          <Button variant="outline" size="sm" className="print:hidden" onClick={() => setSlidesOpen(true)}><Presentation className="w-4 h-4 ml-1" />العرض الصفي</Button>
+          <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}><Eye className="w-4 h-4 ml-1" />معاينة الورقة</Button>
+          <A4PrintButton title="مذكرة بيداغوجية" subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`} />
+          <Button variant="outline" size="sm" disabled={exportPdf.isPending} onClick={() => exportPdf.mutate({
+            title: lesson?.title || "مذكرة بيداغوجية",
+            content: [lesson.plan, lesson.objectives, lesson.content].filter(Boolean).join("\n\n"),
+            subject: lesson?.subject || "",
+            gradeLevel: cls ? `${cls.gradeLevel} — ${cls.section ? `القسم ${cls.section}` : ""}`.trim() : (lesson?.gradeLevel || ""),
+            teacherName: profile?.displayName || "",
+            school: cls?.name || profile?.school || "",
+            date: lessonPlanPdfDate,
+          })}>
+            {exportPdf.isPending ? <><Loader2 className="w-4 h-4 ml-1 animate-spin" />جارٍ التجميع...</> : <><FileDown className="w-4 h-4 ml-1" />تنزيل PDF</>}
+          </Button>
+          <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
+        </div>
+      </header>
 
       {/* المعاينة الاحترافية: ترويسة رسمية عند الطباعة */}
       <A4PrintContent {...printMeta}>
         <div id="lesson-print-body" className="prose prose-sm max-w-none text-right mt-6" dir="rtl">
           {lesson.plan && (
             <div className="mb-5">
-              <h2 className="text-base font-bold mb-2">خطة سير الحصة</h2>
+              <h2 className="document-section-heading">خطة سير الحصة</h2>
               <MarkdownRenderer compact source={lesson.plan} />
             </div>
           )}
           {lesson.objectives && (
             <div className="mb-5">
-              <h2 className="text-base font-bold mb-2">الأهداف</h2>
+              <h2 className="document-section-heading">الأهداف</h2>
               <MarkdownRenderer compact source={lesson.objectives} />
             </div>
           )}
           {lesson.content && (
             <div className="mb-5">
-              <h2 className="text-base font-bold mb-2">المحتوى</h2>
+              <h2 className="document-section-heading">المحتوى</h2>
               <MarkdownRenderer compact source={lesson.content} />
             </div>
           )}
@@ -263,19 +239,19 @@ export default function LessonDetail({ id }: { id: string }) {
         <div className="prose prose-sm max-w-none text-right mt-4" dir="rtl">
           {lesson.plan && (
             <div className="mb-5">
-              <h2 className="text-base font-bold mb-2">خطة سير الحصة</h2>
+              <h2 className="document-section-heading">خطة سير الحصة</h2>
               <MarkdownRenderer compact source={lesson.plan} />
             </div>
           )}
           {lesson.objectives && (
             <div className="mb-5">
-              <h2 className="text-base font-bold mb-2">الأهداف</h2>
+              <h2 className="document-section-heading">الأهداف</h2>
               <MarkdownRenderer compact source={lesson.objectives} />
             </div>
           )}
           {lesson.content && (
             <div className="mb-5">
-              <h2 className="text-base font-bold mb-2">المحتوى</h2>
+              <h2 className="document-section-heading">المحتوى</h2>
               <MarkdownRenderer compact source={lesson.content} />
             </div>
           )}
@@ -283,7 +259,7 @@ export default function LessonDetail({ id }: { id: string }) {
       </PrintPreviewDialog>
 
       {/* Edit Form */}
-      <Card className="border-primary/20 bg-primary/5">
+      <Card className="nibras-decision-card border-primary/20 bg-primary/5">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-primary" />
@@ -300,7 +276,7 @@ export default function LessonDetail({ id }: { id: string }) {
                   key={template.key}
                   type="button"
                   onClick={() => setSelectedTemplateKey(template.key)}
-                  className={`rounded-lg border p-3 text-right transition-colors ${isSelected ? "border-primary bg-background shadow-sm" : "border-border bg-background/70 hover:border-primary/50"}`}
+                  className={`nibras-template-card rounded-xl border p-3 text-right transition-all ${isSelected ? "is-selected border-primary bg-background shadow-sm" : "border-border bg-background/70 hover:border-primary/50"}`}
                   aria-pressed={isSelected}
                 >
                   <span className="block text-sm font-semibold">{template.label}</span>

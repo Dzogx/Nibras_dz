@@ -37,6 +37,7 @@ import {
   CalendarDays,
   Users,
   Award,
+  ClipboardCheck,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -59,11 +60,8 @@ const menuItems = [
 const mobileQuickActions = [
   { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
   { icon: CalendarDays, label: "الأسبوع", path: "/weekly-plan" },
-  { icon: FileText, label: "التخطيط", path: "/annual-plans" },
+  { icon: ClipboardCheck, label: "التقويم", path: "/assessment" },
   { icon: Library, label: "المكتبة", path: "/content-library" },
-  { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
-  { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
-  { icon: Award, label: "الكفاءات", path: "/competencies" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -92,8 +90,8 @@ export default function DashboardLayout({
 
   if (!user) {
     return (
-      <div className="nibras-glow-pattern flex items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+      <div className="nibras-glow-pattern nibras-login-portal flex items-center justify-center min-h-screen bg-background">
+        <div className="nibras-login-card flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="text-center space-y-3">
             <img
               src="/manus-storage/nibras-bilingual-lockup_8f848dcc.png"
@@ -296,12 +294,12 @@ function DashboardLayoutContent({
       </div>
 
       <SidebarInset className="min-w-0 max-w-full overflow-x-hidden">
-          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 md:hidden">
+          <div className="flex border-b h-14 items-center justify-between bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:backdrop-blur sticky top-0 z-40 md:hidden">
             <div className="flex items-center gap-2">
               <SidebarTrigger className="h-9 w-9 rounded-lg bg-background" />
               <div className="flex items-center gap-3">
                 <div className="flex flex-col gap-1">
-                  <span className="tracking-tight text-foreground text-sm font-medium">
+                  <span className="tracking-tight text-foreground text-sm font-semibold">
                     {activeMenuItem?.label ?? "نبراس"}
                   </span>
                 </div>
@@ -313,7 +311,7 @@ function DashboardLayoutContent({
 	          {children}
 	        </main>
           <nav
-            className="fixed bottom-0 inset-x-0 z-50 grid grid-cols-4 border-t bg-background/95 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_24px_rgba(24,34,47,0.08)] backdrop-blur md:hidden"
+            className="nibras-mobile-nav fixed bottom-0 inset-x-0 z-50 grid grid-cols-4 border-t px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur md:hidden"
             aria-label="إجراءات الحصة السريعة"
           >
             {mobileQuickActions.map((action) => {
