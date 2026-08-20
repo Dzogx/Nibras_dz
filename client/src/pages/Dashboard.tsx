@@ -112,9 +112,23 @@ export default function Dashboard() {
 
   const { data: lessons, isLoading: lessonsLoading } = trpc.lessons.list.useQuery();
   const { data: situations } = trpc.situations.listPending.useQuery();
-  const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery();
-  const { data: profile } = trpc.profile.get.useQuery();
-  const { data: activeYears } = trpc.academicYears.list.useQuery();
+  const { data: classes, isLoading: classesLoading } = trpc.classes.list.useQuery(undefined, {
+    // إعادة جلب الأقسام عند كل تحميل صفحة: قسم فارغ قديم في الكاش هو السبب
+    // الأكثر شيوعًا لعرض «تهيئة الموسم» خطأً على أجهزة الأستاذ.
+    refetchOnMount: true,
+    staleTime: 2 * 60_000,
+  });
+  const { data: profile } = trpc.profile.get.useQuery(undefined, {
+    // ملف الأستاذ مرجع السنة المحسومة؛ كاش أقصر يمنع بقاء قيمة قديمة (مثل 2025-08).
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
+  });
+  const { data: activeYears } = trpc.academicYears.list.useQuery(undefined, {
+    // بيانات الموسم نادرًا ما تتغير، لكن أي كاش قديم (مثل سنة مفعّلة فارغة
+    // بعد تصحيح الخادم) يجب ألا يعيش أكثر من دقيقة حتى يتلاشى تلقائيًا.
+    staleTime: 60_000,
+    gcTime: 2 * 60_000,
+  });
   // اشتقاق السنة دون لحظة وسيطة فارغة: الموسم المفعّل هو المرجع الأول، ثم ملف الأستاذ.
   // لا نمرّر "" لأي استعلام حتى لا تُخزَّن استجابات خطأ دائمة في ذاكرة الاستعلامات.
   // إذا لم تُحسم السنة بعد (استعلامات جارية)، تبقى undefined ولا تُمكَّن الاستعلامات التابعة حتى لا
@@ -133,7 +147,7 @@ export default function Dashboard() {
   const { data: resources, isLoading: resourcesLoading } = trpc.aiResources.list.useQuery();
   const { data: weeklySchedule } = trpc.weeklySchedule.get.useQuery(
     { academicYear },
-    { enabled: Boolean(academicYear) },
+    { enabled: Boolean(academicYear), staleTime: 2 * 60_000 },
   );
   const { data: weeklyReadiness } = trpc.ai.weeklyReadinessSummary.useQuery();
 
