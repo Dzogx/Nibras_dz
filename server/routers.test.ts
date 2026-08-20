@@ -1149,7 +1149,7 @@ describe("ai.exportLessonPlanTex", () => {
     expect(result.compiler).toBe("xelatex");
     expect(result.texContent).toContain("المؤسسة: متوسطة النور");
     expect(result.texContent).toContain("\\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}");
-    expect(result.texContent).toContain("مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي");
+    expect(result.texContent).toContain("وثيقة تحضير تربوية قابلة للتحرير");
     expect(invokeLLM).not.toHaveBeenCalled();
   });
 });

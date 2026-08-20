@@ -38,6 +38,7 @@ import {
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLocation } from "wouter";
+import { buildActiveLearningCardHtml } from "@/lib/activeLearningCardPrint";
 
 const SUBJECTS = ["التاريخ والجغرافيا", "التاريخ", "الجغرافيا", "التربية المدنية"] as const;
 const GRADE_LEVELS = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"] as const;
@@ -352,7 +353,17 @@ function SectionStrategyDialog({ open, onOpenChange, subject, gradeLevel, sectio
                     return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/><style>@page{size:A4 portrait;margin:15mm 14mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:"Amiri","Noto Naskh Arabic",serif;color:#111827;font-size:11pt;line-height:1.7;}.header{text-align:center;border-bottom:2px solid #1f2937;padding-bottom:8px;margin-bottom:14px;}.header .line1{font-size:10.5pt;font-weight:bold;}.meta{display:flex;justify-content:space-between;font-size:10pt;margin-bottom:10px;}h1{font-size:13pt;text-align:center;margin:10px 0 6px;}h2{font-size:11.5pt;margin:12px 0 6px;border-right:3px solid #d97706;padding-right:8px;}.card{border:1px solid #d1d5db;border-radius:6px;padding:10px 12px;margin:6px 0 12px;background:#fffbeb;}table{width:100%;border-collapse:collapse;font-size:10pt;margin:8px 0 12px;}th{background:#f3f4f6;border:1px solid #9ca3af;padding:5px 8px;text-align:right;}td{border:1px solid #d1d5db;padding:5px 8px;vertical-align:top;text-align:right;}.footer{margin-top:18px;display:flex;justify-content:space-between;font-size:10pt;}.sig{border-top:1px solid #111827;padding-top:4px;margin-top:26px;}</style></head><body><div class="header"><div class="line1">الجمهورية الجزائرية الديمقراطية الشعبية</div><div class="line1">وزارة التربية الوطنية</div><div class="line1">مادة: ${subject} — ${gradeLevel}</div></div><div class="meta"><div>التاريخ: ${now}</div><div>الوضعية: ${data!.situation.title}</div></div><h1>بطاقة استراتيجية تسيير الحصة</h1><div class="card"><strong>${data!.strategy.name}</strong> (${data!.strategy.totalMinutes} دقيقة)<div style="margin-top:6px;">${data!.strategy.rationale}</div></div><h2>مراحل التسيير الزمني</h2><table><thead><tr><th>المرحلة</th><th>المدة</th><th>دور الأستاذ</th><th>دور التلميذ</th><th>ملاحظة</th></tr></thead><tbody>${data!.strategy.phases.map(p => `<tr><td>${p.stage}</td><td>${p.minutes} د</td><td>${p.teacherRole}</td><td>${p.studentRole}</td><td>${p.tips}</td></tr>`).join("")}</tbody></table>${data!.strategy.generalTips.length > 0 ? `<h2>توصيات إضافية</h2><ul>${data!.strategy.generalTips.map(t => `<li>${t}</li>`).join("")}</ul>` : ""}<div class="footer"><div class="sig">إمضاء الأستاذ</div><div class="sig">إمضاء مدير المؤسسة</div></div></body></html>`;
                   },
                 };
-                printHtml(buildStrategyPrintHtmlLocal());
+                printHtml(buildActiveLearningCardHtml({
+                  dateLabel: new Date().toLocaleDateString("ar-DZ", { year: "numeric", month: "long", day: "numeric" }),
+                  subject,
+                  gradeLevel,
+                  situationTitle: data!.situation.title,
+                  strategyName: data!.strategy.name,
+                  totalMinutes: data!.strategy.totalMinutes,
+                  rationale: data!.strategy.rationale,
+                  phases: data!.strategy.phases,
+                  tips: data!.strategy.generalTips,
+                }));
                 toast.success("جارٍ فتح بطاقة الاستراتيجية للطباعة");
               }}>
                 <Printer className="size-4 ml-1" />

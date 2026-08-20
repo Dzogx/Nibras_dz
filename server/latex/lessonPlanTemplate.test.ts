@@ -39,8 +39,10 @@ describe("lessonPlanTemplate", () => {
     expect(tex).toContain("الموضوع: الجزائر تحت الاستعمار الفرنسي");
     expect(tex).toContain("\\subsection*{مقدمة}");
     expect(tex).toContain("\\textbf{مظاهر الاحتلال}");
-    expect(tex).toContain("الهدف(ة) التعلمية:");
+    expect(tex).toContain("الهدف(ة) التعلمية");
     expect(tex).toContain("مذكرة بيداغوجية — الجزائر من 1830 إلى 1954");
+    expect(tex).toContain("\\DocumentTitle{الجزائر تحت الاستعمار الفرنسي}");
+    expect(tex).toContain("\\DocumentBand{سير الحصة}");
   });
 
   it("يحافظ على بنية Markdown: قائمة نقطية ومرقمة واقتباس", () => {
@@ -69,6 +71,7 @@ describe("lessonPlanTemplate", () => {
     const tex = buildLessonPlanLatexDocument(baseInput);
     expect(tex).not.toContain("نبراس");
     expect(tex).toContain("وثيقة تحضير للأستاذ");
-    expect(tex).toContain("مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي، قابلة للتحرير");
+    expect(tex).toContain("وثيقة تحضير تربوية قابلة للتحرير");
+    expect(tex).toContain("الجمهورية الجزائرية الديمقراطية الشعبية");
   });
 });

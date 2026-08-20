@@ -44,14 +44,14 @@ describe("buildAssessmentLatexDocument", () => {
   });
 
   it.each([
-    ["nibras", "17324D", "حيادي"],
-    ["official", "25364B", "رسمي اقتصادي"],
-    ["mono", "000000", "أبيض وأسود"],
-  ] as const)("يضمّن نمط %s الطباعي في ألوان وترويسة القالب", (printTheme, ink, label) => {
+    ["nibras", "113B5D", "B8812C"],
+    ["official", "25364B", "52677E"],
+    ["mono", "000000", "000000"],
+  ] as const)("يضمّن نمط %s الطباعي في ألوان القالب", (printTheme, ink, accent) => {
     const latex = buildAssessmentLatexDocument({ ...baseInput, printTheme });
 
     expect(latex).toContain(`\\definecolor{NibrasInk}{HTML}{${ink}}`);
-    expect(latex).toContain(label);
+    expect(latex).toContain(`\\definecolor{NibrasAccent}{HTML}{${accent}}`);
   });
 
   it("وثيقة رسمية لا تحمل أي إشارة لاسم المنصة أو شعارها أو رمز QR", () => {
@@ -63,7 +63,9 @@ describe("buildAssessmentLatexDocument", () => {
     expect(latex).not.toContain("\\NibrasQrCode");
     expect(latex).not.toContain("\\NibrasArabic");
     expect(latex).not.toContain("\\NibrasLatin");
-    expect(latex).toContain("\\textcolor{NibrasInk}{تقويم تحصيلي — المجموع: 20 نقطة}");
+    expect(latex).toContain("\\AssessmentTitle{اختبار الثورة الجزائرية}");
+    expect(latex).toContain("\\AssessmentBand{موضوعات التقويم}");
+    expect(latex).toContain("تقويم تحصيلي — المجموع: 20 نقطة");
   });
 
   it("يحوّل مستويات العناوين الأربعة (####) والخطوط الفاصلة والاقتباس من المحتوى المولّد", () => {

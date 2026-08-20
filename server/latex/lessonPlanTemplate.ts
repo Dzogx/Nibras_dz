@@ -6,8 +6,8 @@
  */
 
 export const LESSON_PLAN_PRINT_THEMES = {
-  nibras: { label: "حيادي", ink: "17324D", light: "EAF2F3", accent: "B6752B" },
-  official: { label: "رسمي اقتصادي", ink: "25364B", light: "F2F4F7", accent: "52677E" },
+  nibras: { label: "متوازن", ink: "113B5D", light: "F4F7F5", accent: "B8812C" },
+  official: { label: "رسمي اقتصادي", ink: "25364B", light: "F5F6F2", accent: "52677E" },
   mono: { label: "أبيض وأسود", ink: "000000", light: "F4F4F4", accent: "000000" },
 } as const;
 
@@ -164,20 +164,22 @@ function buildHeaderBox(input: LessonPlanLatexInput, theme: (typeof LESSON_PLAN_
   rows += `الموضوع: ${formatInline(input.title)} & المدة: ${duration} \\\\\n`;
   if (input.academicYear || input.date) rows += `الموسم الدراسي: ${input.academicYear ? formatInline(input.academicYear) : ".........."} & التاريخ: ${date} \\\\\n`;
 
-  return `\\noindent\\colorbox{NibrasLight}{\\parbox{0.96\\linewidth}{
-\\begin{tabular}{@{}p{0.45\\linewidth}p{0.45\\linewidth}@{}}
+  return `\\begin{center}\\fcolorbox{NibrasInk}{NibrasLight}{\\begin{minipage}{0.90\\linewidth}
+\\renewcommand{\\arraystretch}{1.55}
+\\begin{tabular}{@{}p{0.43\\linewidth}@{\\hspace{1.1em}}p{0.43\\linewidth}@{}}
 ${rows}
 \\end{tabular}
-}}`;
+\\end{minipage}}\\end{center}`;
 }
 
 /** بطاقة الأهداف إن وجدت. */
 function buildObjectivesBox(input: LessonPlanLatexInput): string {
   if (!input.objectives) return "";
-  return `\\vspace{0.7em}
-\\noindent\\colorbox{NibrasLight}{\\parbox{0.965\\linewidth}{
-\\textbf{الهدف(ة) التعلمية:} ${formatInline(input.objectives)}
-}}`;
+  return `\\vspace{0.85em}
+\\begin{center}\\fcolorbox{NibrasAccent}{white}{\\begin{minipage}{0.90\\linewidth}
+\\textcolor{NibrasInk}{\\textbf{الهدف(ة) التعلمية}}\\hfill\\textcolor{NibrasAccent}{\\rule{0.16\\linewidth}{1.1pt}}\\\\[-0.15em]
+${formatInline(input.objectives)}
+\\end{minipage}}\\end{center}`;
 }
 
 /**
@@ -193,13 +195,14 @@ export function buildLessonPlanLatexDocument(input: LessonPlanLatexInput): strin
 \\documentclass[12pt,a4paper]{article}
 \\usepackage[a4paper,margin=1.8cm,headheight=18pt]{geometry}
 \\usepackage{fontspec}
-\\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage}
+\\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage,colortbl}
 \\usepackage{xcolor}
 \\usepackage{polyglossia}
 \\usepackage{bidi}
 \\definecolor{NibrasInk}{HTML}{${theme.ink}}
 \\definecolor{NibrasLight}{HTML}{${theme.light}}
 \\definecolor{NibrasAccent}{HTML}{${theme.accent}}
+\\definecolor{NibrasLine}{HTML}{D8DEDD}
 \\setmainlanguage[numerals=maghrib]{arabic}
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
@@ -207,6 +210,13 @@ export function buildLessonPlanLatexDocument(input: LessonPlanLatexInput): strin
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{0.45em}
 \\renewcommand{\\arraystretch}{1.45}
+\\arrayrulecolor{NibrasLine}
+\\newcommand{\\DocumentBand}[1]{\\vspace{0.8em}\\noindent\\colorbox{NibrasInk}{\\parbox{0.965\\linewidth}{\\centering\\color{white}\\bfseries #1}}\\vspace{0.45em}}
+\\newcommand{\\DocumentTitle}[1]{\\begin{center}\\fcolorbox{NibrasAccent}{white}{\\begin{minipage}{0.90\\linewidth}\\centering\\color{NibrasInk}\\LARGE\\bfseries #1\\end{minipage}}\\end{center}}
+\\makeatletter
+\\renewcommand\\section{\\@startsection{section}{1}{\\z@}{1.15em}{0.42em}{\\color{NibrasInk}\\large\\bfseries}}
+\\renewcommand\\subsection{\\@startsection{subsection}{2}{\\z@}{0.85em}{0.3em}{\\color{NibrasAccent}\\normalsize\\bfseries}}
+\\makeatother
 \\pagestyle{fancy}
 \\fancyhf{}
 \\fancyhead[L]{\\small مذكرة بيداغوجية${input.unitTitle ? ` — ${formatInline(input.unitTitle)}` : ""}}
@@ -215,18 +225,23 @@ export function buildLessonPlanLatexDocument(input: LessonPlanLatexInput): strin
 \\begin{document}
 
 \\begin{center}
-{\\color{NibrasAccent}\\Large\\bfseries ${formatInline(input.title)}}
+{\\footnotesize الجمهورية الجزائرية الديمقراطية الشعبية}\\\\[-0.1em]
+{\\footnotesize وزارة التربية الوطنية}\\\\[0.35em]
+{\\color{NibrasInk}\\large\\bfseries مذكرة بيداغوجية}\\\\[-0.25em]
+{\\color{NibrasAccent}\\rule{0.22\\linewidth}{1.2pt}}
 \\end{center}
 
+\\DocumentTitle{${formatInline(input.title)}}
+\\vspace{0.8em}
 ${buildHeaderBox(input, theme)}
 ${buildObjectivesBox(input)}
 
-\\vspace{1em}
+\\DocumentBand{سير الحصة}
 ${markdownToLatex(input.content)}
 
 \\vfill
 \\begin{center}
-\\textcolor{NibrasInk}{مذكرة بيداغوجية مولّدة بمساعدة الذكاء الاصطناعي، قابلة للتحرير}
+\\textcolor{NibrasInk}{وثيقة تحضير تربوية قابلة للتحرير}
 \\end{center}
 \\end{document}
 `;

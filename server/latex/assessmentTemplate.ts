@@ -6,8 +6,8 @@
  */
 
 export const ASSESSMENT_PRINT_THEMES = {
-  nibras: { label: "حيادي", ink: "17324D", light: "EAF2F3", accent: "B6752B" },
-  official: { label: "رسمي اقتصادي", ink: "25364B", light: "F2F4F7", accent: "52677E" },
+  nibras: { label: "متوازن", ink: "113B5D", light: "F4F7F5", accent: "B8812C" },
+  official: { label: "رسمي اقتصادي", ink: "25364B", light: "F5F6F2", accent: "52677E" },
   mono: { label: "أبيض وأسود", ink: "000000", light: "F4F4F4", accent: "000000" },
 } as const;
 
@@ -151,9 +151,9 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
     ? ""
     : `
 \\vspace{0.4em}
-\\noindent\\fbox{\\begin{minipage}{0.96\\linewidth}
-اللقب والاسم: \\hrulefill\\hfill القسم: \\hrulefill\\hfill العلامة: \\hrulefill
-\\end{minipage}}`;
+\\noindent\\fcolorbox{NibrasInk}{NibrasLight}{\\parbox{0.93\\linewidth}{
+\\textbf{اللقب والاسم:} \\hrulefill\\hfill \\textbf{القسم:} \\hrulefill\\hfill \\textbf{العلامة:} \\hrulefill
+}}`;
 
   return `% Nibras Print System — Assessment Template
 % Compiled securely by Nibras with XeLaTeX. Required packages: polyglossia, fontspec, geometry, array, longtable, fancyhdr.
@@ -162,10 +162,12 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\usepackage[a4paper,margin=1.8cm,headheight=18pt]{geometry}
 \\usepackage{fontspec}
 \\usepackage{xcolor}
-\\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage}
+\\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage,colortbl}
 \\usepackage{polyglossia}
 \\definecolor{NibrasInk}{HTML}{${theme.ink}}
 \\definecolor{NibrasLight}{HTML}{${theme.light}}
+\\definecolor{NibrasAccent}{HTML}{${theme.accent}}
+\\definecolor{NibrasLine}{HTML}{D8DEDD}
 \\setmainlanguage{arabic}
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
@@ -173,6 +175,13 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{0.45em}
 \\renewcommand{\\arraystretch}{1.45}
+\\arrayrulecolor{NibrasLine}
+\\newcommand{\\AssessmentTitle}[1]{\\noindent\\fcolorbox{NibrasAccent}{white}{\\parbox{0.93\\linewidth}{\\centering\\color{NibrasInk}\\LARGE\\bfseries #1}}}
+\\newcommand{\\AssessmentBand}[1]{\\vspace{0.65em}\\noindent\\colorbox{NibrasInk}{\\parbox{0.965\\linewidth}{\\centering\\color{white}\\bfseries #1}}\\vspace{0.35em}}
+\\makeatletter
+\\renewcommand\\section{\\@startsection{section}{1}{\\z@}{1.05em}{0.38em}{\\color{NibrasInk}\\large\\bfseries}}
+\\renewcommand\\subsection{\\@startsection{subsection}{2}{\\z@}{0.8em}{0.28em}{\\color{NibrasAccent}\\normalsize\\bfseries}}
+\\makeatother
 \\pagestyle{fancy}
 \\fancyhf{}
 \\fancyhead[L]{\\small ${assessmentLabel(input.assessmentType)}}
@@ -183,13 +192,15 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\begin{center}
 {\\large\\bfseries الجمهورية الجزائرية الديمقراطية الشعبية}\\\\
 وزارة التربية الوطنية\\\\[0.6em]
-{\\normalsize ${theme.label}}\\\\[0.35em]{\\color{NibrasInk}\\LARGE\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[0.15em]
-{\\large\\bfseries ${title}}
+{\\color{NibrasInk}\\large\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[-0.25em]
+{\\color{NibrasAccent}\\rule{0.22\\linewidth}{1.2pt}}
 \\end{center}
 
+\\AssessmentTitle{${title}}
 \\vspace{0.4em}
-\\noindent\\colorbox{NibrasLight}{\\parbox{0.965\\linewidth}{
-\\begin{tabular}{@{}p{0.47\\linewidth}p{0.47\\linewidth}@{}}
+\\noindent\\fcolorbox{NibrasInk}{NibrasLight}{\\parbox{0.93\\linewidth}{
+\\renewcommand{\\arraystretch}{1.55}
+\\begin{tabular}{@{}p{0.47\\linewidth}@{\\hspace{1em}}p{0.47\\linewidth}@{}}
 المؤسسة: ${school} & الأستاذ(ة): ${teacher} \\\\
 المستوى: ${formatInline(input.gradeLevel)} & القسم: ${className} \\\\
 المادة: ${formatInline(input.subject)} & المدة: ${duration} \\\\
@@ -199,14 +210,17 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 ${studentBlock}
 
 \\vspace{0.7em}
-\\noindent\\textbf{تعليمات عامة:} اقرأ التعليمة جيداً، ونظّم إجابتك، واستعمل المصطلحات المناسبة.\\hfill\\textbf{${subjectNote(input.subject, input.totalPoints)}}
+\\noindent\\fcolorbox{NibrasAccent}{white}{\\parbox{0.93\\linewidth}{
+\\textcolor{NibrasInk}{\\textbf{تعليمات عامة}}\\hfill\\textbf{${subjectNote(input.subject, input.totalPoints)}}\\\\[-0.1em]
+اقرأ التعليمة جيداً، ونظّم إجابتك، واستعمل المصطلحات المناسبة.
+}}
 
-\\vspace{0.7em}
+\\AssessmentBand{موضوعات التقويم}
 ${markdownToLatex(input.content)}
 
 \\vfill
 \\begin{center}
-\\textcolor{NibrasInk}{${assessmentFooterLabel(theme)} — المجموع: ${points}}
+\\fcolorbox{NibrasInk}{NibrasLight}{\\parbox{0.48\\linewidth}{\\centering\\textcolor{NibrasInk}{\\textbf{${assessmentFooterLabel(theme)} — المجموع: ${points}}}}}
 \\end{center}
 \\end{document}
 `;
