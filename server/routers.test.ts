@@ -1021,8 +1021,9 @@ describe("ai.generateAssessment with curriculum citations", () => {
     const officialTitle = "الثورة التحريرية الجزائرية: أسبابها ومراحلها";
     expect(result.title).toBe(officialTitle);
     expect(result.topic).toBe(officialTitle);
+    // الموضوع يُستدعى به مقرونًا بعنوان مقطع الوضعية المنجزة (تركيز المرجعية)
     expect(db.getCurriculumForTopic).toHaveBeenLastCalledWith(
-      officialTitle,
+      `${officialTitle} التاريخ الوطني`,
       "السنة الرابعة متوسط",
       "التاريخ والجغرافيا",
     );
@@ -1774,5 +1775,114 @@ describe("weeklyReadiness.summary", () => {
     const item = summary.items.find((entry) => entry.classId === 9);
     expect(item?.pendingBySubject).toEqual({ "التاريخ": 0, "الجغرافيا": 1, "التربية المدنية": 1 });
     expect(summary.totalPendingHours).toBe(2);
+  });
+});
+
+describe("ai.generateAssessment topic enforcement (صرخ: التقويم مبني على ما دُرّس)", () => {
+  beforeEach(resetMocks);
+
+  it("passes the completed-situation section title to curriculum search and leads with section documents", async () => {
+    (db.getCurriculumForTopic as any).mockResolvedValue([
+      {
+        id: 10,
+        title: "مخطط سنوي للسنة الأولى - المقاطع",
+        content: "محتوى عام عن مناهج التاريخ والجغرافيا والمواطنة",
+        subject: "التاريخ والجغرافيا",
+        gradeLevel: "السنة الأولى متوسط",
+        type: "annualPlan",
+        sourceReference: "البرنامج الرسمي",
+        unitNumber: 1,
+        lessonNumber: null,
+      },
+      {
+        id: 11,
+        title: "المقطع 1: الوثائق التاريخية",
+        content: "التاريخ الوطني وخطوات دراسة الآثار والوثائق التاريخية",
+        subject: "التاريخ والجغرافيا",
+        gradeLevel: "السنة الأولى متوسط",
+        type: "document",
+        sourceReference: "البرنامج الرسمي",
+        unitNumber: 1,
+        lessonNumber: 2,
+      },
+    ]);
+    (db.createAIResource as any).mockResolvedValue({ id: 1 });
+    (db.getLessons as any).mockResolvedValue([]);
+    (db.getLearningSituationsByUserId as any).mockResolvedValue([{
+      id: 240063,
+      userId: 1,
+      sectionId: 7,
+      title: "التعرف على الوثائق التاريخية",
+      objectives: "تمييز أنواع الوثائق التاريخية",
+      situationNumber: 1,
+      sectionTitle: "المقطع 1: الوثائق التاريخية",
+    }]);
+    (db.getAnnualPlanSectionById as any).mockResolvedValue({
+      id: 7,
+      title: "المقطع 1: الوثائق التاريخية",
+      competencies: "التعرف على الوثائق التاريخية",
+    });
+    (invokeLLM as any).mockResolvedValue({
+      choices: [{ message: { content: "نموذج إجابة للسؤال" } }],
+    });
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateAssessment({
+      title: "تقويم فصلي",
+      topic: "التعرف على الوثائق التاريخية",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الأولى متوسط",
+      assessmentType: "exam",
+      situationIds: [240063],
+      useNationalRules: true,
+    });
+
+    // موضوع البحث = الموضوع + عنوان مقطع الوضعيات المنجزة
+    expect(db.getCurriculumForTopic).toHaveBeenCalledWith(
+      "التعرف على الوثائق التاريخية المقطع 1: الوثائق التاريخية",
+      "السنة الأولى متوسط",
+      "التاريخ والجغرافيا",
+    );
+
+    // وثيقة مقطع الوضعيات المنجزة تتصدر سياق الموجّه (فرض الموضوع)
+    const prompt = (invokeLLM as any).mock.calls[0][0].messages[0].content;
+    const docIdx = prompt.indexOf("المقطع 1: الوثائق التاريخية") - prompt.indexOf("وثائق المنهاج الرسمية");
+    const planIdx = prompt.indexOf("مخطط سنوي للسنة الأولى") - prompt.indexOf("وثائق المنهاج الرسمية");
+    expect(docIdx).toBeLessThan(planIdx);
+
+    // الموجّه يحمل قاعدة حاكمَة تفرض الموضوع على كل سؤال
+    expect(prompt).toContain("قاعدة حاكمَة");
+    expect(prompt).toContain("ممنوع طرح أي سؤال عن مفاهيم عامة");
+
+    // الاستشهادات في المخرج تبدأ بوثيقة المقطع المنجزة ثم الوثيقة العامة، دون أسطر [مرجع]
+    expect(result.curriculumCitations).toHaveLength(2);
+    expect(result.curriculumCitations[0].docId).toBe(11);
+    expect(result.curriculumCitations[1].docId).toBe(10);
+    expect(result.content).not.toContain("[مرجع");
+  });
+
+  it("strips leaked AI-prompt annotations from the output", async () => {
+    (db.getCurriculumForTopic as any).mockResolvedValue([]);
+    (db.createAIResource as any).mockResolvedValue({ id: 1 });
+    (db.getLessons as any).mockResolvedValue([]);
+    (invokeLLM as any).mockResolvedValue({
+      choices: [{ message: {
+        content: "سؤال 1: ...\n\nملاحظة: تم توليد هذا التقويم وفق القواعد الوطنية.\n\nتنبيه: يجب على الأستاذ مراجعة التوزيع.\n\nيجب عليك التأكد من سلم التنقيط قبل الطباعة.",
+      } }],
+    });
+
+    const caller = appRouter.createCaller(createMockContext());
+    const result = await caller.ai.generateAssessment({
+      title: "تقويم",
+      subject: "التاريخ والجغرافيا",
+      gradeLevel: "السنة الثانية متوسط",
+      assessmentType: "quiz",
+      topic: "موضوع تجريبي",
+    });
+
+    expect(result.content).not.toContain("ملاحظة:");
+    expect(result.content).not.toContain("تنبيه:");
+    expect(result.content).not.toContain("يجب عليك التأكد");
+    expect(result.content).toContain("سؤال 1");
   });
 });

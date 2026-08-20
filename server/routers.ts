@@ -1713,7 +1713,7 @@ ${curriculumContext}`,
       }
 
       // ─── Get completed situations (Teacher OS) ─────────────
-      let completedSituations: { id: number; title: string; sectionTitle?: string; objectives?: string; competencies?: string; situationNumber?: number }[] = [];
+      let completedSituations: { id: number; title: string; sectionId?: number; sectionTitle?: string; objectives?: string; competencies?: string; situationNumber?: number }[] = [];
       if (input.situationIds && input.situationIds.length > 0) {
         const allSituations = await getLearningSituationsByUserId(ctx.user.id);
         for (const s of allSituations) {
@@ -1722,6 +1722,7 @@ ${curriculumContext}`,
             completedSituations.push({
               id: s.id,
               title: s.title,
+              sectionId: s.sectionId,
               sectionTitle: section ? section.title : undefined,
               objectives: s.objectives || undefined,
               competencies: section?.competencies || undefined,
@@ -1738,9 +1739,60 @@ ${curriculumContext}`,
       const canonicalTopic = useOfficialSituationTitle && officialSituationTitle ? officialSituationTitle : input.topic;
 
       // ─── Retrieve curriculum knowledge base documents (RAG) ──
-      const curriculumDocs = await getCurriculumForTopic(canonicalTopic, input.gradeLevel, input.subject);
-      const curriculumContext = curriculumDocs.length > 0
-        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: استعمل هذه الوثائق كخلفية مرجعية لربط كل سؤال بالمحتوى المنهجي المناسب، لكن مخرجك النهائي وثيقة اختبار رسمية فقط. ممنوع منعًا باتًا إخراج أي قائمة مصادر أو استشهادات: لا تكتب أسطر «مرجع» أو «[مرجع: ن]» أو «مصادر» أو «وثائق المنهاج المستخدمة» أو «الاستشهادات» أو أي أرقام بنية [ن] في أي مكان من الاختبار أو الإجابات، ولا في البداية ولا في النهاية. لا تكتب أرقام أو عناوين مراجع داخل نص الأسئلة — اذكر المصدر ضمنياً في صياغة السؤال فقط. لا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
+      // تركيز المرجعية على مقطع الوضعيات المنجزة: إذا حدد الأستاذ وضعيات منجزة
+      // نستخدم عنوان مقطعها كسياق بحث إضافي حتى لا يتسرب المنهاج العام إلى التقويم.
+      const completedSectionTitle = completedSituations.length > 0 ? completedSituations[0].sectionTitle : undefined;
+      const curriculumDocs = await getCurriculumForTopic(
+        [canonicalTopic, ...(completedSectionTitle ? [completedSectionTitle] : [])].join(" "),
+        input.gradeLevel,
+        input.subject,
+      );
+      // ترتيب الوثائق: وثائق مقطع الوضعيات المنجزة أولًا (نطاق التقويم الفعلي)،
+      // ثم باقي الوثائق المرجعية للمستوى والمادة، دون حذف أي وثيقة رسمية.
+      // ملاحظة مهمة: عنوان المقطع القادم من annualPlanSections هو نص خالص
+      // (مثل «الوثائق التاريخية») دون رقم «المقطع 1»، وعناوين وثائق المنهاج
+      // تكتب المقطع بصيغة «... — المقطع 1 — ...». لذا نعتمد مطابقة متعددة:
+      // 1) مطابقة نص عنوان المقطع نفسه في العنوان/المحتوى.
+      // 2) مطابقة رقم الوضعية المنجزة (situationNumber) مع رقم الدرس (lessonNumber).
+      // 3) مطابقة «المقطع N» المُشتق من ترتيب مقطع الوضعية ضمن مخططها.
+      const completedSituationNumbers = completedSituations
+        .map(s => s.situationNumber)
+        .filter((n): n is number => typeof n === "number");
+      const completedSectionNumbers: string[] = [];
+      for (const s of completedSituations) {
+        if (s.sectionId) {
+          const section = await getAnnualPlanSectionById(s.sectionId);
+          if (section && typeof section.sectionNumber === "number") completedSectionNumbers.push(`المقطع ${section.sectionNumber}`);
+        }
+      }
+      const sectionTextKey = completedSectionTitle ? completedSectionTitle.trim() : "";
+      const isFocused = (doc: any) => {
+        const title = doc.title || "";
+        const head = (doc.content || "").substring(0, 600);
+        if (sectionTextKey && (title.includes(sectionTextKey) || head.includes(sectionTextKey))) return true;
+        if (doc.lessonNumber != null && completedSituationNumbers.includes(doc.lessonNumber)) return true;
+        return completedSectionNumbers.some(k => title.includes(k));
+      };
+      // ترتيب صارم ومستقر للوثائق: (1) وثائق مقطع الوضعيات المنجزة، مرتبةً
+      // بترتيب منهجي واضح — رقم الدرس، ثم المخططات السنوية قبل بقية الوثائق —
+      // ثم (2) المخططات السنوية للمستوى والمادة، ثم (3) بقية الوثائق المرجعية.
+      const sortKey = (doc: any) => {
+        if (!isFocused(doc)) return { focused: false as const, annual: doc.type === "annualPlan" ? 0 : 1, lesson: 0, title: doc.title || "" };
+        const lessonOrder = typeof doc.lessonNumber === "number" ? doc.lessonNumber : 1_000_000;
+        const annualOrder = doc.type === "annualPlan" ? 0 : 1;
+        return { focused: true as const, annual: annualOrder, lesson: lessonOrder, title: doc.title || "" };
+      };
+      const focusedDocs = (sectionTextKey || completedSituationNumbers.length > 0 || completedSectionNumbers.length > 0)
+        ? [...curriculumDocs].sort((a, b) => {
+            const ka = sortKey(a); const kb = sortKey(b);
+            if (ka.focused !== kb.focused) return ka.focused ? -1 : 1;
+            if (ka.annual !== kb.annual) return ka.annual - kb.annual;
+            if (ka.focused && ka.lesson !== kb.lesson) return ka.lesson - kb.lesson;
+            return ka.title.localeCompare(kb.title, "ar");
+          })
+        : curriculumDocs;
+      const curriculumContext = focusedDocs.length > 0
+        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${focusedDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: استعمل هذه الوثائق كخلفية مرجعية لربط كل سؤال بالمحتوى المنهجي المناسب، لكن مخرجك النهائي وثيقة اختبار رسمية فقط. ممنوع منعًا باتًا إخراج أي قائمة مصادر أو استشهادات: لا تكتب أسطر «مرجع» أو «[مرجع: ن]» أو «مصادر» أو «وثائق المنهاج المستخدمة» أو «الاستشهادات» أو أي أرقام بنية [ن] في أي مكان من الاختبار أو الإجابات، ولا في البداية ولا في النهاية. لا تكتب أرقام أو عناوين مراجع داخل نص الأسئلة — اذكر المصدر ضمنياً في صياغة السؤال فقط. لا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
         : "لا توجد وثائق منهاج مطابقة في قاعدة المعرفة. أنشئ الأسئلة بناءً على الموضوع المطلوب فقط.";
 
       // ─── Build rules context ─────────────────────────────────
@@ -1771,6 +1823,8 @@ ${input.duration ? `- المدة: ${input.duration}` : (rule ? `- المدة: ${
 
 ${rule ? `توزيع النقاط: ${rule.weights.map(w => `${w.label}: ${w.points} نقطة`).join("، ")}` : ""}
 
+قاعدة حاكمَة (قاعدة رقم واحد): كل سؤال من أسئلتك يجب أن يقيس محتوى الموضوع المحدد أعلاه فقط. ممنوع طرح أي سؤال عن مفاهيم عامة من المنهاج لا تنتمي صراحة إلى هذا الموضوع (مثل الخط الاستوائي أو غرينيتش أو توزيع السكان إذا لم تكن جزءاً من الموضوع المطلوب). ابدأ الاختبار بالموضوع مباشرة دون تمهيد عن مستوى المادة أو مدة الاختبار.
+
 قدم أسئلة متنوعة مع ربط كل سؤال بالكفاءة التي يقيسها. ابدأ بالجزء الأول: ${examHeader}
 
 قدم أسئلة متنوعة مع مفتاح إجابات.`,
@@ -1790,8 +1844,10 @@ ${input.duration ? `- المدة: ${input.duration}` : (rule ? `- المدة: ${
 ${rule ? `توزيع النقاط الرسمي:
 ${rule.weights.map(w => `- ${w.label}: ${w.points} نقطة (${((w.points / rule.totalPoints) * 100).toFixed(0)}%)`).join("\n")}` : ""}
 
+قاعدة حاكمَة (قاعدة رقم واحد): كل سؤال من أسئلتك يجب أن يقيس محتوى الموضوع المحدد أعلاه فقط. ممنوع طرح أي سؤال عن مفاهيم عامة من المنهاج لا تنتمي صراحة إلى هذا الموضوع (مثل الخط الاستوائي أو غرينيتش أو توزيع السكان إذا لم تكن جزءاً من الموضوع المطلوب). ابدأ الاختبار بالموضوع مباشرة دون تمهيد عن مستوى المادة أو مدة الاختبار.
+
 اكتب الاختبار كاملاً مع:
-1. ترويسة رسمية بالمستوى والمادة والمدة
+1. ترويسة رسمية بالمستوى والمادة والمدة ${rule ? `(${rule.duration})` : ""}
 2. أسئلة مرتبة حسب توزيع النقاط
 3. ربط كل سؤال بالكفاءة التي يقيسها
 4. سلم التنقيط التفصيلي
@@ -1859,9 +1915,20 @@ ${rulesContext}
         .replace(/\[مرجع[^\]]*\]/g, "")
         .replace(/\s{3,}/g, "\n");
 
+      // ─── فلتر تنويهات الموجّه المتسربة ──
+      // بعض النماذج تُخرج تذييلًا موجَّهًا للأستاذ مثل «ملاحظة: هذا التقويم…»
+      // أو «تنبيه: يجب أن…»، وهي ليست جزءًا من وثيقة الاختبار الرسمية، فتُحذف.
+      content = content
+        .split("\n")
+        .filter(line => !/^\s*(ملاحظة:|تنبيه:|توضيح:|انتبه:|تذكير:|مهم:).*$/.test(line.trim()))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n");
+      // حذف أي فقرة ختامية تُخاطب الأستاذ («يجب عليك…»، «ننصحك…»، «يمكنك…») إن كانت آخر فقرة مفصولة بسطر فارغ
+      content = content.replace(/\n+((?:يجب عليك|ننصحك|نوصي|يمكنك|لا تنس|بالتوفيق)[^.\n]{0,140}[\.\s]*)\s*$/, "");
+
       // Build metadata with rules engine info
       // Build curriculum citations from retrieved docs
-      const curriculumCitations = curriculumDocs.map((doc, i) => ({
+      const curriculumCitations = focusedDocs.map((doc, i) => ({
         referenceNumber: i + 1,
         docId: doc.id,
         title: doc.title,
