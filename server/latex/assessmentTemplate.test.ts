@@ -44,8 +44,8 @@ describe("buildAssessmentLatexDocument", () => {
   });
 
   it.each([
-    ["nibras", "113B5D", "B8812C"],
-    ["official", "25364B", "52677E"],
+    ["nibras", "000000", "6C6C6C"],
+    ["official", "000000", "6C6C6C"],
     ["mono", "000000", "000000"],
   ] as const)("يضمّن نمط %s الطباعي في ألوان القالب", (printTheme, ink, accent) => {
     const latex = buildAssessmentLatexDocument({ ...baseInput, printTheme });
