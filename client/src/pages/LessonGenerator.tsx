@@ -93,6 +93,9 @@ export default function LessonGenerator() {
   const situationIdParam = parseSearchParam("situationId");
   const situationId = situationIdParam ? parseInt(situationIdParam) : undefined;
   const requestedContentType = parseSearchParam("contentType");
+  // ربط من صفحة الكفاءات: /lesson-generator?subject=X&gradeLevel=Y (بدون وضعية محددة)
+  const urlSubject = parseSearchParam("subject") || "";
+  const urlGradeLevel = parseSearchParam("gradeLevel") || "";
   const { data: linkedSituation } = trpc.situations.getById.useQuery(
     { id: situationId ?? 0 },
     { enabled: Boolean(situationId) }
@@ -190,6 +193,19 @@ export default function LessonGenerator() {
       setForm((previous) => ({ ...previous, contentType: requestedContentType }));
     }
   }, [requestedContentType, form.contentType, setForm]);
+
+  // افتراضيات من URL عند الدخول من صفحة الكفاءات (بدون وضعية محددة)
+  const urlInitialized = useRef(false);
+  useEffect(() => {
+    if (!urlInitialized.current && !situationId && urlGradeLevel && gradeLevels.includes(urlGradeLevel)) {
+      urlInitialized.current = true;
+      setForm((previous) => ({
+        ...previous,
+        gradeLevel: urlGradeLevel,
+        ...(urlSubject && subjects.includes(urlSubject) ? { subject: urlSubject } : {}),
+      }));
+    }
+  }, [situationId, urlSubject, urlGradeLevel, setForm]);
 
   const generateMutation = trpc.ai.generateLesson.useMutation({
     onSuccess: (data) => {

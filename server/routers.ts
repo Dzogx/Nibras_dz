@@ -30,6 +30,7 @@ import {
   getLearningSituations, getLearningSituationsByUserId, getPendingOperationalLearningSituationsByUserId, getLearningSituationById, createLearningSituation, updateLearningSituation, deleteLearningSituation, toggleLearningSituationCompleted,
   getAssessmentResults, createAssessmentResult, updateAssessmentResult, deleteAssessmentResult,
   listSavedStrategies, getSavedStrategyById, saveStrategy, updateSavedStrategy, deleteSavedStrategy,
+  listCompetencyModels, getCompetencyModelById, getCompetencyProgress, linkSectionCompetencies, getCompetencySectionSituations,
 } from "./db";
 import {
   suggestStrategyForSituation,
@@ -2684,6 +2685,83 @@ ${rulesContext}
         avgGeography: Math.round(avgGeography * 100) / 100,
         weakDomains,
         suggestions,
+      };
+    }),
+  }),
+
+  // ─── النموذج الهرمي للكفاءات (كفاءة شاملة ← كفاءات ختامية بالمقاطع) ──────
+  competencyModel: router({
+    list: protectedProcedure.input(z.object({
+      subject: z.string().optional(),
+      gradeLevel: z.string().optional(),
+    }).optional()).query(async ({ ctx, input }) => {
+      return await listCompetencyModels({ ...(input || {}), userId: ctx.user.openId });
+    }),
+    getById: protectedProcedure.input(z.object({ id: z.number() })).query(async ({ ctx, input }) => {
+      let model = await getCompetencyModelById(input.id, ctx.user.openId);
+      if (!model) throw new TRPCError({ code: "NOT_FOUND", message: "نموذج الكفاءات غير موجود" });
+      // ربط تلقائي بمقاطع الخطة المرجعية عند أول طلب (مطابقة رقم المقطع)
+      const unlinked = model.sections.every(s => !s.linkedSectionId);
+      if (unlinked && model.sections.length > 0) {
+        await linkSectionCompetencies(model.id, model.subject, model.gradeLevel);
+        model = await getCompetencyModelById(input.id, ctx.user.openId);
+      }
+      return model;
+    }),
+    /** تقدم الأستاذ في بلوغ الكفاءات الختامية بمستوى ومادة معينين في الموسم المفعّل. */
+    progress: protectedProcedure.input(z.object({
+      subject: z.string().min(1),
+      gradeLevel: z.string().min(1),
+    })).query(async ({ ctx, input }) => {
+      const activeYear = await getActiveAcademicYear();
+      if (!activeYear) return { sections: [], academicYear: "" };
+      const sections = await getCompetencyProgress(ctx.user.id, input.subject, input.gradeLevel, activeYear);
+      return { sections, academicYear: activeYear };
+    }),
+    /** وضعيات مقطع كفاءة ختامية: تشغيلية إن وُجدت وإلا المرجعية (قراءة). */
+    sectionSituations: protectedProcedure.input(z.object({
+      subject: z.string().min(1),
+      gradeLevel: z.string().min(1),
+      sectionNumber: z.number(),
+    })).query(async ({ ctx, input }) => {
+      const activeYear = await getActiveAcademicYear();
+      if (!activeYear) return [];
+      return await getCompetencySectionSituations(
+        Number(ctx.user.id),
+        input.subject,
+        input.gradeLevel,
+        activeYear,
+        input.sectionNumber,
+      );
+    }),
+    /** اقتراح استراتيجية تسيير لوضعية من مقطع كفاءة: القراءة متاحة من الوضعيات التشغيلية أو المرجعية. */
+    sectionStrategy: protectedProcedure.input(z.object({
+      subject: z.string().min(1),
+      gradeLevel: z.string().min(1),
+      sectionNumber: z.number(),
+      situationId: z.number().optional(),
+    })).query(async ({ ctx, input }) => {
+      const activeYear = await getActiveAcademicYear();
+      if (!activeYear) throw new TRPCError({ code: "BAD_REQUEST", message: "فعّل الموسم الدراسي أولًا" });
+      const situations = await getCompetencySectionSituations(
+        Number(ctx.user.id),
+        input.subject,
+        input.gradeLevel,
+        activeYear,
+        input.sectionNumber,
+      );
+      const target = situations.find(s => s.id === input.situationId) ?? situations[0];
+      if (!target) throw new TRPCError({ code: "NOT_FOUND", message: "لا توجد وضعيات لهذا المقطع" });
+      const section = await getAnnualPlanSectionById(target.sectionId);
+      const plan = section ? await getAnnualPlanById(section.annualPlanId) : undefined;
+      return {
+        situation: target,
+        strategy: suggestStrategyForSituation({
+          title: target.title,
+          content: target.content || "",
+          subject: plan?.subject || input.subject,
+          gradeLevel: plan?.gradeLevel || input.gradeLevel,
+        }),
       };
     }),
   }),

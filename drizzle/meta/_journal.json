@@ -113,6 +113,20 @@
       "when": 1787184446738,
       "tag": "0015_typical_shinobi_shaw",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1787185617032,
+      "tag": "0016_lame_hobgoblin",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1787187174914,
+      "tag": "0017_public_firebird",
+      "breakpoints": true
     }
   ]
 }

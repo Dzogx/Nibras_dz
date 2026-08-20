@@ -479,3 +479,56 @@ export const savedStrategies = mysqlTable("savedStrategies", {
 });
 export type SavedStrategy = typeof savedStrategies.$inferSelect;
 export type InsertSavedStrategy = typeof savedStrategies.$inferInsert;
+
+/**
+ * النموذج الهرمي للكفاءات — التسلسل الرسمي:
+ * كفاءة شاملة (لكل مادة × مستوى) ← كفاءات ختامية (لكل مقطع) ← وضعيات تعليمية-تعلمية وإدماجية
+ * مع معايير ومؤشرات لقياس التملك وهيكلة الموارد المعرفية (بناء/إنماء/إدماج) والحجم الساعي.
+ * بيانات مرجعية من المخططات السنوية الرسمية، يضيف الأستاذ عليها إنجازه الفعلي.
+ */
+export const competencyModels = mysqlTable("competencyModels", {
+  id: int("id").autoincrement().primaryKey(),
+  gradeLevel: mysqlEnum("gradeLevel", [
+    "السنة الأولى متوسط",
+    "السنة الثانية متوسط",
+    "السنة الثالثة متوسط",
+    "السنة الرابعة متوسط",
+  ]).notNull(),
+  subject: mysqlEnum("subject", [
+    "الجغرافيا",
+    "التاريخ والجغرافيا",
+    "التربية المدنية",
+    "التاريخ والجغرافيا والتربية المدنية",
+  ]).notNull(),
+  userId: varchar("userId", { length: 128 }).notNull(), // الأستاذ المالك (مفتاح المستخدم في openId/owner)
+  globalCompetency: text("globalCompetency").notNull(), // الكفاءة الشاملة للمادة بالمستوى
+  sourceDocTitle: varchar("sourceDocTitle", { length: 256 }), // وثيقة المخطط الرسمي المصدر
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CompetencyModel = typeof competencyModels.$inferSelect;
+export type InsertCompetencyModel = typeof competencyModels.$inferInsert;
+
+/**
+ * الكفاءات الختامية للمقاطع مرتبطة بنموذج الكفاءة الشاملة:
+ * كل مقطع له كفاءة ختامية تُحقق جزءًا من الكفاءة الشاملة، بمعايير ومؤشرات تملك،
+ * وموارد معرفية مهيكلة حسب العملية التربوية (بناء = تنصيب جديد، إنماء، إدماج)،
+ * وحجم ساعي مقدر.
+ */
+export const sectionCompetencies = mysqlTable("sectionCompetencies", {
+  id: int("id").autoincrement().primaryKey(),
+  competencyModelId: int("competencyModelId").notNull(),
+  sectionNumber: int("sectionNumber").notNull(),
+  sectionTitle: varchar("sectionTitle", { length: 256 }).notNull(),
+  termCompetency: text("termCompetency").notNull(), // الكفاءة الختامية للمقطع
+  competencyAction: mysqlEnum("competencyAction", ["تنصيب", "إنماء", "إدماج"]).default("إنماء").notNull(), // وضعها من الكفاءة الشاملة
+  durationHours: int("durationHours"), // الحجم الساعي المقدر للمقطع
+  durationLabel: varchar("durationLabel", { length: 64 }), // النص الرسمي (مثل "10 أسابيع")
+  criteria: json("criteria"), // معايير ومؤشرات التملك: [{criterion, indicators: []}]
+  knowledgeResources: json("knowledgeResources"), // [{title, action: بناء|إنماء|إدماج}]
+  linkedSectionId: int("linkedSectionId"), // ربط بالقسم في خطته (قد يكون خطة مرجعية)
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SectionCompetency = typeof sectionCompetencies.$inferSelect;
+export type InsertSectionCompetency = typeof sectionCompetencies.$inferInsert;

@@ -36,6 +36,7 @@ import {
   BarChart3,
   CalendarDays,
   Users,
+  Award,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -51,6 +52,7 @@ const menuItems = [
   { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
   { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
   { icon: BookOpen, label: "دفتر التجارب", path: "/experiment-log" },
+  { icon: Award, label: "الكفاءات", path: "/competencies" },
 ];
 
 const mobileQuickActions = [
@@ -60,6 +62,7 @@ const mobileQuickActions = [
   { icon: Library, label: "المكتبة", path: "/content-library" },
   { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
   { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
+  { icon: Award, label: "الكفاءات", path: "/competencies" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

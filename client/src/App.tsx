@@ -28,6 +28,7 @@ import SeasonSetup from "./pages/SeasonSetup";
 import IntegrativeSituation from "./pages/IntegrativeSituation";
 import WeeklyPlan from "./pages/WeeklyPlan";
 import ExperimentLog from "./pages/ExperimentLog";
+import Competencies from "./pages/Competencies";
 
 
 function Router() {
@@ -89,6 +90,9 @@ function Router() {
       </Route>
       <Route path="/experiment-log">
         {() => <DashboardLayout><ExperimentLog /></DashboardLayout>}
+      </Route>
+      <Route path="/competencies">
+        {() => <DashboardLayout><Competencies /></DashboardLayout>}
       </Route>
       <Route path="/profile">
         {() => <DashboardLayout><Profile /></DashboardLayout>}

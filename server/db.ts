@@ -24,6 +24,10 @@ import {
   gradebookRoster,
   savedStrategies,
   InsertSavedStrategy,
+  competencyModels,
+  sectionCompetencies,
+  InsertCompetencyModel,
+  InsertSectionCompetency,
   InsertAnnualPlanSection,
   InsertLearningSituation,
   InsertAssessmentResult,
@@ -1636,4 +1640,221 @@ export async function deleteSavedStrategy(id: number, userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.delete(savedStrategies).where(and(eq(savedStrategies.id, id), eq(savedStrategies.userId, userId)));
+}
+
+// ─── النموذج الهرمي للكفاءات ──────────────────────────────────
+/** يستخرج نماذج الكفاءات الشاملة (مادة × مستوى) مع كفاءاتها الختامية بالمقاطع، مرتبة تسلسليًا. */
+export async function listCompetencyModels(filters: { subject?: string; gradeLevel?: string; userId?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [];
+  if (filters.subject) conditions.push(eq(competencyModels.subject, filters.subject as any));
+  if (filters.gradeLevel) conditions.push(eq(competencyModels.gradeLevel, filters.gradeLevel as any));
+  if (filters.userId) conditions.push(eq(competencyModels.userId, filters.userId));
+  const models = conditions.length > 0
+    ? await db.select().from(competencyModels).where(and(...conditions)).orderBy(competencyModels.gradeLevel)
+    : await db.select().from(competencyModels).orderBy(competencyModels.gradeLevel);
+  // جلب الكفاءات الختامية لكل نموذج في استعلام واحد
+  const modelIds = models.map(m => m.id);
+  if (modelIds.length === 0) return [];
+  const sections = await db.select().from(sectionCompetencies)
+    .where(sql`sectionCompetencies.competencyModelId IN (${sql.join(modelIds, sql`, `)})`)
+    .orderBy(sectionCompetencies.sectionNumber);
+  return models.map(model => ({
+    ...model,
+    sections: sections.filter(s => s.competencyModelId === model.id),
+  }));
+}
+
+/** نموذج كفاءة بمعرفة المعرف، مع مقاطعه. */
+export async function getCompetencyModelById(id: number, userId?: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const modelRows = await db.select().from(competencyModels)
+    .where(userId ? and(eq(competencyModels.id, id), eq(competencyModels.userId, userId)) : eq(competencyModels.id, id))
+    .limit(1);
+  if (modelRows.length === 0) return undefined;
+  const model = modelRows[0];
+  const sections = await db.select().from(sectionCompetencies)
+    .where(eq(sectionCompetencies.competencyModelId, id))
+    .orderBy(sectionCompetencies.sectionNumber);
+  // إرفاق معرف أول وضعية تعلّمية لكل مقطع (عبر الربط المرجعي) لدعم زر «أنشئ مذكرة»
+  const linkedIds = sections.filter(s => s.linkedSectionId).map(s => s.linkedSectionId as number);
+  const situationMap = new Map<number, number>();
+  if (linkedIds.length > 0) {
+    const linkedSections = await db.select({
+      id: annualPlanSections.id,
+      situationId: learningSituations.id,
+    }).from(annualPlanSections)
+      .innerJoin(learningSituations, eq(learningSituations.sectionId, annualPlanSections.id))
+      .where(sql`${annualPlanSections.id} IN (${sql.join(linkedIds, sql`, `)})`)
+      .orderBy(annualPlanSections.id, learningSituations.situationNumber);
+    for (const row of linkedSections) {
+      if (!situationMap.has(row.id)) situationMap.set(row.id, row.situationId);
+    }
+  }
+  const sectionsWithSituations = sections.map(s => ({
+    ...s,
+    firstSituationId: s.linkedSectionId ? (situationMap.get(s.linkedSectionId) ?? null) : null,
+  }));
+  return { ...model, sections: sectionsWithSituations };
+}
+
+/** يضيف أو يحدّث نموذج كفاءة شاملة (upsert حسب المادة والمستوى). */
+export async function upsertCompetencyModel(data: InsertCompetencyModel & { gradeLevel: string; subject: string }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(competencyModels).values(data as any)
+    .onDuplicateKeyUpdate({
+      set: {
+        globalCompetency: data.globalCompetency,
+        sourceDocTitle: data.sourceDocTitle,
+      },
+    });
+  const row = await db.select().from(competencyModels)
+    .where(and(eq(competencyModels.gradeLevel, data.gradeLevel as any), eq(competencyModels.subject, data.subject as any)))
+    .limit(1);
+  return row.length > 0 ? row[0] : undefined;
+}
+
+/** يحفظ أو يحدّث كفاءة ختامية لمقطع (upsert حسب competencyModelId وsectionNumber). */
+export async function upsertSectionCompetency(data: InsertSectionCompetency) {
+  const db = await getDb();
+  if (!db) return undefined;
+  await db.insert(sectionCompetencies).values(data as any)
+    .onDuplicateKeyUpdate({
+      set: {
+        sectionTitle: data.sectionTitle,
+        termCompetency: data.termCompetency,
+        competencyAction: data.competencyAction,
+        durationHours: data.durationHours,
+        durationLabel: data.durationLabel,
+        criteria: data.criteria,
+        knowledgeResources: data.knowledgeResources,
+        linkedSectionId: data.linkedSectionId,
+      },
+    });
+  const row = await db.select().from(sectionCompetencies)
+    .where(and(
+      eq(sectionCompetencies.competencyModelId, data.competencyModelId),
+      eq(sectionCompetencies.sectionNumber, data.sectionNumber),
+    ))
+    .limit(1);
+  return row.length > 0 ? row[0] : undefined;
+}
+
+/** يحذف مقطع كفاءة ختامية. */
+export async function deleteSectionCompetency(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(sectionCompetencies).where(eq(sectionCompetencies.id, id));
+}
+
+/**
+ * يربط مقاطع نموذج كفاءة ختامية بمقاطع خطة سنوية رسمية أو أستاذية (linkedSectionId)
+ * عبر مطابقة رقم المقطع، ويُحدّث عنوان المقطع من الخطة عند الارتباط.
+ * يُستدعى تلقائيًا عند جلب نموذج بلا روابط لكنه ينتمي لمستوى ومادة لهما خطة.
+ */
+export async function linkSectionCompetencies(modelId: number, subject: string, gradeLevel: string) {
+  const db = await getDb();
+  if (!db) return;
+  const refs = await db.select().from(sectionCompetencies)
+    .where(eq(sectionCompetencies.competencyModelId, modelId))
+    .orderBy(sectionCompetencies.sectionNumber);
+  const plans = await db.select({ id: annualPlans.id, isReference: annualPlans.isReference }).from(annualPlans)
+    .where(and(
+      eq(annualPlans.subject, subject as any),
+      eq(annualPlans.gradeLevel, gradeLevel as any),
+      eq(annualPlans.isReference, true),
+    ))
+    .limit(1);
+  if (plans.length === 0) return;
+  const sections = await db.select().from(annualPlanSections)
+    .where(eq(annualPlanSections.annualPlanId, plans[0].id))
+    .orderBy(annualPlanSections.sectionNumber);
+  for (const ref of refs) {
+    const match = sections.find(s => String(s.sectionNumber) === String(ref.sectionNumber));
+    if (!match) continue;
+    await db.update(sectionCompetencies).set({
+      linkedSectionId: match.id,
+      sectionTitle: match.title,
+    }).where(eq(sectionCompetencies.id, ref.id));
+  }
+}
+
+/**
+ * وضعيات مقطع كفاءة ختامية (تشغيلية إن وجدت، وإلا مرجعية): لدعم أزرار
+ * «أنشئ مذكرة» و«استراتيجية التسيير» من صفحة الكفاءات.
+ */
+export async function getCompetencySectionSituations(
+  userId: number,
+  subject: string,
+  gradeLevel: string,
+  academicYear: string,
+  sectionNumber: number,
+) {
+  const db = await getDb();
+  if (!db) return [];
+  // الخطة التشغيلية للأستاذ أولًا، وإلا الخطة المرجعية
+  const plans = await db.select({ id: annualPlans.id, userId: annualPlans.userId }).from(annualPlans)
+    .where(and(
+      eq(annualPlans.subject, subject as any),
+      eq(annualPlans.gradeLevel, gradeLevel as any),
+      eq(annualPlans.academicYear, academicYear),
+    ))
+    .orderBy(asc(sql`CASE WHEN ${annualPlans.userId} = ${userId} THEN 0 ELSE 1 END`))
+    .limit(1);
+  if (plans.length === 0) return [];
+  const sections = await db.select({ id: annualPlanSections.id }).from(annualPlanSections)
+    .where(and(eq(annualPlanSections.annualPlanId, plans[0].id), eq(annualPlanSections.sectionNumber, sectionNumber)))
+    .limit(1);
+  if (sections.length === 0) return [];
+  return await db.select().from(learningSituations)
+    .where(eq(learningSituations.sectionId, sections[0].id))
+    .orderBy(learningSituations.situationNumber);
+}
+
+/**
+ * تقدم الأستاذ في بلوغ الكفاءات الختامية بمستوى ومادة معينين:
+ * نسبة الوضعيات المنجزة في كل مقطع، مع ربط كل مقطع بمقطع الكفاءة المقابلة.
+ */
+export async function getCompetencyProgress(userId: number, subject: string, gradeLevel: string, academicYear: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const plans = await db.select({ id: annualPlans.id }).from(annualPlans)
+    .where(and(
+      eq(annualPlans.userId, userId),
+      eq(annualPlans.subject, subject as any),
+      eq(annualPlans.gradeLevel, gradeLevel as any),
+      eq(annualPlans.academicYear, academicYear),
+    ));
+  if (plans.length === 0) return [];
+  const planIds = plans.map(p => p.id);
+  const sections = await db.select({
+    id: annualPlanSections.id,
+    sectionNumber: annualPlanSections.sectionNumber,
+    title: annualPlanSections.title,
+    isCompleted: annualPlanSections.isCompleted,
+  }).from(annualPlanSections)
+    .where(sql`annualPlanSections.annualPlanId IN (${sql.join(planIds, sql`, `)})`)
+    .orderBy(annualPlanSections.sectionNumber);
+  if (sections.length === 0) return [];
+  const sectionIds = sections.map(s => s.id);
+  const situationCounts = await db.select({
+    sectionId: learningSituations.sectionId,
+    total: count(),
+    done: sql<number>`SUM(CASE WHEN ${learningSituations.isCompleted} = 1 THEN 1 ELSE 0 END)`,
+  }).from(learningSituations)
+    .where(sql`learningSituations.sectionId IN (${sql.join(sectionIds, sql`, `)})`)
+    .groupBy(learningSituations.sectionId);
+  const countsBySection = new Map(situationCounts.map(c => [c.sectionId, { total: Number(c.total), done: Number(c.done) }]));
+  return sections.map(s => {
+    const c = countsBySection.get(s.id) || { total: 0, done: 0 };
+    return {
+      ...s,
+      situationTotal: c.total,
+      situationDone: c.done,
+      completionPct: c.total > 0 ? Math.round((c.done / c.total) * 100) : (s.isCompleted ? 100 : 0),
+    };
+  });
 }

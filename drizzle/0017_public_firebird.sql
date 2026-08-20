@@ -1,0 +1,1 @@
+ALTER TABLE `competencyModels` ADD `userId` varchar(128) NOT NULL;
