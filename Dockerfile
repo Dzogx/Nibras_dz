@@ -1,10 +1,11 @@
 FROM node:22-slim
 
 # XeLaTeX وخط Amiri يعيشان داخل خدمة نبراس؛ لا يحتاج الأستاذ إلى تثبيت أي برنامج.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y --no-install-recommends \
     texlive-xetex \
     texlive-lang-arabic \
     fonts-hosny-amiri \
+    fontconfig \
     && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
