@@ -1,4 +1,5 @@
 import { startLogin } from "@/const";
+import { safelySetLocalStorageItem } from "@/lib/safeStorage";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
@@ -51,7 +52,8 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
+    // لا نسمح لتعطيل التخزين في Safari Private/WebView بإخفاء التطبيق بعد نجاح الدخول.
+    safelySetLocalStorageItem(
       "manus-runtime-user-info",
       JSON.stringify(meQuery.data)
     );

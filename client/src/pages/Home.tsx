@@ -9,8 +9,8 @@ import {
   ClipboardList,
   BarChart3,
   HeartPulse,
-  QrCode,
   FileText,
+  Printer,
 } from "lucide-react";
 
 export default function Home() {
@@ -72,7 +72,7 @@ export default function Home() {
           {[
             { icon: ClipboardList, label: "التخطيط", desc: "خطط سنوية ومقاطع ووضعيات وفق المنهاج الرسمي" },
             { icon: BookOpen, label: "الحصة", desc: "مذكرات وأنشطة تعليمية وإثرائية جاهزة" },
-            { icon: Lightbulb, label: "المورد", desc: "مكتبة موارد بهوية نبراس ورمز تسلسلي" },
+            { icon: Lightbulb, label: "المورد", desc: "مكتبة موارد منظمة للمذكرات والأنشطة والوثائق" },
             { icon: MapIcon, label: "التقويم", desc: "اختبارات وفق قواعد 10+10 و13+7 و20" },
             { icon: BarChart3, label: "تحليل النتائج", desc: "نسب الإتقان حسب المجالات والمهارات" },
             { icon: HeartPulse, label: "العلاج والإثراء", desc: "اقتراحات مبنية على النتائج الفعلية" },
@@ -92,13 +92,13 @@ export default function Home() {
       <section className="border-t border-border bg-muted/30">
         <div className="max-w-5xl mx-auto px-6 py-12">
           <h2 className="text-2xl font-bold text-brand-ink-900 text-center mb-8" style={{ fontFamily: "var(--font-display)" }}>
-            وثائق رسمية بهوية موثوقة
+            وثائق رسمية محايدة وجاهزة للطباعة
           </h2>
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { icon: FileText, label: "ترويسة رسمية", desc: "مديرية التربية والاختبار والمدة مطبوعة على كل وثيقة" },
-              { icon: QrCode, label: "رموز QR", desc: "تحقق من الوثيقة + إجابات مقفلة حتى نهاية الاختبار" },
-              { icon: ClipboardList, label: "رقم تسلسلي", desc: "NIBRAS-YYYY-XXXXX لكل مذكرة وتقويم" },
+              { icon: FileText, label: "ترويسة مؤسساتية", desc: "الجهة والمؤسسة والمستوى والتاريخ والمادة والمدة في مواضعها الرسمية" },
+              { icon: ClipboardList, label: "تنسيق حسب المستوى", desc: "مساحة إجابة مدمجة للأولى والثانية، وورقة أسئلة مستقلة للثالثة والرابعة" },
+              { icon: Printer, label: "جاهزة للطباعة", desc: "إخراج A4 عربي من اليمين إلى اليسار دون شعار منصة أو رموز إضافية" },
             ].map((item) => (
               <Card key={item.label}>
                 <CardContent className="p-5 text-center">
