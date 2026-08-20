@@ -1662,7 +1662,7 @@ ${curriculumContext}`,
       duration: z.string().optional(),
       numQuestions: z.number().optional(),
       // Teacher OS integration fields
-      lessonIds: z.array(z.number()).optional(),
+      lessonIds: z.array(z.union([z.number(), z.string()])).optional(),
       competencyIds: z.array(z.string()).optional(),
       autoImport: z.boolean().optional(),
       useNationalRules: z.boolean().optional().default(true),
@@ -1674,10 +1674,14 @@ ${curriculumContext}`,
     })).mutation(async ({ ctx, input }) => {
       // ─── Get Teacher OS data (completed lessons) ─────────────
       let completedLessons: { title: string; unitTitle?: string; unitNumber?: number; lessonNumber?: number; objectives?: string }[] = [];
-      if (input.lessonIds && input.lessonIds.length > 0) {
+      const numericLessonIds = (input.lessonIds ?? []).filter(id => typeof id === "number");
+      const derivedSituationIds: string[] = (input.lessonIds ?? [])
+        .filter((id): id is string => typeof id === "string")
+        .filter((id): id is string => (id as string).startsWith("situation-"));
+      if (numericLessonIds.length > 0) {
         const allLessons = await getLessons(ctx.user.id);
         completedLessons = allLessons
-          .filter(l => input.lessonIds!.includes(l.id) && l.isCompleted)
+          .filter(l => numericLessonIds.includes(l.id) && l.isCompleted)
           .map(l => ({
             title: l.title,
             unitTitle: l.unitTitle || undefined,
@@ -1685,6 +1689,27 @@ ${curriculumContext}`,
             lessonNumber: l.lessonNumber || undefined,
             objectives: l.objectives || undefined,
           }));
+      } else if (derivedSituationIds.length > 0) {
+        // دروس مشتقة من الوضعيات المنجزة (situation-1, situation-2, ...):
+        // نرتّبها حسب رقم الاشتقاق لتطابق ترتيب الوضعيات في واجهة Teacher OS
+        const ranked = derivedSituationIds
+          .map(id => Number(id.replace("situation-", "")))
+          .filter(n => Number.isFinite(n))
+          .sort((a, b) => a - b);
+        const allSituations = await getLearningSituationsByUserId(ctx.user.id);
+        const completedSituationsAll = allSituations.filter(s => s.isCompleted || s.completedDate || (s as any).sessionStatus === "completed");
+        ranked.forEach((rank, _i) => {
+          const s = completedSituationsAll[rank - 1];
+          if (s) {
+            completedLessons.push({
+              title: s.title,
+              objectives: s.objectives || undefined,
+            });
+            if (!input.situationIds?.includes(s.id)) {
+              input.situationIds = [...(input.situationIds ?? []), s.id];
+            }
+          }
+        });
       }
 
       // ─── Get completed situations (Teacher OS) ─────────────
@@ -1715,7 +1740,7 @@ ${curriculumContext}`,
       // ─── Retrieve curriculum knowledge base documents (RAG) ──
       const curriculumDocs = await getCurriculumForTopic(canonicalTopic, input.gradeLevel, input.subject);
       const curriculumContext = curriculumDocs.length > 0
-        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: يجب ربط كل سؤال بوثيقة المنهاج الرسمية ذات الصلة من القائمة أعلاه. بعد كل سؤال ضع الاستشهاد بالصيغة التالية:\n[مرجع: رقم الوثيقة — عنوان الوثيقة — المقطع]\nمثال: [مرجع: 1 — وثيقة المنهاج السنة الرابعة — المقطع الثاني: التاريخ الوطني — درس الثورة الجزائرية]\nلا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
+        ? `=== وثائق المنهاج الرسمية (مرجع للاستشهاد) ===\n${curriculumDocs.map((doc, i) => `[${i + 1}] ${doc.title} (المصدر: ${doc.sourceReference || 'وثيقة المنهاج الرسمية'})${doc.lessonNumber ? ` — الدرس ${doc.lessonNumber}` : ''}\n    المحتوى: ${doc.content.substring(0, 300)}...`).join("\n\n")}\n\nتعليمات الاستشهاد الصارمة: استعمل هذه الوثائق كخلفية مرجعية لربط كل سؤال بالمحتوى المنهجي المناسب، لكن مخرجك النهائي وثيقة اختبار رسمية فقط. ممنوع منعًا باتًا إخراج أي قائمة مصادر أو استشهادات: لا تكتب أسطر «مرجع» أو «[مرجع: ن]» أو «مصادر» أو «وثائق المنهاج المستخدمة» أو «الاستشهادات» أو أي أرقام بنية [ن] في أي مكان من الاختبار أو الإجابات، ولا في البداية ولا في النهاية. لا تكتب أرقام أو عناوين مراجع داخل نص الأسئلة — اذكر المصدر ضمنياً في صياغة السؤال فقط. لا تضف أسئلة لا يمكن ربطها بوثيقة منهاج رسمية.`
         : "لا توجد وثائق منهاج مطابقة في قاعدة المعرفة. أنشئ الأسئلة بناءً على الموضوع المطلوب فقط.";
 
       // ─── Build rules context ─────────────────────────────────
@@ -1816,13 +1841,23 @@ ${rulesContext}
         answerKey: "مفتاح إجابات",
       };
 
-      const content = getLLMTextContent(response);
+      let content = getLLMTextContent(response);
       if (!content) {
         throw new TRPCError({
           code: "BAD_GATEWAY",
           message: `تعذر توليد ${typeLabels[input.assessmentType] ?? "المحتوى"} لأن خدمة الذكاء الاصطناعي لم تُرجع محتوى صالحاً. حاول مجدداً بعد لحظات.`,
         });
       }
+
+      // ─── تنظيف مخرج النموذج من أسطر الاستشهادات المتسربة ──
+      // بعض النماذج تدرج قائمة «[مرجع: ن]» رغم التعليمات؛ وثيقة الاختبار الرسمية
+      // لا تحتمل أي أسطر استشهاد تقنية، لذا تُفلتر هنا في المصدر.
+      content = content
+        .split("\n")
+        .filter(line => !/^\s*(\[مرجع|مرجع:\s?\d|مصدر:?\s?\d|\d+\.\s+(الوضعية|المخطط|الكفاءة|وثيقة)).*$/.test(line.trim()))
+        .join("\n")
+        .replace(/\[مرجع[^\]]*\]/g, "")
+        .replace(/\s{3,}/g, "\n");
 
       // Build metadata with rules engine info
       // Build curriculum citations from retrieved docs
@@ -2081,11 +2116,66 @@ ${rulesContext}
       const resolvedYear = await resolveAcademicYear(input?.academicYear);
       const planFilters = resolvedYear ? { academicYear: resolvedYear } : undefined;
       const effectiveInput = input ?? { classId: undefined, gradeLevel: undefined, subject: undefined, academicYear: undefined };
-      // Auto-import: get completed lessons from Teacher OS
+      // Auto-import: get completed lessons from Teacher OS.
+      // إن لم يكن للأستاذ دروس في جدول «الدروس» (يعمل بالخطة السنوية مباشرة)، نشتق
+      // دروسًا من الوضعيات التعليمية المنجزة حتى لا يفقد السياق التربوي — التقويم
+      // يُبنى على ما أُنجز فعلًا في الحصة سواء عبر جدول الدروس أو الوضعيات.
       const lessons = await getLessons(ctx.user.id, {
         classId: effectiveInput.classId,
         isCompleted: true,
       });
+      if (lessons.length === 0) {
+        const situationsList: { title: string | null; objectives: string | null }[] = [];
+        try {
+          if (effectiveInput.classId) {
+            const plans = await getAnnualPlans(ctx.user.id, planFilters);
+            let classPlan = plans.find(p => p.classId === effectiveInput.classId && (!effectiveInput.subject || p.subject === effectiveInput.subject));
+            if (!classPlan) classPlan = plans.find(p => p.classId === effectiveInput.classId);
+            if (classPlan) {
+              const sections = (await getAnnualPlanSections(classPlan.id)) ?? [];
+              for (const section of sections) {
+                const situations = (await getLearningSituations(section.id)) ?? [];
+                for (const s of situations) {
+                  if (s.isCompleted) situationsList.push({ title: s.title, objectives: s.objectives || null });
+                }
+              }
+            }
+          }
+        } catch (e) { /* plans not yet configured */ }
+        if (situationsList.length === 0 && !effectiveInput.classId) {
+          // لا يعتمد سياق الأستاذ على اختيار قسم متذبذب في الواجهة: عند غياب القسم
+          // نجمع الوضعيات المنجزة لكل خطط الموسم المفعّل حتى يبقى السياق التربوي ثابتًا.
+          try {
+            const allPlans = await getAnnualPlans(ctx.user.id, planFilters);
+            for (const plan of allPlans) {
+              const sections = (await getAnnualPlanSections(plan.id)) ?? [];
+              for (const section of sections) {
+                for (const s of (await getLearningSituations(section.id)) ?? []) {
+                  if (s.isCompleted) situationsList.push({ title: s.title, objectives: s.objectives || null });
+                }
+              }
+            }
+          } catch (e) { /* plans not yet configured */ }
+        }
+        if (situationsList.length > 0) {
+          (lessons as any[]).push(
+            ...situationsList.map((s, i) => ({
+              id: `situation-${i + 1}`,
+              title: s.title ?? "وضعية منجزة",
+              unitTitle: null,
+              unitNumber: null,
+              lessonNumber: null,
+              objectives: s.objectives || null,
+              isCompleted: true,
+              date: null,
+              classId: null,
+              subject: null,
+              gradeLevel: null,
+              notes: null,
+            })),
+          );
+        }
+      }
 
       // Auto-derive competencies from completed lessons' objectives
       const coveredCompetencies: string[] = [];

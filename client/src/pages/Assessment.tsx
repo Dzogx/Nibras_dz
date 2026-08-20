@@ -428,7 +428,7 @@ export default function Assessment() {
         <pre>${generated}</pre>
         ${curriculumCitations.length > 0 ? `<div class="citations">
           <h3>الاستشهادات من وثائق المنهاج الرسمية (${curriculumCitations.length} وثيقة)</h3>
-          ${curriculumCitations.map(c => `<div class="cit-item"><span class="cit-ref">[${c.referenceNumber}]</span> ${c.title} — ${c.sourceReference}${c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ''}</div>`).join('')}
+          ${curriculumCitations.map((c, i) => `<div class="cit-item"><span class="cit-ref">${i + 1}.</span> ${c.title} — ${c.sourceReference}${c.lessonNumber ? ` — الدرس ${c.lessonNumber}` : ''}</div>`).join('')}
         </div>` : ''}
       </body>
       </html>
@@ -831,7 +831,7 @@ export default function Assessment() {
                     <div className="space-y-1">
                       {curriculumCitations.map(c => (
                         <div key={c.referenceNumber} className="flex items-start gap-2 text-brand-ink-700">
-                          <Badge variant="outline" className="text-xs shrink-0">[مرجع: {c.referenceNumber}]</Badge>
+                          <Badge variant="outline" className="text-xs shrink-0">وثيقة {c.referenceNumber}</Badge>
                           <span>
                             {c.title} — {c.sourceReference}
                             
