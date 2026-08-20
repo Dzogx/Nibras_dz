@@ -1,8 +1,6 @@
 /**
- * قالب إخراج LaTeX للتقويم التحصيلي في نبراس.
- *
- * يحضّر هذا الملف مصدراً مهرباً وآمناً ليجمعه خادم نبراس إلى PDF. لا يمرر أي
- * مدخل للمترجم ولا ينفّذ أي أمر LaTeX يأتي من الأستاذ أو من مخرج الذكاء الاصطناعي.
+ * قالب إخراج LaTeX للتقويم التحصيلي.
+ * كل المدخلات تهرّب قبل وصولها إلى XeLaTeX، والوثيقة المولّدة لا تحمل علامة منصة.
  */
 
 export const ASSESSMENT_PRINT_THEMES = {
@@ -57,7 +55,16 @@ function stripCurriculumCitations(content: string): string {
   return content.replace(/\s*\[مرجع:[^\]]+\]/g, "");
 }
 
-function markdownToLatex(content: string): string {
+function extractPointBadge(heading: string): string | null {
+  const match = heading.match(/[\(（]\s*(\d+)\s*(نقطة|نقاط|ن)?\s*[\)）]/);
+  return match ? `${match[1]} ${match[2] || "ن"}` : null;
+}
+
+/**
+ * يحافظ على مستويات Markdown الأربعة كما هي، ويضيف مساحة إجابة قصيرة لكل سؤال
+ * مرقم في ورقة التلميذ فقط. نموذج الإجابة وشبكة التقويم لا يستهلكان مساحة الإجابة.
+ */
+function markdownToLatex(content: string, includeAnswerLines: boolean): string {
   const lines = stripCurriculumCitations(content).replace(/\r\n/g, "\n").split("\n");
   const blocks: string[] = [];
 
@@ -67,40 +74,34 @@ function markdownToLatex(content: string): string {
       blocks.push("\\par\\smallskip");
       continue;
     }
-
     const heading = line.match(/^(#{1,6})\s+(.+)$/);
     if (heading) {
       const command = heading[1].length === 1 ? "section" : heading[1].length <= 3 ? "subsection" : "subsubsection";
-      blocks.push(`\\${command}*{${formatInline(heading[2])}}`);
+      const pointBadge = extractPointBadge(heading[2]);
+      blocks.push(`\\${command}*{${formatInline(heading[2])}}${pointBadge ? `\\PointBadge{${pointBadge}}` : ""}`);
       continue;
     }
-
     if (/^\s*[-━─═─]+\s*$/.test(line) && line.length >= 3) {
-      blocks.push("\\vspace{0.3em}\\hrule\\vspace{0.3em}");
+      blocks.push("\\vspace{0.28em}\\textcolor{NibrasLine}{\\hrule height 0.55pt}\\vspace{0.28em}");
       continue;
     }
-
     const quote = line.match(/^>\s*(.+)$/);
     if (quote) {
       blocks.push(`\\begin{quote} ${formatInline(quote[1])} \\end{quote}`);
       continue;
     }
-
     const numbered = line.match(/^(\d+)[.)]\s+(.+)$/);
     if (numbered) {
-      blocks.push(`\\noindent\\textbf{${numbered[1]}.} ${formatInline(numbered[2])}\\\\`);
+      blocks.push(`\\QuestionItem{${numbered[1]}}{${formatInline(numbered[2])}}${includeAnswerLines ? "\\AnswerLines" : ""}`);
       continue;
     }
-
     const bullet = line.match(/^[-*•]\s+([^─].*)$/);
     if (bullet) {
-      blocks.push(`\\noindent\\textbullet\\quad ${formatInline(bullet[1])}\\\\`);
+      blocks.push(`\\noindent\\textcolor{NibrasAccent}{\\textbullet}\\hspace{0.45em}${formatInline(bullet[1])}\\par`);
       continue;
     }
-
     blocks.push(`\\noindent ${formatInline(line)}\\par`);
   }
-
   return blocks.join("\n");
 }
 
@@ -122,20 +123,28 @@ function subjectNote(subject: string, totalPoints?: number): string {
   return totalPoints ? `المجموع: ${totalPoints} نقطة.` : "";
 }
 
-
 /** حيادي: وثيقة التقويم رسمية ولا تحمل اسم المنصة في تذييلها. */
 function assessmentFooterLabel(theme: (typeof ASSESSMENT_PRINT_THEMES)[keyof typeof ASSESSMENT_PRINT_THEMES]): string {
   return theme === ASSESSMENT_PRINT_THEMES.mono ? "أبيض وأسود" : "تقويم تحصيلي";
 }
 
-
-/** حيادي: وثيقة التقويم رسمية ولا تحمل اسم المنصة في تذييلها. */
-
 function escapeForComment(value: string): string {
   return value.replace(/[\r\n%]/g, " ").trim();
 }
 
+function buildStudentBlock(input: AssessmentLatexInput): string {
+  if (input.assessmentType === "answerKey" || input.assessmentType === "rubric") return "";
+  return `
+\\vspace{0.4em}
+\\StudentInfoBlock`;
+}
 
+function buildStudentInfoMacroDefinition(includeStudentInfo: boolean): string {
+  if (!includeStudentInfo) return "\\newcommand{\\StudentInfoBlock}{}";
+  return "\\newcommand{\\StudentInfoBlock}{\\begin{center}{\\setlength{\\fboxsep}{0pt}\\fcolorbox{NibrasInk}{NibrasLight}{\\begin{minipage}{0.935\\linewidth}\\vspace{0.24em}\\centering\\StudentField{0.50\\linewidth}{اللقب والاسم}\\hfill\\StudentField{0.18\\linewidth}{القسم}\\hfill\\StudentField{0.19\\linewidth}{العلامة}\\vspace{0.24em}\\end{minipage}}}\\end{center}}";
+}
+
+/** وثيقة رسمية للتلميذ: منظمة في طبقات بصرية، بلا اسم أو شعار خدمة رقمية. */
 export function buildAssessmentLatexDocument(input: AssessmentLatexInput): string {
   const theme = ASSESSMENT_PRINT_THEMES[input.printTheme ?? "nibras"];
   const title = formatInline(input.title);
@@ -146,42 +155,48 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
   const date = input.assessmentDate ? formatInline(input.assessmentDate) : ".... / .... / ........";
   const duration = input.duration ? formatInline(input.duration) : "................................";
   const points = input.totalPoints ? `${input.totalPoints} نقطة` : "................................";
-  // وثيقة رسمية تُقدَّم للمؤسسة والتلاميذ: لا تحمل أي إشارة لاسم المنصة.
-  const studentBlock = input.assessmentType === "answerKey" || input.assessmentType === "rubric"
-    ? ""
-    : `
-\\vspace{0.4em}
-\\noindent\\fcolorbox{NibrasInk}{NibrasLight}{\\parbox{0.93\\linewidth}{
-\\textbf{اللقب والاسم:} \\hrulefill\\hfill \\textbf{القسم:} \\hrulefill\\hfill \\textbf{العلامة:} \\hrulefill
-}}`;
+  const includeAnswerLines = input.assessmentType !== "answerKey" && input.assessmentType !== "rubric";
+  const includeStudentInfo = input.assessmentType !== "answerKey" && input.assessmentType !== "rubric";
 
   return `% Nibras Print System — Assessment Template
-% Compiled securely by Nibras with XeLaTeX. Required packages: polyglossia, fontspec, geometry, array, longtable, fancyhdr.
+% Compiled securely by Nibras with XeLaTeX.
 % Title: ${escapeForComment(input.title)}
 \\documentclass[12pt,a4paper]{article}
-\\usepackage[a4paper,margin=1.8cm,headheight=18pt]{geometry}
+\\usepackage[a4paper,margin=1.25cm,headheight=18pt]{geometry}
 \\usepackage{fontspec}
 \\usepackage{xcolor}
 \\usepackage{array,longtable,booktabs,enumitem,fancyhdr,lastpage,colortbl}
 \\usepackage{polyglossia}
+\\usepackage{bidi}
 \\definecolor{NibrasInk}{HTML}{${theme.ink}}
 \\definecolor{NibrasLight}{HTML}{${theme.light}}
 \\definecolor{NibrasAccent}{HTML}{${theme.accent}}
 \\definecolor{NibrasLine}{HTML}{D8DEDD}
+\\definecolor{NibrasMist}{HTML}{EEF4F5}
+\\definecolor{NibrasPaper}{HTML}{FFFDF8}
 \\setmainlanguage{arabic}
 \\setotherlanguage{english}
 \\newfontfamily\\arabicfont[Script=Arabic,Scale=1.04]{Amiri}
 \\newfontfamily\\englishfont{Latin Modern Roman}
 \\setlength{\\parindent}{0pt}
-\\setlength{\\parskip}{0.45em}
-\\renewcommand{\\arraystretch}{1.45}
+\\setlength{\\parskip}{0.40em}
+\\renewcommand{\\arraystretch}{1.34}
 \\arrayrulecolor{NibrasLine}
-\\newcommand{\\AssessmentTitle}[1]{\\noindent\\fcolorbox{NibrasAccent}{white}{\\parbox{0.93\\linewidth}{\\centering\\color{NibrasInk}\\LARGE\\bfseries #1}}}
-\\newcommand{\\AssessmentBand}[1]{\\vspace{0.65em}\\noindent\\colorbox{NibrasInk}{\\parbox{0.965\\linewidth}{\\centering\\color{white}\\bfseries #1}}\\vspace{0.35em}}
+\\newcommand{\\DocumentFact}[2]{{\\scriptsize\\textcolor{NibrasAccent}{\\bfseries #1}\\par\\vspace{-0.16em}{\\normalsize\\color{NibrasInk}\\bfseries #2}}}
+\\newcommand{\\AssessmentTitle}[1]{\\begin{center}{\\setlength{\\fboxsep}{0pt}\\fcolorbox{NibrasLine}{white}{\\begin{minipage}{0.935\\linewidth}\\vspace{0.26em}\\centering{\\scriptsize\\textcolor{NibrasAccent}{\\bfseries وثيقة تقويمية للتلميذ}}\\\\[-0.1em]{\\color{NibrasInk}\\LARGE\\bfseries #1}\\\\[-0.1em]\\textcolor{NibrasAccent}{\\rule{0.18\\linewidth}{1.4pt}}\\vspace{0.20em}\\end{minipage}}}\\end{center}}
+\\newcommand{\\StudentField}[2]{\\parbox[t]{#1}{\\scriptsize\\textcolor{NibrasAccent}{\\bfseries #2}\\par\\vspace{0.12em}\\textcolor{NibrasLine}{\\rule{0.94\\linewidth}{0.45pt}}}}
+${buildStudentInfoMacroDefinition(includeStudentInfo)}
+\\newcommand{\\InstructionPanel}[2]{\\begin{center}{\\setlength{\\fboxsep}{0pt}\\fcolorbox{NibrasAccent}{NibrasPaper}{\\begin{minipage}{0.935\\linewidth}\\vspace{0.20em}\\noindent\\textcolor{NibrasAccent}{\\rule{3pt}{2.30em}}\\hspace{0.68em}\\parbox[t]{0.84\\linewidth}{\\scriptsize\\textcolor{NibrasAccent}{\\bfseries تعليمات عامة}\\hfill\\textcolor{NibrasInk}{\\bfseries #1}\\par\\vspace{-0.06em}\\color{NibrasInk}#2}\\vspace{0.20em}\\end{minipage}}}\\end{center}}
+\\newcommand{\\AssessmentBand}[1]{\\vspace{0.38em}\\noindent\\colorbox{NibrasInk}{\\parbox{0.965\\linewidth}{\\vspace{0.18em}\\textcolor{white}{\\bfseries #1}\\hfill\\colorbox{NibrasAccent}{\\strut\\scriptsize\\textcolor{white}{أجب بوضوح}\\strut}\\vspace{0.18em}}}\\vspace{0.24em}}
+\\newcommand{\\PointBadge}[1]{\\hfill\\colorbox{NibrasAccent}{\\strut\\scriptsize\\textcolor{white}{#1}\\strut}\\par\\vspace{-0.14em}}
+\\newcommand{\\QuestionItem}[2]{\\vspace{0.16em}\\noindent\\colorbox{NibrasLight}{\\parbox{0.955\\linewidth}{\\vspace{0.2em}\\textcolor{NibrasAccent}{\\bfseries #1}\\hspace{0.55em}\\textcolor{NibrasInk}{#2}\\vspace{0.2em}}}\\par}
+\\newcommand{\\AnswerLines}{\\vspace{0.08em}\\noindent\\textcolor{NibrasLine}{\\rule{0.955\\linewidth}{0.38pt}}\\par\\vspace{0.38em}\\noindent\\textcolor{NibrasLine}{\\rule{0.955\\linewidth}{0.38pt}}\\par\\vspace{0.16em}}
 \\makeatletter
-\\renewcommand\\section{\\@startsection{section}{1}{\\z@}{1.05em}{0.38em}{\\color{NibrasInk}\\large\\bfseries}}
-\\renewcommand\\subsection{\\@startsection{subsection}{2}{\\z@}{0.8em}{0.28em}{\\color{NibrasAccent}\\normalsize\\bfseries}}
+\\renewcommand\\section{\\@startsection{section}{1}{\\z@}{0.98em}{0.34em}{\\color{NibrasInk}\\large\\bfseries\\leavevmode\\llap{\\textcolor{NibrasAccent}{\\rule{3pt}{1.25ex}}\\hspace{0.55em}}}}
+\\renewcommand\\subsection{\\@startsection{subsection}{2}{\\z@}{0.78em}{0.27em}{\\color{NibrasInk}\\normalsize\\bfseries\\leavevmode\\llap{\\textcolor{NibrasAccent}{\\rule{2pt}{1.12ex}}\\hspace{0.45em}}}}
+\\renewcommand\\subsubsection{\\@startsection{subsubsection}{3}{\\z@}{0.58em}{0.2em}{\\color{NibrasAccent}\\small\\bfseries}}
 \\makeatother
+\\newcommand{\\AssessmentFooter}[1]{\\vspace{0.10em}\\begin{center}{\\setlength{\\fboxsep}{0pt}\\fcolorbox{NibrasLine}{NibrasPaper}{\\begin{minipage}{0.935\\linewidth}\\vspace{0.16em}\\colorbox{NibrasInk}{\\parbox{0.32\\linewidth}{\\centering\\textcolor{white}{\\scriptsize\\bfseries مجموع العلامة}\\hspace{0.35em}\\textcolor{white}{\\normalsize\\bfseries #1}}}\\hfill\\parbox[t]{0.42\\linewidth}{\\small\\textcolor{NibrasInk}{\\bfseries مراجعة الأستاذ / الإمضاء}\\hspace{0.6em}\\textcolor{NibrasLine}{\\rule{0.35\\linewidth}{0.38pt}}}\\vspace{0.16em}\\end{minipage}}}\\end{center}}
 \\pagestyle{fancy}
 \\fancyhf{}
 \\fancyhead[L]{\\small ${assessmentLabel(input.assessmentType)}}
@@ -190,38 +205,38 @@ export function buildAssessmentLatexDocument(input: AssessmentLatexInput): strin
 \\begin{document}
 
 \\begin{center}
-{\\large\\bfseries الجمهورية الجزائرية الديمقراطية الشعبية}\\\\
-وزارة التربية الوطنية\\\\[0.6em]
+{\\footnotesize الجمهورية الجزائرية الديمقراطية الشعبية}\\\\[-0.1em]
+{\\footnotesize وزارة التربية الوطنية}\\\\[0.18em]
 {\\color{NibrasInk}\\large\\bfseries ${assessmentLabel(input.assessmentType)}}\\\\[-0.25em]
 {\\color{NibrasAccent}\\rule{0.22\\linewidth}{1.2pt}}
 \\end{center}
 
 \\AssessmentTitle{${title}}
-\\vspace{0.4em}
-\\noindent\\fcolorbox{NibrasInk}{NibrasLight}{\\parbox{0.93\\linewidth}{
-\\renewcommand{\\arraystretch}{1.55}
-\\begin{tabular}{@{}p{0.47\\linewidth}@{\\hspace{1em}}p{0.47\\linewidth}@{}}
-المؤسسة: ${school} & الأستاذ(ة): ${teacher} \\\\
-المستوى: ${formatInline(input.gradeLevel)} & القسم: ${className} \\\\
-المادة: ${formatInline(input.subject)} & المدة: ${duration} \\\\
-الموضوع: ${topic} & التاريخ: ${date} \\\\
+\\begin{center}
+{\\setlength{\\fboxsep}{0pt}\\fcolorbox{NibrasLine}{white}{\\begin{minipage}{0.935\\linewidth}
+\\vspace{0.42em}
+\\begin{tabular}{@{}p{0.45\\linewidth}@{\\hspace{0.35em}}p{0.25\\linewidth}@{\\hspace{0.35em}}p{0.20\\linewidth}@{}}
+\\DocumentFact{المؤسسة:}{${school}} & \\DocumentFact{المادة:}{${formatInline(input.subject)}} & \\DocumentFact{المستوى:}{${formatInline(input.gradeLevel)}} \\\\
 \\end{tabular}
-}}
-${studentBlock}
+\\vspace{0.28em}\\textcolor{NibrasLine}{\\hrule height 0.4pt}\\vspace{0.30em}
+\\begin{tabular}{@{}p{0.45\\linewidth}@{\\hspace{0.35em}}p{0.25\\linewidth}@{\\hspace{0.35em}}p{0.20\\linewidth}@{}}
+\\DocumentFact{الموضوع:}{${topic}} & \\DocumentFact{القسم:}{${className}} & \\DocumentFact{المدة:}{${duration}} \\\\
+\\end{tabular}
+\\vspace{0.28em}\\textcolor{NibrasLine}{\\hrule height 0.4pt}\\vspace{0.30em}
+\\begin{tabular}{@{}p{0.58\\linewidth}@{\\hspace{0.35em}}p{0.30\\linewidth}@{}}
+\\DocumentFact{الأستاذ(ة):}{${teacher}} & \\DocumentFact{التاريخ:}{${date}} \\\\
+\\end{tabular}
+\\vspace{0.42em}
+\\end{minipage}}}
+\\end{center}
+${buildStudentBlock(input)}
 
-\\vspace{0.7em}
-\\noindent\\fcolorbox{NibrasAccent}{white}{\\parbox{0.93\\linewidth}{
-\\textcolor{NibrasInk}{\\textbf{تعليمات عامة}}\\hfill\\textbf{${subjectNote(input.subject, input.totalPoints)}}\\\\[-0.1em]
-اقرأ التعليمة جيداً، ونظّم إجابتك، واستعمل المصطلحات المناسبة.
-}}
+\\InstructionPanel{${subjectNote(input.subject, input.totalPoints)}}{اقرأ التعليمة جيداً، ونظّم إجابتك، واستعمل المصطلحات المناسبة.}
 
 \\AssessmentBand{موضوعات التقويم}
-${markdownToLatex(input.content)}
+${markdownToLatex(input.content, includeAnswerLines)}
 
-\\vfill
-\\begin{center}
-\\fcolorbox{NibrasInk}{NibrasLight}{\\parbox{0.48\\linewidth}{\\centering\\textcolor{NibrasInk}{\\textbf{${assessmentFooterLabel(theme)} — المجموع: ${points}}}}}
-\\end{center}
+\\AssessmentFooter{${assessmentFooterLabel(theme)} — المجموع: ${points}}
 \\end{document}
 `;
 }
