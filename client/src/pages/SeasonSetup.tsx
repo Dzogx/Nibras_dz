@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { BookCopy, CalendarDays, CheckCircle2, ChevronLeft, CircleAlert, ClipboardList, Clock3, Copy, FileSpreadsheet, GraduationCap, ListChecks, Plus, Users, TriangleAlert } from "lucide-react";
+import { ArrowRight, BookCopy, CalendarDays, CheckCircle2, ChevronLeft, CircleAlert, ClipboardList, Clock3, Copy, FileSpreadsheet, GraduationCap, ListChecks, Plus, Upload, UserRound, Users, TriangleAlert } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { getSeasonSetupResumeStep } from "@/lib/seasonSetup";
 
 const DAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس"] as const;
 const GRADE_LEVELS = ["السنة الأولى متوسط", "السنة الثانية متوسط", "السنة الثالثة متوسط", "السنة الرابعة متوسط"];
@@ -32,6 +33,15 @@ type Period = (typeof DEFAULT_PERIODS)[number];
 type ScheduleSubject = (typeof SCHEDULE_SUBJECTS)[number];
 type SlotDraft = { classId?: number; subject?: ScheduleSubject; room: string };
 type ClassDraft = { name: string; gradeLevel: string; subject: string; studentCount: string };
+type SetupStepId = 1 | 2 | 3 | 4 | 5;
+
+const SETUP_STEPS: { id: SetupStepId; title: string; shortTitle: string; icon: typeof UserRound }[] = [
+  { id: 1, title: "بيانات الأستاذ والمؤسسة", shortTitle: "الأستاذ", icon: UserRound },
+  { id: 2, title: "المستويات والأقسام", shortTitle: "الأقسام", icon: GraduationCap },
+  { id: 3, title: "قوائم التلاميذ", shortTitle: "التلاميذ", icon: Users },
+  { id: 4, title: "الجدول الأسبوعي", shortTitle: "الجدول", icon: CalendarDays },
+  { id: 5, title: "مراجعة وانطلاق", shortTitle: "انطلاق", icon: CheckCircle2 },
+];
 
 function slotKey(day: string, periodIndex: number) {
   return `${day}-${periodIndex}`;
@@ -46,6 +56,9 @@ export default function SeasonSetup() {
   const utils = trpc.useUtils();
   const { data: profile } = trpc.profile.get.useQuery();
   const [academicYear, setAcademicYear] = useState("2026-2027");
+  const [setupStep, setSetupStep] = useState<SetupStepId>(1);
+  const setupResumeResolved = useRef(false);
+  const [profileDraft, setProfileDraft] = useState({ displayName: "", school: "", province: "", academicYear: "2026-2027" });
   const [periods, setPeriods] = useState<Period[]>(DEFAULT_PERIODS);
   const [schedule, setSchedule] = useState<Record<string, SlotDraft>>({});
   const [scheduleInitialized, setScheduleInitialized] = useState(false);
@@ -58,8 +71,16 @@ export default function SeasonSetup() {
   });
 
   useEffect(() => {
-    if (profile?.academicYear) setAcademicYear(profile.academicYear);
-  }, [profile?.academicYear]);
+    if (!profile) return;
+    const profileYear = profile.academicYear || "2026-2027";
+    setAcademicYear(profileYear);
+    setProfileDraft({
+      displayName: profile.displayName || "",
+      school: profile.school || "",
+      province: profile.province || "",
+      academicYear: profileYear,
+    });
+  }, [profile]);
 
   const { data: classes = [], isLoading: classesLoading } = trpc.classes.list.useQuery();
   const { data: savedSchedule = [], isLoading: scheduleLoading } = trpc.weeklySchedule.get.useQuery({ academicYear });
@@ -74,6 +95,12 @@ export default function SeasonSetup() {
     () => classes.filter((classItem) => !classItem.academicYear || classItem.academicYear === academicYear),
     [classes, academicYear],
   );
+
+  useEffect(() => {
+    if (!profile || classesLoading || scheduleLoading || setupResumeResolved.current) return;
+    setSetupStep(getSeasonSetupResumeStep({ profile, classCount: seasonClasses.length, savedScheduleCount: savedSchedule.length }));
+    setupResumeResolved.current = true;
+  }, [classesLoading, profile, savedSchedule.length, scheduleLoading, seasonClasses.length]);
   const readinessByClass = useMemo(
     () => new Map((readiness?.items ?? []).map((item) => [item.classId, item])),
     [readiness],
@@ -113,6 +140,15 @@ export default function SeasonSetup() {
     },
     onError: (error) => toast.error(error.message || "تعذرت إضافة القسم."),
   });
+  const updateProfileMutation = trpc.profile.update.useMutation({
+    onSuccess: async () => {
+      await utils.profile.get.invalidate();
+      setAcademicYear(profileDraft.academicYear);
+      setSetupStep(2);
+      toast.success("حُفظت بيانات الأستاذ والمؤسسة. ننتقل الآن إلى الأقسام المسندة.");
+    },
+    onError: (error) => toast.error(error.message || "تعذر حفظ بيانات الأستاذ."),
+  });
 
   const activateSeasonMutation = trpc.academicYears.activate.useMutation({
     onSuccess: async () => {
@@ -129,6 +165,7 @@ export default function SeasonSetup() {
     onSuccess: async (result) => {
       await utils.weeklySchedule.get.invalidate({ academicYear });
       await utils.seasonReadiness.get.invalidate({ academicYear });
+      setSetupStep(5);
       toast.success(`حُفظ جدول الخدمة: ${result.count} حصة أسبوعية.`);
     },
     onError: (error) => toast.error(error.message || "تعذر حفظ جدول الخدمة."),
@@ -291,57 +328,54 @@ export default function SeasonSetup() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-2xl">
             <p className="text-xs font-semibold text-brand-wax-300">تهيئة تُجرى مرة واحدة في بداية الموسم</p>
-            <h1 className="mt-1 text-2xl font-bold md:text-3xl">جهّز موسمك الدراسي في دقائق</h1>
+            <h1 className="mt-1 text-2xl font-bold md:text-3xl">تهيئة الموسم الدراسي</h1>
             <p className="mt-2 text-sm leading-6 text-white/80">
-              أضف أقسامك وجدول خدمتك فقط. بعدها سيقترح نبراس حصة اليوم والوضعية الرسمية التالية تلقائياً.
+              خمس صفحات قصيرة: بياناتك، أقسامك، قوائم التلاميذ، جدول الخدمة، ثم مراجعة وانطلاق إلى خطة اليوم.
             </p>
           </div>
-          <div className="w-full sm:w-44">
-            <Label htmlFor="academic-year" className="mb-2 block text-xs text-white/75">السنة الدراسية</Label>
-            <Input
-              id="academic-year"
-              value={academicYear}
-              onChange={(event) => setAcademicYear(event.target.value)}
-              className="border-white/25 bg-white/10 text-center text-white placeholder:text-white/60"
-              aria-label="السنة الدراسية"
-            />
+          <div className="rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-center">
+            <p className="text-xs text-white/70">الموسم الجاري</p>
+            <p className="mt-1 font-semibold" dir="ltr">{academicYear}</p>
           </div>
         </div>
       </div>
 
       <Card className="border-primary/15 bg-primary/[0.025]">
-        <CardContent className="grid gap-3 p-3 sm:grid-cols-3 sm:p-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-auto justify-start border-primary/20 bg-background px-4 py-3 text-right"
-            onClick={() => document.getElementById("season-classes")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          >
-            <GraduationCap className="ml-3 h-5 w-5 shrink-0 text-primary" />
-            <span><span className="block text-sm font-semibold">1. أضف الأقسام</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{seasonClasses.length ? `${seasonClasses.length} أقسام جاهزة للموسم` : "ابدأ بقسمك الأول"}</span></span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-auto justify-start border-primary/20 bg-background px-4 py-3 text-right"
-            onClick={() => document.getElementById("weekly-schedule")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-          >
-            <CalendarDays className="ml-3 h-5 w-5 shrink-0 text-primary" />
-            <span><span className="block text-sm font-semibold">2. ضع الحصص الأسبوعية</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">{scheduledCount ? `${scheduledCount} حصة أُعدت` : "تاريخ وجغرافيا وتربية مدنية"}</span></span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-auto justify-start border-primary/20 bg-background px-4 py-3 text-right"
-            onClick={() => setLocation("/annual-plans")}
-          >
-            <BookCopy className="ml-3 h-5 w-5 shrink-0 text-primary" />
-            <span><span className="block text-sm font-semibold">3. انسخ المخططات</span><span className="mt-0.5 block text-xs font-normal text-muted-foreground">ليربط نبراس كل قسم بتقدمه الرسمي</span></span>
-          </Button>
+        <CardContent className="p-3 sm:p-4">
+          <div className="mb-3 flex items-center justify-between gap-3 text-sm"><span className="shrink-0 font-semibold">الخطوة {setupStep} من 5</span><span className="text-left text-muted-foreground">{SETUP_STEPS.find((step) => step.id === setupStep)?.title}</span></div>
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2" aria-label="خطوات تهيئة الموسم">
+            {SETUP_STEPS.map((step) => {
+              const StepIcon = step.icon;
+              const isCurrent = step.id === setupStep;
+              const isCompleted = step.id < setupStep;
+              return <Button key={step.id} type="button" variant="outline" className={`h-auto min-w-0 flex-col gap-1.5 px-1.5 py-2 text-center sm:flex-row sm:justify-start sm:px-3 ${isCurrent ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground" : isCompleted ? "border-emerald-200 bg-emerald-50 text-emerald-900 hover:bg-emerald-100" : "bg-background"}`} onClick={() => step.id <= setupStep && setSetupStep(step.id)} aria-current={isCurrent ? "step" : undefined}>
+                <StepIcon className="h-4 w-4 shrink-0" /><span className="text-[10px] leading-4 sm:text-xs">{step.id}. <span className="hidden sm:inline">{step.title}</span><span className="sm:hidden">{step.shortTitle}</span></span>
+              </Button>;
+            })}
+          </div>
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-primary/15">
+      {setupStep === 1 && (
+        <Card className="overflow-hidden border-primary/15">
+          <CardHeader className="border-b bg-primary/[0.035]">
+            <div className="flex items-center gap-2 text-primary"><UserRound className="h-5 w-5" /><span className="text-sm font-semibold">1. بيانات الأستاذ والمؤسسة</span></div>
+            <CardTitle className="mt-1 text-xl">من سيظهر في ترويسة الوثائق؟</CardTitle>
+            <CardDescription>تُحفظ هذه البيانات مرة واحدة وتُستخدم في المذكرة والتقويم الرسميين دون إظهار هوية المنصة.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-5 p-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5"><Label>اسم الأستاذ</Label><Input value={profileDraft.displayName} onChange={(event) => setProfileDraft((current) => ({ ...current, displayName: event.target.value }))} placeholder="مثال: الهاشمي عبيدلي" /></div>
+              <div className="space-y-1.5"><Label>اسم المؤسسة</Label><Input value={profileDraft.school} onChange={(event) => setProfileDraft((current) => ({ ...current, school: event.target.value }))} placeholder="مثال: متوسطة …" /></div>
+              <div className="space-y-1.5"><Label>الولاية</Label><Input value={profileDraft.province} onChange={(event) => setProfileDraft((current) => ({ ...current, province: event.target.value }))} placeholder="مثال: الجزائر" /></div>
+              <div className="space-y-1.5"><Label>السنة الدراسية</Label><Input value={profileDraft.academicYear} onChange={(event) => setProfileDraft((current) => ({ ...current, academicYear: event.target.value }))} placeholder="2026-2027" dir="ltr" /></div>
+            </div>
+            <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-muted-foreground">يمكنك تعديل هذه البيانات لاحقاً من صفحة الملف الشخصي.</p><Button onClick={() => updateProfileMutation.mutate({ ...profileDraft })} disabled={!profileDraft.displayName.trim() || !profileDraft.school.trim() || !profileDraft.academicYear.trim() || updateProfileMutation.isPending}>{updateProfileMutation.isPending ? "جارٍ الحفظ…" : "حفظ والمتابعة"}<ArrowRight className="mr-2 h-4 w-4" /></Button></div>
+          </CardContent>
+        </Card>
+      )}
+
+      {setupStep === 5 && <Card className="overflow-hidden border-primary/15">
         <CardHeader className="border-b bg-primary/[0.035] pb-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -354,21 +388,20 @@ export default function SeasonSetup() {
         </CardHeader>
         <CardContent className="p-4">
           {readinessLoading ? <p className="text-sm text-muted-foreground">جارٍ فحص جاهزية الموسم…</p> : !readiness || readiness.totalClasses === 0 ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm leading-6 text-muted-foreground">أضف أول قسم لتظهر قائمة جاهزيته للموسم.</p><Button size="sm" onClick={() => document.getElementById("season-classes")?.scrollIntoView({ behavior: "smooth", block: "start" })}>أضف قسماً</Button></div>
+            <div className="flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm leading-6 text-muted-foreground">أضف أول قسم لتظهر قائمة جاهزيته للموسم.</p><Button size="sm" onClick={() => setSetupStep(2)}>أضف قسماً</Button></div>
           ) : readiness.incompleteClasses === 0 ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><div className="flex gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><p className="text-sm leading-6">كل الأقسام مكتملة: الجداول والمخططات الصفية جاهزة. فعّل الموسم لتربطه بسنة دراستك الرسمية.</p></div><Button onClick={() => activateSeasonMutation.mutate({ academicYear })} disabled={activateSeasonMutation.isPending}>{activateSeasonMutation.isPending ? "جارٍ التفعيل…" : "فعّل الموسم"}</Button></div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-emerald-50 p-4 text-emerald-900"><div className="flex gap-3"><CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" /><p className="text-sm leading-6">كل الأقسام مكتملة: الجداول والمخططات الصفية جاهزة. فعّل الموسم لتربطه بسنة دراستك الرسمية.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" className="border-emerald-300 bg-white text-emerald-900 hover:bg-emerald-100" onClick={() => setLocation("/dashboard")}>ابدأ صفحة اليوم<ArrowRight className="mr-2 h-4 w-4" /></Button><Button onClick={() => activateSeasonMutation.mutate({ academicYear })} disabled={activateSeasonMutation.isPending}>{activateSeasonMutation.isPending ? "جارٍ التفعيل…" : "فعّل الموسم"}</Button></div></div>
           ) : (
             <div className="grid gap-3 lg:grid-cols-2">
-              {readiness.items.map((item) => item.isReady ? <div key={item.classId} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" /><span>{item.className}: مكتمل</span></div> : <div key={item.classId} className="rounded-xl border bg-muted/20 p-3"><div className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0 text-brand-wax-500" /><p className="font-semibold text-sm">{item.className}</p></div><div className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">{item.missingScheduleSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص الجدول: {item.missingScheduleSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => document.getElementById("weekly-schedule")?.scrollIntoView({ behavior: "smooth", block: "start" })}>أكمل الجدول</Button></div>}{item.missingPlanSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص المخطط: {item.missingPlanSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => setLocation("/annual-plans")}><BookCopy className="ml-1 h-3.5 w-3.5" />انسخ المخطط</Button></div>}</div></div>)}
+              {readiness.items.map((item) => item.isReady ? <div key={item.classId} className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-sm text-emerald-900"><CheckCircle2 className="h-4 w-4 shrink-0" /><span>{item.className}: مكتمل</span></div> : <div key={item.classId} className="rounded-xl border bg-muted/20 p-3"><div className="flex items-center gap-2"><CircleAlert className="h-4 w-4 shrink-0 text-brand-wax-500" /><p className="font-semibold text-sm">{item.className}</p></div><div className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">{item.missingScheduleSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص الجدول: {item.missingScheduleSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => setSetupStep(4)}>أكمل الجدول</Button></div>}{item.missingPlanSubjects.length > 0 && <div className="flex flex-wrap items-center justify-between gap-2"><span>ينقص المخطط: {item.missingPlanSubjects.join("، ")}</span><Button size="sm" variant="outline" className="h-7" onClick={() => setLocation("/annual-plans")}><BookCopy className="ml-1 h-3.5 w-3.5" />انسخ المخطط</Button></div>}</div></div>)}
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
 
-      <div className="grid gap-4 lg:grid-cols-[0.86fr_1.14fr]">
-        <Card id="season-classes">
+      {setupStep === 2 && <Card id="season-classes" className="mx-auto max-w-3xl">
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-2 text-primary"><GraduationCap className="h-5 w-5" /><span className="text-sm font-semibold">1. الأقسام</span></div>
+            <div className="flex items-center gap-2 text-primary"><GraduationCap className="h-5 w-5" /><span className="text-sm font-semibold">2. الأقسام والمستويات</span></div>
             <CardTitle className="text-lg">أقسامك في هذا الموسم</CardTitle>
             <CardDescription>يكفي الاسم والمستوى وعدد التلاميذ. المخططات والوضعيات الرسمية موجودة مسبقاً في نبراس.</CardDescription>
           </CardHeader>
@@ -398,11 +431,30 @@ export default function SeasonSetup() {
             </div>
             {seasonClasses.some((classItem) => readinessByClass.get(classItem.id)?.missingPlanSubjects.length) && <p className="rounded-lg border border-dashed px-3 py-2 text-center text-xs leading-5 text-muted-foreground">انسخ مخططات التاريخ والجغرافيا والتربية المدنية من المرجع إلى القسم حتى يسجّل نبراس التقدم بصورة مستقلة.</p>}
           </CardContent>
-        </Card>
+        </Card>}
 
-	        <Card id="weekly-schedule" className="overflow-hidden">
+      {setupStep === 2 && <div className="mx-auto flex max-w-3xl justify-end">
+        <Button onClick={() => setSetupStep(3)} disabled={seasonClasses.length === 0}>متابعة إلى قوائم التلاميذ<ArrowRight className="mr-2 h-4 w-4" /></Button>
+      </div>}
+
+      {setupStep === 3 && <Card className="mx-auto max-w-3xl overflow-hidden border-primary/15">
+        <CardHeader className="border-b bg-primary/[0.035]">
+          <div className="flex items-center gap-2 text-primary"><Users className="h-5 w-5" /><span className="text-sm font-semibold">3. قوائم التلاميذ</span></div>
+          <CardTitle className="mt-1 text-xl">اجلب أسماء التلاميذ مرة واحدة</CardTitle>
+          <CardDescription>ارفع وثيقة حجز النقاط من الرقمنة؛ يستخرج نبراس الأقسام والأفواج والأسماء تلقائياً لتصبح جاهزة في دفتر التنقيط.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 p-5">
+          <div className="rounded-xl border border-dashed border-primary/30 bg-primary/[0.025] p-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">استيراد ملف الرقمنة</p><p className="mt-1 text-sm leading-6 text-muted-foreground">الصيغة المدعومة: Excel ‏(.xlsx أو .xls). لا تحتاج إلى إدخال أسماء التلاميذ يدوياً.</p></div><Button variant="outline" onClick={() => setLocation("/student-results?setup=1")}><Upload className="ml-2 h-4 w-4" />استيراد ملف الرقمنة</Button></div>
+          </div>
+          <div className="rounded-xl bg-muted/35 p-4 text-sm leading-6 text-muted-foreground"><strong className="text-foreground">إن لم يكن الملف متاحاً الآن:</strong> يمكنك متابعة إعداد الموسم؛ ستبقى الأقسام والجدول محفوظة، ثم تستورد القوائم لاحقاً من صفحة نتائج التلاميذ.</div>
+          <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between"><Button variant="ghost" onClick={() => setSetupStep(2)}>رجوع إلى الأقسام</Button><Button onClick={() => setSetupStep(4)}>متابعة إلى الجدول الأسبوعي<ArrowRight className="mr-2 h-4 w-4" /></Button></div>
+        </CardContent>
+      </Card>}
+
+	      {setupStep === 4 && <Card id="weekly-schedule" className="overflow-hidden">
 	          <CardHeader className="border-b bg-muted/25 pb-4">
-	            <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">2. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>لكل قسم ثلاث حصص: تاريخ وجغرافيا وتربية مدنية. التوقيت الافتراضي يتضمن الاستراحتين ويمكن تعديله عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
+	          <div className="flex flex-wrap items-center justify-between gap-3"><div><div className="flex items-center gap-2 text-primary"><CalendarDays className="h-5 w-5" /><span className="text-sm font-semibold">4. جدول الخدمة</span></div><CardTitle className="mt-1 text-lg">ضع كل قسم في حصته الأسبوعية</CardTitle><CardDescription>لكل قسم ثلاث حصص: تاريخ وجغرافيا وتربية مدنية. التوقيت الافتراضي يتضمن الاستراحتين ويمكن تعديله عند الحاجة.</CardDescription></div><span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{scheduledCount} حصة مسجلة</span></div>
             {previousScheduleSeasons.length > 0 && (
               <div className="mt-4 flex flex-col gap-2 rounded-xl border border-primary/15 bg-primary/[0.035] p-3 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs leading-5 text-muted-foreground">لديك جدول محفوظ من موسم سابق. انسخه إلى هذا الموسم أو استورد ملف Excel جاهزًا ثم راجع الأقسام والأوقات قبل المتابعة.</p>
@@ -453,10 +505,9 @@ export default function SeasonSetup() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-muted-foreground">بعد الحفظ، ستستعمل صفحة «اليوم» هذا الجدول لاختيار الحصة التالية تلقائياً.</p><div className="flex flex-col gap-2 sm:flex-row"><Button variant="outline" onClick={() => setLocation("/annual-plans")} disabled={seasonClasses.length === 0}><BookCopy className="ml-2 h-4 w-4" />الخطوة التالية: المخططات</Button><Button onClick={saveSchedule} disabled={saveScheduleMutation.isPending || seasonClasses.length === 0}><CheckCircle2 className="ml-2 h-4 w-4" />{saveScheduleMutation.isPending ? "جارٍ الحفظ…" : "حفظ جدول الخدمة"}</Button></div></div>
+            <div className="flex flex-col gap-3 border-t bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-xs leading-5 text-muted-foreground">بعد الحفظ، ستستعمل صفحة «اليوم» هذا الجدول لاختيار الحصة التالية تلقائياً.</p><div className="flex flex-col gap-2 sm:flex-row"><Button variant="outline" onClick={() => setSetupStep(3)}><ArrowRight className="ml-2 h-4 w-4" />رجوع إلى قوائم التلاميذ</Button><Button onClick={saveSchedule} disabled={saveScheduleMutation.isPending || seasonClasses.length === 0}><CheckCircle2 className="ml-2 h-4 w-4" />{saveScheduleMutation.isPending ? "جارٍ الحفظ…" : "حفظ الجدول ومراجعة الموسم"}</Button></div></div>
           </CardContent>
-        </Card>
-      </div>
+	      </Card>}
 
       <Dialog open={showImportDialog} onOpenChange={(open) => { if (!open) setImportPreview(null); setShowImportDialog(open); }}>
         <DialogContent className="max-w-lg">
@@ -513,7 +564,6 @@ export default function SeasonSetup() {
         </DialogContent>
       </Dialog>
 
-      <Card className="border-primary/15 bg-primary/[0.025]"><CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between"><div className="flex gap-3"><Users className="mt-0.5 h-5 w-5 shrink-0 text-primary" /><div><h2 className="font-semibold">انتهت التهيئة؟</h2><p className="mt-1 text-sm text-muted-foreground">افتح خطة اليوم؛ سيقترح لك نبراس الوضعية الرسمية التالية لكل قسم وفق تقدمك.</p></div></div><Button variant="outline" onClick={() => setLocation("/dashboard")}>اذهب إلى خطة اليوم<ChevronLeft className="mr-2 h-4 w-4" /></Button></CardContent></Card>
     </div>
   );
 }
