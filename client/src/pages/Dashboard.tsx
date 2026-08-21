@@ -107,6 +107,14 @@ const openSessionGuidance: Partial<Record<SessionStatus, { label: string; nextSt
   },
 };
 
+function greetByTime(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return "صباح الخير";
+  if (hour >= 12 && hour < 17) return "مساء الخير";
+  if (hour >= 17 && hour < 21) return "مساء النور";
+  return "طابت ليلتك";
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -431,18 +439,23 @@ export default function Dashboard() {
       <div className="rounded-t-lg md:rounded-lg overflow-hidden nb-arrive nb-arrive-d1">
       <StageHeader
         eyebrow={hasDailySession ? `حصة اليوم · ${activeClass?.name}` : "مساحة الأستاذ اليومية"}
-        title={`مرحباً، ${user?.name || "أستاذ"}`}
+        title={`${greetByTime()}, ${user?.name || "أستاذ"}`}
+        lantern
         subtitle={
           hasDailySession && dailySituation
             ? `${scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}${scheduledSlot ? ` · ${scheduledSlot.startTime}–${scheduledSlot.endTime}` : ""} · المقطع ${dailySection?.number}`
             : `${profile?.displayName || "نبراس — مساعدك التربوي اليومي"} · السنة الدراسية ${fallbackYear || "—"}`
         }
-        track={[
-          { label: "المذكرة", done: Boolean(readyLessonPlan) },
-          { label: "التنفيذ" },
-          { label: "النتيجة" },
-          { label: "التقويم" },
-        ]}
+        track={
+          hasDailySession
+            ? [
+                { label: "المذكرة", done: Boolean(readyLessonPlan) },
+                { label: "التنفيذ" },
+                { label: "النتيجة" },
+                { label: "التقويم" },
+              ]
+            : undefined
+        }
       >
         {seasonClasses.length > 1 && (
           <DropdownMenu>
@@ -519,6 +532,10 @@ export default function Dashboard() {
               <h3 className="mt-2 text-xl font-bold">أضف جدول خدمتك الأسبوعي</h3>
               <p className="mt-2 text-sm text-white/75">أدخله مرة واحدة؛ بعدها يقترح نبراس حصة اليوم تلقائياً.</p>
                 <Button className="mt-5 office-primary" onClick={() => setLocation("/season-setup")}><Clock className="ml-2 h-4 w-4" />إعداد جدولي الأسبوعي</Button>
+                <p className="mt-6 flex items-center gap-2 text-xs leading-6 text-brand-wax-300/85">
+                  <span className="h-px w-8 bg-brand-wax-300/40" aria-hidden="true" />
+                  «الوقت الذي تستثمره في التخطيط لا يُهدر؛ بل يُضيء كل ساعة تليه.»
+                </p>
             </div>
           ) : !classesSettled ? (
             // التحميل جارٍ: نُبقي الرسالة قصيرة وواضحة، ونخفيها عمليًا بمجرد وصول classes
@@ -535,12 +552,20 @@ export default function Dashboard() {
               <h3 className="text-xl font-bold">ابدأ بتهيئة موسمك الدراسي</h3>
               <p className="mt-2 text-sm text-white/75">أضف أقسامك وجدولك، وسيتولى نبراس اقتراح الحصة التالية.</p>
               <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Plus className="ml-2 h-4 w-4" />تهيئة الموسم الدراسي</Button>
+              <p className="mt-6 flex items-center gap-2 text-xs leading-6 text-brand-wax-300/85">
+                <span className="h-px w-8 bg-brand-wax-300/40" aria-hidden="true" />
+                «التعليم رسالة قبل أن يكون وظيفة؛ وأول خطواتها تخطيط يُضاء به الطريق.»
+              </p>
             </div>
           ) : activeClass ? (
             <div className="pt-7">
               <h3 className="text-xl font-bold">لا توجد وضعية معلّقة في هذا القسم</h3>
               <p className="mt-2 text-sm text-white/75">راجع الخطة أو أضف وضعية تعلمية لتصبح الخطوة التالية واضحة.</p>
               <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation(activePlan ? `/annual-plans/${activePlan.id}` : "/annual-plans")}><ClipboardList className="ml-2 h-4 w-4" />الذهاب إلى الخطة</Button>
+              <p className="mt-6 flex items-center gap-2 text-xs leading-6 text-brand-wax-300/85">
+                <span className="h-px w-8 bg-brand-wax-300/40" aria-hidden="true" />
+                «الوضعية الجيدة تبدأ من كفاءة مرسومة بوضوح؛ خطتك السنوية هي مضيئتك.»
+              </p>
             </div>
           ) : (
             <div className="pt-7">
@@ -777,11 +802,11 @@ export default function Dashboard() {
       </Dialog>
 
       {/* المتابعة الثانوية لا تنافس خطوة الحصة. تفتح عند الحاجة فقط. */}
-      <details className="group rounded-xl border bg-card shadow-sm">
+      <details className="nb-arrive nb-arrive-d5 group rounded-xl border bg-card shadow-sm">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-4 [&::-webkit-details-marker]:hidden">
-          <div>
+          <div className="flex items-center gap-2">
+            <span className="nb-story__kicker">دفتر المتابعة</span>
             <h2 className="font-semibold">متابعة أوسع</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">التقدم والخطط والموارد الأخيرة — افتحها عند الحاجة.</p>
           </div>
           <span className="rounded-lg border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors group-open:border-primary/30 group-open:text-primary">عرض الملخص</span>
         </summary>
@@ -792,8 +817,8 @@ export default function Dashboard() {
               { label: "الدروس", value: lessons?.length ?? 0, path: "/lessons" },
               { label: "الخطط", value: annualPlans?.length ?? 0, path: "/annual-plans" },
               { label: "الموارد", value: resources?.length ?? 0, path: "/content-library" },
-            ].map((item) => (
-              <Button key={item.label} variant="outline" className="h-auto justify-between px-3 py-3 text-right" onClick={() => setLocation(item.path)}>
+            ].map((item, idx) => (
+              <Button key={item.label} variant="outline" className={`h-auto justify-between px-3 py-3 text-right nb-arrive ${"nb-arrive-d" + (1 + idx)}`} onClick={() => setLocation(item.path)}>
                 <span className="text-xs text-muted-foreground">{item.label}</span>
                 <span className="text-lg font-bold text-foreground">{isLoadingStats ? "—" : item.value}</span>
                             </Button>
@@ -912,16 +937,15 @@ export default function Dashboard() {
         </div>
       </details>
       {/* متابعة مختصرة: مكان الأستاذ في المقطع، لا عداد تقني بعيد عن الحصة */}
-      <Card className="border-brand-copper-200 bg-brand-copper-50/40">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Target className="w-4 h-4 text-brand-ink-700" />
-            أين وصلت في الخطة؟
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="nb-story nb-arrive nb-arrive-d5">
+        <div className="p-4 md:p-5">
+        <div className="flex items-center gap-2">
+          <span className="nb-story__kicker"><Target className="w-3.5 h-3.5" />متابعة المسار</span>
+          <span className="nb-lum">دفتر المتابعة</span>
+        </div>
+        <p className="nb-story__title mt-1">أين وصلت في الخطة؟</p>
           {teacherOSContext?.currentSection ? (
-            <div className="space-y-3">
+            <div className="space-y-3 mt-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <p className="text-xs font-medium text-brand-ink-700">{activeClass?.name || "القسم المختار"} · المقطع الجاري</p>
@@ -977,33 +1001,43 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* بطاقات تقدم المقاطع */}
+              {/* مسار المقاطع المصغّر */}
               {teacherOSContext.sectionProgressDetailed && teacherOSContext.sectionProgressDetailed.length > 0 && (
-                <div className="border-t border-brand-copper-200/70 pt-3 space-y-2">
-                  <p className="text-xs font-medium text-brand-ink-700">خريطة المقاطع</p>
-                  {teacherOSContext.sectionProgressDetailed.map((sec) => (
-                    <div key={sec.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-medium truncate">{sec.title}</span>
-                        <span className="text-muted-foreground">{sec.completed}/{sec.total}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-muted rounded-full h-1.5">
-                          <div
-                            className="h-1.5 rounded-full bg-brand-ink-600"
-                            style={{ width: `${sec.percent}%` }}
-                          />
+                <div className="border-t border-brand-copper-200/70 pt-3">
+                  <p className="text-xs font-medium text-brand-ink-700 mb-2">مسار المقاطع</p>
+                  <div className="flex items-center gap-0 overflow-x-auto pb-1" role="list" aria-label="مسار المقاطع">
+                    {teacherOSContext.sectionProgressDetailed.map((sec, idx) => {
+                      const isCurrent = sec.id === teacherOSContext.currentSection?.id;
+                      const isDone = sec.percent >= 100;
+                      return (
+                        <div key={sec.id} className="flex items-center min-w-0" role="listitem">
+                          <button
+                            type="button"
+                            onClick={() => setLocation(`/annual-plans/${activePlan?.id}`)}
+                            className="flex flex-col items-center gap-1 text-center group"
+                            title={`${sec.title}: ${sec.completed}/${sec.total}`}
+                            aria-label={`المقطع ${sec.sectionNumber}: ${sec.title}`}
+                          >
+                            <span className={`nb-glow flex h-7 w-7 items-center justify-center rounded-full border text-[11px] font-bold transition-all ${
+                              isCurrent
+                                ? "nb-lum-ink bg-brand-wax-400 border-brand-wax-500 text-brand-ink-950"
+                                : isDone
+                                  ? "nb-lum-done bg-brand-copper-600/15 border-brand-copper-600 text-brand-copper-700"
+                                  : "bg-muted border-border text-muted-foreground group-hover:border-brand-wax-400"
+                            }`}>
+                              {sec.sectionNumber}
+                            </span>
+                            <span className={`hidden md:block text-[10px] leading-tight max-w-16 truncate ${isCurrent ? "font-bold text-brand-ink-800" : "text-muted-foreground"}`}>
+                              {sec.title}
+                            </span>
+                          </button>
+                          {idx < teacherOSContext.sectionProgressDetailed.length - 1 ? (
+                            <span className={`mx-1 h-0.5 w-3 md:w-5 shrink-0 rounded-full ${isDone ? "bg-brand-copper-600/80" : "bg-border"}`} />
+                          ) : null}
                         </div>
-                        {sec.lastCompletedDate ? (
-                          <span className="text-[10px] text-muted-foreground" title={`آخر إنجاز: ${new Date(sec.lastCompletedDate).toLocaleDateString('ar-DZ', { day: '2-digit', month: 'short', year: 'numeric' })}`}>
-                            آخر إنجاز: {new Date(sec.lastCompletedDate).toLocaleDateString('ar-DZ', { day: '2-digit', month: 'short' })}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">لم يبدأ</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>
@@ -1012,8 +1046,8 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">اختر قسماً لعرض التقدم في المخطط السنوي</p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* حوار بطاقة استراتيجية تسيير الحصة */}
     <Dialog open={strategySituationId !== null} onOpenChange={(open) => !open && setStrategySituationId(null)}>

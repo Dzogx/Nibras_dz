@@ -219,6 +219,9 @@
   --sidebar-ring: var(--brand-wax-400);
   --sidebar-primary: var(--brand-wax-400);
   --sidebar-primary-foreground: var(--brand-ink-950);
+
+  /* --- Paper surfaces in dark mode: warm dark sheets instead of pure white --- */
+  --brand-sand-100: oklch(0.982 0.003 84);       /* kept as neutral light for text on dark surfaces */
 }
 
 @layer base {
@@ -1045,6 +1048,47 @@
   background: oklch(0.66 0.11 89 / 0.22);
 }
 
+/* --- قنديل النبراس: شعلة صغيرة نابضة فوق كل مسرح --- */
+.nb-lantern {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: oklch(0.3 0.05 330 / 0.85);
+  border: 1.5px solid oklch(0.86 0.1 91 / 0.4);
+  box-shadow: 0 0 0 6px oklch(0.86 0.1 91 / 0.1), 0 0 22px oklch(0.86 0.1 91 / 0.22);
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.nb-lantern:hover { transform: translateY(-2px); }
+.nb-lantern__svg { filter: drop-shadow(0 0 6px oklch(0.9 0.1 91 / 0.8)); }
+.nb-lantern__body {
+  stroke: oklch(0.9 0.08 91);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  fill: oklch(0.86 0.1 91 / 0.14);
+}
+.nb-lantern__cap {
+  stroke: oklch(0.78 0.06 91);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.nb-lantern__flame {
+  fill: oklch(0.92 0.12 91);
+  animation: nb-lantern-flicker 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px oklch(0.94 0.12 91));
+}
+@keyframes nb-lantern-flicker {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  45% { opacity: 0.72; transform: scale(0.9); }
+  55% { opacity: 1; transform: scale(1.06); }
+  75% { opacity: 0.85; transform: scale(0.96); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nb-lantern__flame { transform-box: fill-box; transform-origin: center; }
+}
+
 /* --- خط المسار العمودي (timeline) --- */
 .nb-trail {
   position: relative;
@@ -1202,4 +1246,49 @@
   .nb-stage-track { margin-top: 0.9rem; }
   .nb-stage-node__dot { width: 22px; height: 22px; font-size: 0.62rem; }
   .nb-stage-connector { margin-top: 10px; }
+}
+
+/* ===== الوضع الليلي — تكييف الأسطح الورقية والوسوم ===== */
+.dark .nibras-tag-history { color: var(--brand-ink-100); background: oklch(0.34 0.05 332); }
+.dark .nibras-tag-geography { color: var(--brand-copper-100); background: oklch(0.32 0.05 55); }
+.dark .nibras-tag-civics { color: var(--brand-wax-100); background: oklch(0.34 0.06 80); }
+.dark .office-surface { background: oklch(0.16 0.028 328); }
+.dark .office-card {
+  background: var(--card);
+  border-color: oklch(1 0 0 / 14%);
+}
+.dark .office-card--tinted { background: oklch(0.26 0.035 330); }
+.dark .lesson-sheet {
+  background: var(--card);
+  border-color: oklch(1 0 0 / 12%);
+}
+.dark .nibras-week-card { box-shadow: inset .2rem 0 0 oklch(0.89 0.085 92 / 0.35); }
+@media (hover:hover) { .dark .nibras-week-card:hover { box-shadow: inset .2rem 0 0 var(--brand-wax-400), 0 .6rem 1.25rem rgb(0 0 0 / .25); transform: translateY(-2px); } }
+.dark .nb-story__kicker { color: var(--brand-wax-300); }
+.dark .nb-story__title { color: oklch(0.95 0.01 60); }
+
+/* --- لمسة ليلية: قنديل خافت فوق المسرح الداكن --- */
+.dark .nb-stage {
+  background:
+    radial-gradient(560px circle at 80% -20%, oklch(0.72 0.11 89 / 0.16), transparent 60%),
+    radial-gradient(420px circle at 15% 120%, oklch(0.70 0.08 60 / 0.10), transparent 60%),
+    var(--brand-ink-950);
+}
+@keyframes nb-pulse {
+  0%, 100% { box-shadow: 0 0 0 6px oklch(0.89 0.085 92 / 0.14), 0 0 14px oklch(0.89 0.085 92 / 0.35); }
+  50% { box-shadow: 0 0 0 10px oklch(0.89 0.085 92 / 0.08), 0 0 26px oklch(0.89 0.085 92 / 0.65); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dark .nb-stage-node.is-active .nb-stage-node__dot {
+    animation: nb-pulse 2.4s ease-in-out infinite;
+  }
+}
+.dark .nb-stage-node.is-active .nb-stage-node__dot {
+  box-shadow: 0 0 0 6px oklch(0.89 0.085 92 / 0.18), 0 0 20px oklch(0.89 0.085 92 / 0.55);
+}
+.dark .nb-stage-node.is-done .nb-stage-node__dot {
+  box-shadow: 0 0 8px oklch(0.62 0.08 150 / 0.65);
+}
+.dark .nb-stage-track {
+  background: linear-gradient(to right, oklch(0.89 0.085 92 / 0.55), oklch(0.89 0.085 92 / 0.14));
 }

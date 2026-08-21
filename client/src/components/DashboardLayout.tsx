@@ -38,9 +38,12 @@ import {
   Users,
   Award,
   ClipboardCheck,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
+import { useTheme } from "@/contexts/ThemeContext";
 import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
 import { PwaInstallPrompt } from "./PwaInstallPrompt";
 import { Button } from "./ui/button";
@@ -152,6 +155,7 @@ function DashboardLayoutContent({
   setSidebarWidth,
 }: DashboardLayoutContentProps) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme, switchable } = useTheme();
   const [location, setLocation] = useLocation();
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
@@ -247,7 +251,21 @@ function DashboardLayoutContent({
             </SidebarMenu>
           </SidebarContent>
 
-          <SidebarFooter className="p-3">
+          <SidebarFooter className="p-3 space-y-2">
+            {switchable ? (
+              <button
+                onClick={toggleTheme}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-accent/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="تبديل الوضع الليلي"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </span>
+                <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+                  {theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"}
+                </span>
+              </button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-right group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -267,6 +285,12 @@ function DashboardLayoutContent({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                {switchable && (
+                  <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer">
+                    {theme === "dark" ? <Sun className="ml-2 h-4 w-4" /> : <Moon className="ml-2 h-4 w-4" />}
+                    <span>{theme === "dark" ? "الوضع النهاري" : "الوضع الليلي"}</span>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setLocation("/profile")} className="cursor-pointer">
                   <Settings className="ml-2 h-4 w-4" />
                   <span>الملف الشخصي</span>
@@ -304,6 +328,15 @@ function DashboardLayoutContent({
                 </div>
               </div>
             </div>
+            {switchable ? (
+              <button
+                onClick={toggleTheme}
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-background text-muted-foreground hover:bg-muted transition-colors"
+                aria-label="تبديل الوضع الليلي"
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
+            ) : null}
           </div>
 	        <main className="office-surface flex-1 p-4 pb-24 md:p-6">
 	          <PwaInstallPrompt />

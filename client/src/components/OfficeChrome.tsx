@@ -135,6 +135,7 @@ export function StageHeader({
   title,
   subtitle,
   track,
+  lantern = true,
   children,
 }: {
   /** سطر علوي صغير ذهبي، مثال: «اليوم — الأربعاء 27 جانفي 2027» */
@@ -143,6 +144,8 @@ export function StageHeader({
   subtitle?: string;
   /** خطوات مضاءة أعلى المسرح (نمط صفحة اليوم) */
   track?: Array<{ label: string; href?: string; done?: boolean }>;
+  /** إظهار قنديل النبراس المضيء بجانب العنوان (افتراضيًا معطّل — يعمل عبر قنديل مستقل عند الحاجة) */
+  lantern?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -150,7 +153,18 @@ export function StageHeader({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           {eyebrow ? <span className="nb-stage-eyebrow">{eyebrow}</span> : null}
-          <h1 className="nb-stage-title nb-arrive nb-arrive-d1">{title}</h1>
+          <div className="flex items-center gap-3">
+            {lantern ? (
+              <span className="nb-lantern" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" className="nb-lantern__svg" width="26" height="26">
+                  <path d="M9 4h6v3c0 .7.2 1.4.6 2L17 12v6c0 1.1-.9 2-2 2H9c-1.1 0-2-.9-2-2v-6l1.4-3c.4-.6.6-1.3.6-2V4Z" className="nb-lantern__body" />
+                  <path d="M10 4c0-1.1.9-2 2-2s2 .9 2 2" className="nb-lantern__cap" />
+                  <circle cx="12" cy="14" r="1.4" className="nb-lantern__flame" />
+                </svg>
+              </span>
+            ) : null}
+            <h1 className="nb-stage-title nb-arrive nb-arrive-d1">{title}</h1>
+          </div>
           {subtitle ? <p className="nb-stage-sub nb-arrive nb-arrive-d2">{subtitle}</p> : null}
         </div>
         {children ? <div className="office-header-actions nb-arrive nb-arrive-d3">{children}</div> : null}

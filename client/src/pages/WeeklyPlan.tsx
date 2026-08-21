@@ -62,7 +62,7 @@ function WeeklySessionCard({
   const subjectLabel = subjectLabels[slot.subject] ?? slot.subject;
 
   return (
-    <article className="lesson-sheet rounded-xl p-4 transition-shadow hover:shadow-sm">
+    <article className="lesson-sheet nb-arrive rounded-xl p-4 transition-shadow hover:shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-bold leading-6 text-foreground">{classItem?.name ?? "قسم غير متاح"}</p>
@@ -159,8 +159,8 @@ export default function WeeklyPlan() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {weekDays.map(({ day, slots }) => (
-            <div key={day} className={`office-card ${slots.length === 0 ? "border-dashed" : ""}`}>
+          {weekDays.map(({ day, slots }, dayIdx) => (
+            <div key={day} className={`office-card nb-arrive ${"nb-arrive-d" + (1 + Math.min(dayIdx, 6))} ${slots.length === 0 ? "border-dashed" : ""}`}>
               <div className="border-b border-border/50 px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-lg font-bold">{day}</h2>
