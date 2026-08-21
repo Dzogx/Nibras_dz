@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Users, Upload, BarChart3, TrendingDown, FileSpreadsheet, Trash2, Loader2, AlertTriangle, CheckCircle2, Printer, Download, Link2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
-import { OfficeHeader } from "@/components/OfficeChrome";
+import { OfficeHeader, StageHeader } from "@/components/OfficeChrome";
 
 function averageEvaluationClass(avg: number | null): string {
   if (avg == null) return "";
@@ -226,13 +226,15 @@ export default function StudentResults() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <OfficeHeader title="نتائج التلاميذ" subtitle="استيراد وثيقة حجز النقاط من الرقمنة وتحليل أداء الفوج">
-        <div className="office-header-actions">
-          <Button onClick={openImport} className="office-primary">
-            <Upload className="w-4 h-4 ml-2" />استيراد ملف الرقمنة
-          </Button>
-        </div>
-      </OfficeHeader>
+      <StageHeader
+        eyebrow="النتائج · تحليل الفوج"
+        title="نتائج التلاميذ"
+        subtitle="استيراد وثيقة حجز النقاط من الرقمنة وتحليل أداء الفوج"
+      >
+        <Button onClick={openImport} className="nb-story--in-dark">
+          <Upload className="w-4 h-4 ml-2" />استيراد ملف الرقمنة
+        </Button>
+      </StageHeader>
 
       {!selectedClassId ? (
         <Card>

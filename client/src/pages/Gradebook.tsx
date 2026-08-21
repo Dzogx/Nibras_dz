@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 // ملاحظة: useAuth تستورد داخل usePreferredClass عبر @/_core/hooks/useAuth
 import { trpc } from "@/lib/trpc";
-import { OfficeHeader } from "@/components/OfficeChrome";
+import { OfficeHeader, StageHeader } from "@/components/OfficeChrome";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import {
@@ -227,7 +227,8 @@ export default function Gradebook() {
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-8" dir="rtl">
       <div className="mb-6">
-        <OfficeHeader
+        <StageHeader
+          eyebrow="التنقيط · دفتر الأستاذ"
           title="دفتر التنقيط"
           subtitle="علامة التقويم المستمر (/20 = انضباط ومواظبة /10 + إنجاز الأنشطة /10)، الفرض الكتابي /20، والتقويم التحصيلي (الاختبار الفصلي) /20 — المعدلات الفصلية والسنوية تُحسب في الرقمنة."
         />

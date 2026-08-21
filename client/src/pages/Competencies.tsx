@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
-import { OfficeHeader } from "@/components/OfficeChrome";
+import { OfficeHeader, StageHeader } from "@/components/OfficeChrome";
 import {
   Award,
   Target,
@@ -524,7 +524,8 @@ export default function Competencies() {
   return (
     <div className="container py-6 space-y-6">
       {/* الترويسة */}
-      <OfficeHeader
+      <StageHeader
+        eyebrow="الكفاءات"
         title="سلم الكفاءات"
         subtitle="المسار نحو الكفاءة الشاملة — لكل مادة في كل مستوى كفاءة شاملة تتحقق عبر الكفاءات الختامية لمقاطع المخطط السنوي، ويُبلَّغ كل مقطع بوضعيات تعليمية-تعلمية وإدماجية، مع معايير ومؤشرات لقياس التملك وحجم ساعي مقدّر. حدّث إنجاز الوضعيات في صفحات اليوم والتخطيط لتتابع نسبة البلوغ."
       />

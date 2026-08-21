@@ -12,7 +12,7 @@ import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { Eye, Presentation, FileDown } from "lucide-react";
-import { OfficeHeader, OfficeSection, OfficeTag, LessonSheet } from "@/components/OfficeChrome";
+import { OfficeHeader, OfficeSection, OfficeTag, LessonSheet, StageHeader } from "@/components/OfficeChrome";
 import { VoicePlayer } from "@/components/VoicePlayer";
 import { ClassroomSlides } from "@/components/ClassroomSlides";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
@@ -169,42 +169,42 @@ export default function LessonDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <OfficeHeader
-        crumbs={[{ label: "المذكرات", href: "/lessons" }, { label: "مذكرة الحصة" }]}
+      <StageHeader
+        eyebrow={`المذكرة · ${lesson.subject || ""}${cls ? ` — ${cls.name || ""}` : ""}`}
         title={lesson.title}
-        subtitle={lesson.unitTitle || undefined}
+        subtitle={lesson.unitTitle || "مذكرة بيداغوجية"}
       >
-        <OfficeTag><FileText className="w-3.5 h-3.5" /> مذكرة الحصة</OfficeTag>
-        {lesson.subject && <OfficeTag>{lesson.subject}</OfficeTag>}
-        {lesson.gradeLevel && <OfficeTag>{cls ? `${lesson.gradeLevel}${cls.section ? ` — القسم ${cls.section}` : ""}` : lesson.gradeLevel}</OfficeTag>}
-        <Button
-          variant={lesson.isCompleted ? "default" : "outline"}
-          size="sm"
-          className={lesson.isCompleted ? "office-primary" : ""}
-          onClick={() => toggleMutation.mutate({ id: lessonId, isCompleted: !lesson.isCompleted })}
-        >
-          {lesson.isCompleted ? <><CheckCircle2 className="w-4 h-4 ml-1" />تم الإنجاز</> : <><Clock className="w-4 h-4 ml-1" />في انتظار التنفيذ</>}
-        </Button>
-      </OfficeHeader>
-
-      {/* أدوات الورقة */}
-      <div className="flex flex-wrap gap-2 print:hidden">
-        <Button variant="outline" size="sm" onClick={() => setSlidesOpen(true)}><Presentation className="w-4 h-4 ml-1" />العرض الصفي</Button>
-        <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}><Eye className="w-4 h-4 ml-1" />معاينة الورقة</Button>
-        <A4PrintButton title="مذكرة بيداغوجية" subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`} />
-        <Button variant="outline" size="sm" disabled={exportPdf.isPending} onClick={() => exportPdf.mutate({
-            title: lesson?.title || "مذكرة بيداغوجية",
-            content: [lesson.plan, lesson.objectives, lesson.content].filter(Boolean).join("\n\n"),
-            subject: lesson?.subject || "",
-            gradeLevel: cls ? `${cls.gradeLevel} — ${cls.section ? `القسم ${cls.section}` : ""}`.trim() : (lesson?.gradeLevel || ""),
-            teacherName: profile?.displayName || "",
-            school: cls?.name || profile?.school || "",
-            date: lessonPlanPdfDate,
-          })}>
-            {exportPdf.isPending ? <><Loader2 className="w-4 h-4 ml-1 animate-spin" />جارٍ التجميع...</> : <><FileDown className="w-4 h-4 ml-1" />تنزيل PDF</>}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <OfficeTag className="nb-story--in-dark"><FileText className="w-3.5 h-3.5" /> مذكرة الحصة</OfficeTag>
+          {lesson.gradeLevel && <OfficeTag className="nb-story--in-dark">{cls ? `${lesson.gradeLevel}${cls.section ? ` — القسم ${cls.section}` : ""}` : lesson.gradeLevel}</OfficeTag>}
+          <Button
+            size="sm"
+            className={lesson.isCompleted ? "bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" : "bg-white/15 text-white hover:bg-white/25 border-white/25"}
+            onClick={() => toggleMutation.mutate({ id: lessonId, isCompleted: !lesson.isCompleted })}
+          >
+            {lesson.isCompleted ? <><CheckCircle2 className="w-4 h-4 ml-1" />تم الإنجاز</> : <><Clock className="w-4 h-4 ml-1" />في انتظار التنفيذ</>}
           </Button>
-          <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
-      </div>
+        </div>
+
+        {/* أدوات الورقة */}
+        <div className="mt-4 flex flex-wrap gap-2 print:hidden">
+          <Button variant="outline" size="sm" className="nb-lum bg-white/10 text-white border-white/25 hover:bg-white/20 hover:text-white" onClick={() => setSlidesOpen(true)}><Presentation className="w-4 h-4 ml-1" />العرض الصفي</Button>
+          <Button variant="outline" size="sm" className="nb-lum bg-white/10 text-white border-white/25 hover:bg-white/20 hover:text-white" onClick={() => setPreviewOpen(true)}><Eye className="w-4 h-4 ml-1" />معاينة الورقة</Button>
+          <A4PrintButton title="مذكرة بيداغوجية" subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`} />
+          <Button size="sm" className="nb-lum bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" disabled={exportPdf.isPending} onClick={() => exportPdf.mutate({
+              title: lesson?.title || "مذكرة بيداغوجية",
+              content: [lesson.plan, lesson.objectives, lesson.content].filter(Boolean).join("\n\n"),
+              subject: lesson?.subject || "",
+              gradeLevel: cls ? `${cls.gradeLevel} — ${cls.section ? `القسم ${cls.section}` : ""}`.trim() : (lesson?.gradeLevel || ""),
+              teacherName: profile?.displayName || "",
+              school: cls?.name || profile?.school || "",
+              date: lessonPlanPdfDate,
+            })}>
+              {exportPdf.isPending ? <><Loader2 className="w-4 h-4 ml-1 animate-spin" />جارٍ التجميع...</> : <><FileDown className="w-4 h-4 ml-1" />تنزيل PDF</>}
+            </Button>
+            <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
+        </div>
+      </StageHeader>
 
       {/* المعاينة الاحترافية: ترويسة رسمية عند الطباعة */}
       <A4PrintContent {...printMeta}>

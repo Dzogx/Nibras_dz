@@ -3,7 +3,7 @@ import { prepareAssessmentFromCompletedLessons as buildPreparedAssessment } from
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
-import { OfficeHeader } from "@/components/OfficeChrome";
+import { OfficeHeader, StageHeader } from "@/components/OfficeChrome";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -514,7 +514,8 @@ export default function Assessment() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <OfficeHeader
+      <StageHeader
+        eyebrow="التقويم · استوديو التقييم"
         title="استوديو التقييم"
         subtitle="توليد الاختبارات والامتحانات — مرتبط بمحرك القواعد الوطنية وبيانات Teacher OS"
       />

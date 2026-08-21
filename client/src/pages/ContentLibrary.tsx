@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { truncateMarkdown } from "@/components/MarkdownRenderer";
-import { OfficeHeader } from "@/components/OfficeChrome";
+import { OfficeHeader, StageHeader } from "@/components/OfficeChrome";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +66,8 @@ export default function ContentLibrary() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <OfficeHeader
+      <StageHeader
+        eyebrow="المكتبة"
         title="مكتبة المحتوى"
         subtitle="أرشيفك التربوي — جميع الموارد المُولّدة والمخزّنة"
       />

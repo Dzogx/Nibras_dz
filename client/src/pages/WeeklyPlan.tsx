@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { CalendarDays, Clock3, FileText, Sparkles, BookOpenCheck, MapPinned } from "lucide-react";
-import { OfficeHeader, OfficeTag } from "@/components/OfficeChrome";
+import { OfficeHeader, OfficeTag, StageHeader } from "@/components/OfficeChrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,12 +134,13 @@ export default function WeeklyPlan() {
 
   return (
     <div className="mx-auto max-w-7xl">
-      <OfficeHeader
+      <StageHeader
+        eyebrow={`الأسبوع الحالي · ${academicYear}`}
         title="خطة الأسبوع"
         subtitle="راجع حصصك القادمة، وضعياتها الرسمية، وجاهزية مذكراتها قبل بداية كل يوم."
       >
-        <OfficeTag>{weeklySessionCount} حصة أسبوعية · {academicYear}</OfficeTag>
-      </OfficeHeader>
+        <OfficeTag className="nb-story--in-dark">{weeklySessionCount} حصة أسبوعية · {academicYear}</OfficeTag>
+      </StageHeader>
 
       {scheduleLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

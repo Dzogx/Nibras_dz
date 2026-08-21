@@ -929,3 +929,277 @@
     .office-track-item span { font-size: 0.65rem; }
   }
 }
+
+/* ============================================================
+   Nibras Signature — «المسار المضاء»
+   هوية إبداعية فوق نظام المكتب: حقل داكن علوي بتوقيع بصري،
+   خط مسار ذهبي يربط لحظات الصفحة، بطاقات سردية، حركة هادئة.
+   ============================================================ */
+
+/* --- المسرح الداكن: حقل افتتاحي بعمق وتوهج ضوئي خافت --- */
+.nb-stage {
+  position: relative;
+  background:
+    radial-gradient(1200px 420px at 82% -10%, oklch(0.42 0.09 330 / 0.55), transparent 60%),
+    radial-gradient(900px 360px at 6% 110%, oklch(0.5 0.11 90 / 0.18), transparent 62%),
+    linear-gradient(168deg, oklch(0.22 0.045 330) 0%, oklch(0.27 0.05 328) 55%, oklch(0.32 0.055 326) 100%);
+  color: oklch(0.97 0.006 342);
+  border-bottom: 3px solid oklch(0.66 0.11 89 / 0.65);
+  overflow: hidden;
+  isolation: isolate;
+}
+.nb-stage::before {
+  /* حبيبات ضوئية ناعمة على الخلفية الداكنة */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(oklch(0.97 0.006 342 / 0.14) 0.8px, transparent 1px),
+    radial-gradient(oklch(0.97 0.006 342 / 0.08) 0.6px, transparent 1px);
+  background-size: 34px 34px, 21px 21px;
+  background-position: 6px 6px, 15px 15px;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+.nb-stage > * { position: relative; z-index: 1; }
+
+/* عنوان الصفحة الكبير فوق المسرح */
+.nb-stage-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: oklch(0.97 0.006 342);
+}
+.nb-stage-eyebrow {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: oklch(0.84 0.1 91);
+  margin-bottom: 0.4rem;
+}
+.nb-stage-sub {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: oklch(0.86 0.02 338);
+  margin-top: 0.35rem;
+}
+
+/* شريط خطوات مضاء داخل المسرح */
+.nb-stage-track {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  margin-top: 1.1rem;
+  padding-bottom: 0.9rem;
+}
+.nb-stage-node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+}
+.nb-stage-node__dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 800;
+  border: 2px solid oklch(0.66 0.11 89 / 0.5);
+  background: oklch(0.27 0.05 328);
+  color: oklch(0.84 0.1 91);
+  transition: all 0.25s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.nb-stage-node.is-done .nb-stage-node__dot {
+  border-color: oklch(0.58 0.06 150);
+  background: oklch(0.5 0.07 150);
+  color: oklch(0.98 0.01 120);
+}
+.nb-stage-node.is-active .nb-stage-node__dot {
+  border-color: oklch(0.86 0.1 91);
+  background: oklch(0.72 0.12 90);
+  color: oklch(0.24 0.05 330);
+  box-shadow: 0 0 0 6px oklch(0.86 0.1 91 / 0.16), 0 0 18px oklch(0.86 0.1 91 / 0.28);
+}
+.nb-stage-node__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: oklch(0.78 0.02 336);
+  white-space: nowrap;
+}
+.nb-stage-node.is-active .nb-stage-node__label { color: oklch(0.9 0.08 91); }
+.nb-stage-node.is-done .nb-stage-node__label { color: oklch(0.72 0.03 150); }
+.nb-stage-connector {
+  flex: 1;
+  align-self: center;
+  height: 2px;
+  margin-inline: 6px;
+  margin-top: 12px;
+  background: oklch(0.66 0.11 89 / 0.22);
+}
+
+/* --- خط المسار العمودي (timeline) --- */
+.nb-trail {
+  position: relative;
+  padding-inline-start: 1.6rem;
+}
+.nb-trail::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 7px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: linear-gradient(180deg, oklch(0.78 0.1 90 / 0.7), oklch(0.78 0.1 90 / 0.25));
+  border-radius: 2px;
+}
+.nb-trail-item { position: relative; padding-bottom: 1.4rem; }
+.nb-trail-item:last-child { padding-bottom: 0; }
+.nb-trail-item::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -1.6rem;
+  top: 5px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid oklch(0.78 0.1 90 / 0.6);
+  background: oklch(0.98 0.01 93);
+  box-shadow: 0 0 0 4px oklch(0.97 0.006 342);
+}
+.nb-trail-item.is-current::before {
+  background: oklch(0.72 0.12 90);
+  border-color: oklch(0.86 0.1 91);
+  box-shadow: 0 0 0 5px oklch(0.97 0.006 342), 0 0 14px oklch(0.86 0.1 91 / 0.45);
+}
+.nb-trail-item.is-done::before {
+  background: oklch(0.55 0.07 150);
+  border-color: oklch(0.62 0.08 150);
+  box-shadow: 0 0 0 5px oklch(0.97 0.006 342);
+}
+
+/* --- البطاقة السردية: لحظة في المسار --- */
+.nb-story {
+  position: relative;
+  background: oklch(0.985 0.008 93);
+  border: 1px solid oklch(0.92 0.012 85);
+  border-radius: var(--radius);
+  border-inline-start: 3px solid oklch(0.72 0.12 90);
+  box-shadow: 0 1px 0 oklch(0.27 0.05 328 / 0.04);
+  transition: transform 0.22s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.22s cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+}
+.nb-story:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -12px oklch(0.35 0.05 328 / 0.28), 0 2px 6px -2px oklch(0.35 0.05 328 / 0.15);
+}
+.nb-story__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: oklch(0.55 0.085 88);
+  background: oklch(0.94 0.05 92 / 0.75);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.nb-story__title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: var(--brand-ink-950);
+  line-height: 1.45;
+}
+.nb-story__narration {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: oklch(0.52 0.03 332);
+  margin-top: 0.35rem;
+}
+.nb-story__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+  align-items: center;
+}
+
+/* بطاقة سردية داخل المسرح الداكن */
+.nb-story--in-dark {
+  background: oklch(0.34 0.055 328 / 0.55);
+  border-color: oklch(0.66 0.11 89 / 0.35);
+  backdrop-filter: blur(6px);
+}
+.nb-story--in-dark .nb-story__title { color: oklch(0.97 0.006 342); }
+.nb-story--in-dark .nb-story__narration { color: oklch(0.85 0.02 338); }
+
+/* شارة حالة صغيرة بنقطة ضوء */
+.nb-lum {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--brand-ink-700);
+}
+.nb-lum::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: oklch(0.72 0.12 90);
+  box-shadow: 0 0 8px oklch(0.86 0.1 91 / 0.8);
+}
+.nb-lum.nb-lum-done::before { background: oklch(0.55 0.07 150); box-shadow: 0 0 8px oklch(0.62 0.08 150 / 0.7); }
+.nb-lum.nb-lum-ink::before { background: var(--brand-ink-600); box-shadow: 0 0 8px var(--brand-ink-400 / 0.5); }
+
+/* --- حركة الدخول الهادئة --- */
+@keyframes nb-arrive {
+  from { opacity: 0; transform: translateY(8px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.nb-arrive {
+  animation: nb-arrive 0.26s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.nb-arrive-d1 { animation-delay: 0ms; }
+.nb-arrive-d2 { animation-delay: 45ms; }
+.nb-arrive-d3 { animation-delay: 90ms; }
+.nb-arrive-d4 { animation-delay: 135ms; }
+.nb-arrive-d5 { animation-delay: 180ms; }
+.nb-arrive-d6 { animation-delay: 225ms; }
+.nb-arrive-d7 { animation-delay: 270ms; }
+.nb-arrive-d8 { animation-delay: 315ms; }
+
+/* إضاءة خافتة خلف عنصر مهم (نقطة ضوء) */
+.nb-glow {
+  position: relative;
+}
+.nb-glow::after {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  border-radius: 999px;
+  background: radial-gradient(circle, oklch(0.86 0.1 91 / 0.22), transparent 65%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nb-arrive { animation: none; }
+  .nb-story, .nb-stage-node__dot { transition: none; }
+}
+@media (max-width: 640px) {
+  .nb-stage-title { font-size: 1.35rem; }
+  .nb-stage-track { margin-top: 0.9rem; }
+  .nb-stage-node__dot { width: 22px; height: 22px; font-size: 0.62rem; }
+  .nb-stage-connector { margin-top: 10px; }
+}

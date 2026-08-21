@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
-import { OfficeHeader } from "@/components/OfficeChrome";
+import { OfficeHeader, StageHeader } from "@/components/OfficeChrome";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -188,17 +188,16 @@ export default function ExperimentLog() {
 
   return (
     <div className="space-y-5">
-      <OfficeHeader
+      <StageHeader
+        eyebrow="المسار · دفتر التجارب"
         title="دفتر التجارب"
         subtitle="استراتيجياتك الناجحة التي جربتها في الحصة — احفظها وأعد توظيفها في أي قسم أو فصل لاحق."
       >
-        <div className="office-header-actions">
-          <Button onClick={() => setAddDialogOpen(true)} className="office-primary gap-2">
-            <Plus className="h-4 w-4" />
-            إضافة استراتيجية يدويًا
-          </Button>
-        </div>
-      </OfficeHeader>
+        <Button onClick={() => setAddDialogOpen(true)} className="nb-story--in-dark gap-2">
+          <Plus className="h-4 w-4" />
+          إضافة استراتيجية يدويًا
+        </Button>
+      </StageHeader>
 
       {/* شريط الفلترة */}
       <Card>

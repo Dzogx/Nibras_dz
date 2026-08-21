@@ -21,7 +21,7 @@ import {
   Brain,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StepTrack } from "@/components/OfficeChrome";
+import { StageHeader } from "@/components/OfficeChrome";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -427,24 +427,28 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* ترويسة مكتبية خفيفة — السياق التربوي أولًا */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <p className="text-sm font-semibold text-brand-wax-800">{hasDailySession ? "حصة اليوم جاهزة" : "مساحة الأستاذ اليومية"}</p>
-          <h1 className="office-title !mt-1">مرحباً، {user?.name || "أستاذ"}</h1>
-          {hasDailySession && dailySituation ? (
-            <p className="office-subtitle !mt-1">
-              {activeClass?.name} · {scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}{scheduledSlot ? ` · ${scheduledSlot.startTime}–${scheduledSlot.endTime}` : ""} · المقطع {dailySection?.number}
-            </p>
-          ) : (
-            <p className="office-subtitle !mt-1">{profile?.displayName || "نبراس — مساعدك التربوي اليومي"} · السنة الدراسية {fallbackYear || "—"}</p>
-          )}
-        </div>
+      {/* مسرح توقيع نبراس: يجمع الترحيب والمسار وبطاقة الحصة في لحظة بصرية واحدة */}
+      <div className="rounded-t-lg md:rounded-lg overflow-hidden nb-arrive nb-arrive-d1">
+      <StageHeader
+        eyebrow={hasDailySession ? `حصة اليوم · ${activeClass?.name}` : "مساحة الأستاذ اليومية"}
+        title={`مرحباً، ${user?.name || "أستاذ"}`}
+        subtitle={
+          hasDailySession && dailySituation
+            ? `${scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}${scheduledSlot ? ` · ${scheduledSlot.startTime}–${scheduledSlot.endTime}` : ""} · المقطع ${dailySection?.number}`
+            : `${profile?.displayName || "نبراس — مساعدك التربوي اليومي"} · السنة الدراسية ${fallbackYear || "—"}`
+        }
+        track={[
+          { label: "المذكرة", done: Boolean(readyLessonPlan) },
+          { label: "التنفيذ" },
+          { label: "النتيجة" },
+          { label: "التقويم" },
+        ]}
+      >
         {seasonClasses.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="bg-white">
-                <MoreHorizontal className="ml-1 h-4 w-4" />{activeClass?.name || "اختيار القسم"}
+              <Button size="sm" variant="outline" className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                <MoreHorizontal className="ml-1 h-4 w-4" />تغيير القسم
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-56">
@@ -464,55 +468,8 @@ export default function Dashboard() {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-      </div>
-
-      {/* مسار خطوات واضح: المذكرة → التنفيذ → النتيجة → التقويم */}
-      <StepTrack
-        steps={[
-          { label: "المذكرة" },
-          { label: "التنفيذ" },
-          { label: "النتيجة" },
-          { label: "التقويم" },
-        ]}
-        activeIndex={hasDailySession ? (readyLessonPlan ? 1 : 0) : 0}
-      />
-
-      {/* نقطة العمل الأساسية: يقود نبراس الأستاذ إلى خطوة اليوم الواحدة — ورقة مكتبية فاتحة */}
-      <Card className="lesson-sheet border-none p-5 md:p-6 shadow-sm">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <span className="office-step is-active">1</span>
-              <div>
-                <p className="text-xs text-brand-ink-500">قرار واحد واضح</p>
-                <h2 className="font-bold text-lg text-foreground">مسار حصتك الآن</h2>
-              </div>
-            </div>
-            {seasonClasses.length > 1 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline" className="border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white">
-                    <MoreHorizontal className="ml-1 h-4 w-4" />تغيير القسم
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-56">
-                  <DropdownMenuLabel>اختيار قسم آخر</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {seasonClasses.map((classItem) => (
-                    <DropdownMenuItem
-                      key={classItem.id}
-                      onSelect={() => {
-                        setFollowSchedule(false);
-                        setSelectedClassId(classItem.id);
-                      }}
-                    >
-                      {classItem.name} — {classItem.gradeLevel}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </div>
-          <CardContent>
+      </StageHeader>
+      <div className="nb-stage px-5 pb-5 md:px-7 md:pb-6">
 
           {hasDailySession ? (
             <div className="pt-7">
@@ -592,8 +549,8 @@ export default function Dashboard() {
               <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Plus className="ml-2 h-4 w-4" />تهيئة الموسم الدراسي</Button>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* التقرير الأسبوعي التلقائي: جاهزية الأقسام للأسبوع القادم */}
       {Boolean(weeklyReadiness?.items?.length) && (

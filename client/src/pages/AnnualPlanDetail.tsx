@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle, Landmark, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { OfficeHeader, OfficeTag, OfficeSection } from "@/components/OfficeChrome";
+import { OfficeHeader, OfficeTag, OfficeSection, StageHeader, Trail, TrailItem } from "@/components/OfficeChrome";
 import { useMemo, useState } from "react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -167,31 +167,31 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
   const totalSituations = sections?.reduce((acc, s) => acc + (s.situations?.length || 0), 0) || 0;
   const completedSituations = sections?.reduce((acc, s) => acc + (s.situations?.filter(si => si.isCompleted).length || 0), 0) || 0;
 
+  // مسار المقاطع المضاء أعلى المسرح الداكن
+  const sectionTrack = (sections || []).map((section, idx) => {
+    const secTotal = section.situations?.length || 0;
+    const secDone = section.situations?.filter(si => si.isCompleted).length || 0;
+    return { label: section.title || `المقطع ${idx + 1}`, done: secTotal > 0 && secDone >= secTotal };
+  });
+
   return (
     <div className="max-w-4xl mx-auto">
-      <OfficeHeader
-        crumbs={[{ label: "المخططات", href: "/annual-plans" }]}
+      <StageHeader
+        eyebrow={`${["المخططات", plan.subject, plan.gradeLevel, plan.academicYear].filter(Boolean).join(" · ")}`}
         title={plan.title || "خطة سنوية"}
-        subtitle={
-          [
-            plan.subject && plan.subject,
-            plan.gradeLevel && plan.gradeLevel,
-            plan.academicYear && plan.academicYear,
-            `${completedSituations}/${totalSituations} وضعية منجزة`,
-          ]
-            .filter(Boolean)
-            .join(" · ")
+        subtitle={`${completedSituations}/${totalSituations} وضعية منجزة`
         }
+        track={sectionTrack}
       >
         {isReferencePlan && (
-          <OfficeTag className="gap-1"><Landmark className="h-3 w-3" />مرجع رسمي</OfficeTag>
+          <OfficeTag className="nb-story--in-dark gap-1"><Landmark className="h-3 w-3" />مرجع رسمي</OfficeTag>
         )}
         {!isReferencePlan && (
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
+          <Button variant="outline" size="sm" className="nb-story--in-dark" onClick={() => setIsEditing(!isEditing)}>
             <Pencil className="w-4 h-4 ml-1" />{isEditing ? "عرض" : "تحرير"}
           </Button>
         )}
-      </OfficeHeader>
+      </StageHeader>
 
       {isReferencePlan && (
         <p className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm leading-6 text-muted-foreground">
