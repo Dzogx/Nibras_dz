@@ -13,6 +13,7 @@ import { Plus, BarChart3, TrendingDown, Lightbulb, Loader2, Trash2, AlertTriangl
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import { prepareFirstResultInput } from "@shared/teacher-journey";
 
 export default function Results() {
@@ -131,10 +132,7 @@ export default function Results() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">نتائج التقويم</h1>
-        <p className="text-muted-foreground mt-1">إدخال النتائج المجمعة وتحليل الأداء</p>
-      </div>
+      <OfficeHeader title="نتائج التقويم" subtitle="إدخال النتائج المجمعة وتحليل الأداء" />
 
       {/* Class Selection */}
       {!selectedClassId ? (

@@ -48,12 +48,12 @@ import { Button } from "./ui/button";
 const menuItems = [
   { icon: LayoutDashboard, label: "اليوم", path: "/dashboard" },
   { icon: CalendarDays, label: "الأسبوع", path: "/weekly-plan" },
-  { icon: FileText, label: "التخطيط", path: "/annual-plans" },
-  { icon: Library, label: "التقويم", path: "/assessment" },
+  { icon: FileText, label: "المخططات", path: "/annual-plans" },
+  { icon: ClipboardCheck, label: "التقويم", path: "/assessment" },
   { icon: Library, label: "المكتبة", path: "/content-library" },
-  { icon: Users, label: "نتائج التلاميذ", path: "/student-results" },
+  { icon: Users, label: "النتائج", path: "/student-results" },
   { icon: ClipboardList, label: "دفتر التنقيط", path: "/gradebook" },
-  { icon: BookOpen, label: "دفتر التجارب", path: "/experiment-log" },
+  { icon: BookOpen, label: "التجارب", path: "/experiment-log" },
   { icon: Award, label: "الكفاءات", path: "/competencies" },
 ];
 
@@ -235,11 +235,10 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className="h-10 transition-all font-normal"
+                      className="office-sidebar-item h-10 transition-all"
+                      data-active={isActive}
                     >
-                      <item.icon
-                        className={`h-4 w-4 ${isActive ? "text-sidebar-primary" : ""}`}
-                      />
+                      <item.icon className="h-4 w-4 shrink-0" />
                       <span className="text-sm">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -306,7 +305,7 @@ function DashboardLayoutContent({
               </div>
             </div>
           </div>
-	        <main className="flex-1 p-4 pb-24 md:p-6">
+	        <main className="office-surface flex-1 p-4 pb-24 md:p-6">
 	          <PwaInstallPrompt />
 	          {children}
 	        </main>

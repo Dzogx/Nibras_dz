@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import {
   Award,
   Target,
@@ -523,17 +524,10 @@ export default function Competencies() {
   return (
     <div className="container py-6 space-y-6">
       {/* الترويسة */}
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Award className="size-7 text-amber-600" />
-          سلم الكفاءات — المسار نحو الكفاءة الشاملة
-        </h1>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          لكل مادة في كل مستوى <strong>كفاءة شاملة</strong> تتحقق عبر <strong>الكفاءات الختامية لمقاطع</strong> المخطط السنوي،
-          ويُبلَّغ كل مقطع بوضعيات تعليمية-تعلمية وإدماجية، مع <strong>معايير ومؤشرات</strong> لقياس التملك (تنصيب كفاءات جديدة، إنماء قائمة، أو إدماج)،
-          وحجم ساعي مقدَّر لكل مقطع. حدّث إنجاز الوضعيات في صفحات اليوم والتخطيط لتتابع نسبة بلوغ الكفاءة الختامية لكل مقطع.
-        </p>
-      </div>
+      <OfficeHeader
+        title="سلم الكفاءات"
+        subtitle="المسار نحو الكفاءة الشاملة — لكل مادة في كل مستوى كفاءة شاملة تتحقق عبر الكفاءات الختامية لمقاطع المخطط السنوي، ويُبلَّغ كل مقطع بوضعيات تعليمية-تعلمية وإدماجية، مع معايير ومؤشرات لقياس التملك وحجم ساعي مقدّر. حدّث إنجاز الوضعيات في صفحات اليوم والتخطيط لتتابع نسبة البلوغ."
+      />
 
       {/* الفلاتر */}
       <div className="flex flex-wrap gap-3">

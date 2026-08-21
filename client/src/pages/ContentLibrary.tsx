@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { truncateMarkdown } from "@/components/MarkdownRenderer";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,11 +66,10 @@ export default function ContentLibrary() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="nibras-library-heading">
-        <p className="nibras-kicker text-primary">أرشيفك التربوي</p>
-        <h1 className="text-2xl font-bold">مكتبة المحتوى</h1>
-        <p className="text-muted-foreground mt-1">جميع الموارد المُولّدة والمخزّنة</p>
-      </div>
+      <OfficeHeader
+        title="مكتبة المحتوى"
+        subtitle="أرشيفك التربوي — جميع الموارد المُولّدة والمخزّنة"
+      />
 
       <div className="nibras-library-tools flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">

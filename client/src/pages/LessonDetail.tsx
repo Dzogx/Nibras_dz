@@ -12,6 +12,7 @@ import { A4PrintButton, A4PrintContent } from "@/components/A4Print";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { PrintPreviewDialog } from "@/components/PrintPreviewDialog";
 import { Eye, Presentation, FileDown } from "lucide-react";
+import { OfficeHeader, OfficeSection, OfficeTag, LessonSheet } from "@/components/OfficeChrome";
 import { VoicePlayer } from "@/components/VoicePlayer";
 import { ClassroomSlides } from "@/components/ClassroomSlides";
 import { TEACHING_TEMPLATES, type TeachingTemplateKey } from "@shared/teachingTemplates";
@@ -168,30 +169,30 @@ export default function LessonDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <header className="lesson-workspace-header nibras-glow-pattern">
-        <div className="flex items-center justify-between gap-3">
-          <Button variant="ghost" size="sm" className="lesson-back-button" onClick={() => setLocation("/lessons")}>
-            <ArrowRight className="w-4 h-4" />
-            كل المذكرات
-          </Button>
-          <span className="lesson-document-type"><FileText className="w-3.5 h-3.5" /> مذكرة الحصة</span>
-        </div>
-        <div className="mt-5">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{lesson.title}</h1>
-          <div className="lesson-meta-row mt-3">
-            {lesson.subject && <span className="nibras-tag-history">{lesson.subject}</span>}
-            {lesson.gradeLevel && <span>{lesson.gradeLevel}</span>}
-            {lesson.unitTitle && <span className="truncate max-w-[20rem]">{lesson.unitTitle}</span>}
-          </div>
-        </div>
-        <div className="lesson-action-bar mt-6">
-          <Button variant={lesson.isCompleted ? "default" : "outline"} size="sm" onClick={() => toggleMutation.mutate({ id: lessonId, isCompleted: !lesson.isCompleted })}>
-            {lesson.isCompleted ? <><CheckCircle2 className="w-4 h-4 ml-1" />تم الإنجاز</> : <><Clock className="w-4 h-4 ml-1" />في انتظار التنفيذ</>}
-          </Button>
-          <Button variant="outline" size="sm" className="print:hidden" onClick={() => setSlidesOpen(true)}><Presentation className="w-4 h-4 ml-1" />العرض الصفي</Button>
-          <Button variant="outline" size="sm" className="print:hidden" onClick={() => setPreviewOpen(true)}><Eye className="w-4 h-4 ml-1" />معاينة الورقة</Button>
-          <A4PrintButton title="مذكرة بيداغوجية" subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`} />
-          <Button variant="outline" size="sm" disabled={exportPdf.isPending} onClick={() => exportPdf.mutate({
+      <OfficeHeader
+        crumbs={[{ label: "المذكرات", href: "/lessons" }, { label: "مذكرة الحصة" }]}
+        title={lesson.title}
+        subtitle={lesson.unitTitle || undefined}
+      >
+        <OfficeTag><FileText className="w-3.5 h-3.5" /> مذكرة الحصة</OfficeTag>
+        {lesson.subject && <OfficeTag>{lesson.subject}</OfficeTag>}
+        {lesson.gradeLevel && <OfficeTag>{cls ? `${lesson.gradeLevel}${cls.section ? ` — القسم ${cls.section}` : ""}` : lesson.gradeLevel}</OfficeTag>}
+        <Button
+          variant={lesson.isCompleted ? "default" : "outline"}
+          size="sm"
+          className={lesson.isCompleted ? "office-primary" : ""}
+          onClick={() => toggleMutation.mutate({ id: lessonId, isCompleted: !lesson.isCompleted })}
+        >
+          {lesson.isCompleted ? <><CheckCircle2 className="w-4 h-4 ml-1" />تم الإنجاز</> : <><Clock className="w-4 h-4 ml-1" />في انتظار التنفيذ</>}
+        </Button>
+      </OfficeHeader>
+
+      {/* أدوات الورقة */}
+      <div className="flex flex-wrap gap-2 print:hidden">
+        <Button variant="outline" size="sm" onClick={() => setSlidesOpen(true)}><Presentation className="w-4 h-4 ml-1" />العرض الصفي</Button>
+        <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}><Eye className="w-4 h-4 ml-1" />معاينة الورقة</Button>
+        <A4PrintButton title="مذكرة بيداغوجية" subtitle={`${cls?.name || lesson.gradeLevel || ""}${cls?.section ? ` — القسم ${cls.section}` : ""}`} />
+        <Button variant="outline" size="sm" disabled={exportPdf.isPending} onClick={() => exportPdf.mutate({
             title: lesson?.title || "مذكرة بيداغوجية",
             content: [lesson.plan, lesson.objectives, lesson.content].filter(Boolean).join("\n\n"),
             subject: lesson?.subject || "",
@@ -203,8 +204,7 @@ export default function LessonDetail({ id }: { id: string }) {
             {exportPdf.isPending ? <><Loader2 className="w-4 h-4 ml-1 animate-spin" />جارٍ التجميع...</> : <><FileDown className="w-4 h-4 ml-1" />تنزيل PDF</>}
           </Button>
           <VoicePlayer text={`${lesson.plan || ""}\n${lesson.objectives || ""}\n${lesson.content || ""}`} label="النسخة الصوتية" />
-        </div>
-      </header>
+      </div>
 
       {/* المعاينة الاحترافية: ترويسة رسمية عند الطباعة */}
       <A4PrintContent {...printMeta}>
@@ -258,16 +258,10 @@ export default function LessonDetail({ id }: { id: string }) {
         </div>
       </PrintPreviewDialog>
 
-      {/* Edit Form */}
-      <Card className="nibras-decision-card border-primary/20 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            إطار بناء المذكرة
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">اختر طريقة سير الحصة قبل التوليد. لا يغيّر القالب الوضعية أو أهدافها الرسمية.</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      {/* إطار بناء المذكرة */}
+      <OfficeSection title="بناء المذكرة" className="mt-8">
+        <div className="office-card office-card--tinted p-4 md:p-5">
+          <p className="text-sm text-muted-foreground mb-4">اختر طريقة سير الحصة قبل التوليد. لا يغيّر القالب الوضعية أو أهدافها الرسمية.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {TEACHING_TEMPLATES.map(template => {
               const isSelected = selectedTemplateKey === template.key;
@@ -305,17 +299,11 @@ export default function LessonDetail({ id }: { id: string }) {
             {generateMemoMutation.isPending ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <Sparkles className="w-4 h-4 ml-2" />}
             {lesson.content ? "إعادة توليد محتوى المذكرة" : "توليد محتوى المذكرة"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </OfficeSection>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Save className="w-4 h-4 text-primary" />
-            تحرير الدرس
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <OfficeSection title="تحرير الدرس">
+        <div className="office-card p-4 md:p-5 space-y-4">
           <div><Label>العنوان</Label>
             <Input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
           </div>
@@ -342,21 +330,15 @@ export default function LessonDetail({ id }: { id: string }) {
           <div><Label>المحتوى</Label>
             <Textarea value={editForm.content} onChange={e => setEditForm({ ...editForm, content: e.target.value })} rows={6} />
           </div>
-          <Button onClick={() => updateMutation.mutate({ id: lessonId, ...editForm } as any)}>
+          <Button className="office-primary" onClick={() => updateMutation.mutate({ id: lessonId, ...editForm } as any)}>
             <Save className="w-4 h-4 ml-2" />حفظ التغييرات
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </OfficeSection>
 
-      {/* Teaching Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            ملاحظات التدريس
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      {/* ملاحظات التدريس */}
+      <OfficeSection title="ملاحظات التدريس">
+        <LessonSheet>
           <div className="flex gap-2">
             <Input value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="أضف ملاحظة..." />
             <Button size="sm" onClick={() => addNoteMutation.mutate({ lessonId, content: newNote })} disabled={!newNote}>
@@ -364,9 +346,9 @@ export default function LessonDetail({ id }: { id: string }) {
             </Button>
           </div>
           {notes && notes.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-2 mt-3">
               {notes.map(note => (
-                <div key={note.id} className="p-3 bg-muted/50 rounded-lg">
+                <div key={note.id} className="p-3 border border-border rounded-lg bg-muted/30">
                   <p className="text-sm">{note.content}</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     {new Date(note.createdAt).toLocaleDateString("ar-DZ")}
@@ -375,10 +357,10 @@ export default function LessonDetail({ id }: { id: string }) {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">لا توجد ملاحظات</p>
+            <p className="text-sm text-muted-foreground mt-3">لا توجد ملاحظات</p>
           )}
-        </CardContent>
-      </Card>
+        </LessonSheet>
+      </OfficeSection>
     </div>
   );
 }

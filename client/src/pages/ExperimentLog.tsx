@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -187,23 +188,17 @@ export default function ExperimentLog() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
-            <BookOpen className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">دفتر التجارب</h1>
-            <p className="text-sm text-muted-foreground">
-              استراتيجياتك الناجحة التي جربتها في الحصة — احفظها وأعد توظيفها في أي قسم أو فصل لاحق.
-            </p>
-          </div>
+      <OfficeHeader
+        title="دفتر التجارب"
+        subtitle="استراتيجياتك الناجحة التي جربتها في الحصة — احفظها وأعد توظيفها في أي قسم أو فصل لاحق."
+      >
+        <div className="office-header-actions">
+          <Button onClick={() => setAddDialogOpen(true)} className="office-primary gap-2">
+            <Plus className="h-4 w-4" />
+            إضافة استراتيجية يدويًا
+          </Button>
         </div>
-        <Button onClick={() => setAddDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          إضافة استراتيجية يدويًا
-        </Button>
-      </div>
+      </OfficeHeader>
 
       {/* شريط الفلترة */}
       <Card>

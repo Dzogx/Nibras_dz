@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { CalendarDays, Clock3, FileText, Sparkles, BookOpenCheck, MapPinned } from "lucide-react";
-import { toast } from "sonner";
+import { OfficeHeader, OfficeTag } from "@/components/OfficeChrome";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,13 +62,13 @@ function WeeklySessionCard({
   const subjectLabel = subjectLabels[slot.subject] ?? slot.subject;
 
   return (
-    <article className="rounded-xl border bg-card p-3 shadow-sm transition-shadow hover:shadow-md">
+    <article className="lesson-sheet rounded-xl p-4 transition-shadow hover:shadow-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-semibold leading-6 text-foreground">{classItem?.name ?? "قسم غير متاح"}</p>
+          <p className="font-bold leading-6 text-foreground">{classItem?.name ?? "قسم غير متاح"}</p>
           <p className="text-xs text-muted-foreground">{classItem?.gradeLevel ?? ""}</p>
         </div>
-        <Badge variant="secondary" className="shrink-0">{subjectLabel}</Badge>
+        <OfficeTag>{subjectLabel}</OfficeTag>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -76,15 +76,15 @@ function WeeklySessionCard({
         {slot.room && <span className="inline-flex items-center gap-1"><MapPinned className="h-3.5 w-3.5" />{slot.room}</span>}
       </div>
 
-      <div className="mt-4 min-h-20 border-t pt-3">
+      <div className="mt-4 min-h-20 border-t border-border/50 pt-3">
         {isLoading ? (
           <div className="space-y-2"><Skeleton className="h-4 w-20" /><Skeleton className="h-5 w-full" /></div>
         ) : isError ? (
-          <p className="text-sm leading-6 text-destructive">تعذر جلب سياق الحصة الآن. أعد المحاولة لاحقاً.</p>
+          <p className="text-sm leading-6 text-destructive">تعذّر جلب سياق الحصة الآن. أعد المحاولة لاحقاً.</p>
         ) : nextSituation ? (
           <>
             <p className="text-xs text-muted-foreground">الوضعية التالية · المقطع {context?.currentSection?.number}</p>
-            <p className="mt-1 line-clamp-2 text-sm font-medium leading-6">{nextSituation.title}</p>
+            <p className="mt-1 line-clamp-2 text-sm font-semibold leading-6">{nextSituation.title}</p>
           </>
         ) : (
           <p className="text-sm leading-6 text-muted-foreground">لا توجد وضعية تالية متاحة لهذه المادة. راجع نسختك الصفية من المخطط.</p>
@@ -94,7 +94,7 @@ function WeeklySessionCard({
       {nextSituation ? (
         <Button
           size="sm"
-          className="mt-3 w-full"
+          className={`mt-3 w-full ${readyLessonPlan ? "" : ""}`}
           variant={readyLessonPlan ? "outline" : "default"}
           onClick={() => setLocation(readyLessonPlan ? `/content-library/${readyLessonPlan.id}` : buildQuickLessonPath(nextSituation.id))}
         >
@@ -133,20 +133,13 @@ export default function WeeklyPlan() {
   const weeklySessionCount = schedule?.length ?? 0;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <section className="nibras-glow-pattern rounded-2xl nibras-card-hero p-5 shadow-sm md:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white"><CalendarDays className="h-5 w-5" /></span>
-            <div>
-              <p className="text-sm text-white/75">خطة العمل المتكررة</p>
-              <h1 className="mt-1 text-xl font-bold md:text-2xl">خطة الأسبوع</h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/80">راجع حصصك القادمة، وضعياتها الرسمية، وجاهزية مذكراتها قبل بداية كل يوم.</p>
-            </div>
-          </div>
-          <Badge className="border-white/15 bg-white/10 px-3 py-1.5 text-white hover:bg-white/10">{weeklySessionCount} حصة أسبوعية · {academicYear}</Badge>
-        </div>
-      </section>
+    <div className="mx-auto max-w-7xl">
+      <OfficeHeader
+        title="خطة الأسبوع"
+        subtitle="راجع حصصك القادمة، وضعياتها الرسمية، وجاهزية مذكراتها قبل بداية كل يوم."
+      >
+        <OfficeTag>{weeklySessionCount} حصة أسبوعية · {academicYear}</OfficeTag>
+      </OfficeHeader>
 
       {scheduleLoading ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -166,16 +159,16 @@ export default function WeeklyPlan() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {weekDays.map(({ day, slots }) => (
-            <Card key={day} className={slots.length === 0 ? "border-dashed bg-muted/20" : ""}>
-              <CardHeader className="pb-3">
+            <div key={day} className={`office-card ${slots.length === 0 ? "border-dashed" : ""}`}>
+              <div className="border-b border-border/50 px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="text-lg">{day}</CardTitle>
+                  <h2 className="text-lg font-bold">{day}</h2>
                   <Badge variant="outline">{slots.length} {slots.length === 1 ? "حصة" : "حصص"}</Badge>
                 </div>
-                <CardDescription>{slots.length ? "حضّر الحصة التالية لكل بطاقة قبل موعدها." : "لا توجد حصة مجدولة في هذا اليوم."}</CardDescription>
-              </CardHeader>
+                <p className="mt-1 text-sm text-muted-foreground">{slots.length ? "حضّر الحصة التالية لكل بطاقة قبل موعدها." : "لا توجد حصة مجدولة في هذا اليوم."}</p>
+              </div>
               {slots.length > 0 && (
-                <CardContent className="space-y-3">
+                <div className="space-y-3 p-4">
                   {slots.map((slot) => (
                     <WeeklySessionCard
                       key={slot.id}
@@ -185,9 +178,9 @@ export default function WeeklyPlan() {
                       resources={resources as PlanResource[] | undefined}
                     />
                   ))}
-                </CardContent>
+                </div>
               )}
-            </Card>
+            </div>
           ))}
         </div>
       )}

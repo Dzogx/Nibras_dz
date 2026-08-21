@@ -770,3 +770,162 @@
   .nibras-resource-card::before { inset:.75rem auto .75rem 0; }
   .nibras-resource-title { white-space:normal; }
 }
+
+/* ============================================================
+   نظام «مكتب الأستاذ» — صفحة ورق دافئة، حدود رفيعة، خطوة واحدة واضحة
+   (يُضاف فوق النظام السابق دون حذفه — الصفحات تنتقل تدريجياً)
+   ============================================================ */
+@layer components {
+  /* سطح المكتب: ورق دافئ بدل الظلال المتكدسة */
+  .office-surface { background: var(--brand-sand-100); }
+
+  /* بطاقة دفتر: حد 1px محايد، زوايا 8px، بلا ظل ثقيل */
+  .office-card {
+    background: oklch(1 0 0);
+    border: 1px solid oklch(0.92 0.01 85);
+    border-radius: 0.5rem;
+    box-shadow: none;
+  }
+  .office-card--tinted { background: oklch(0.99 0.008 93); }
+
+  /* ترويسة صفحة مكتبية: مسار تربوي + عنوان كبير + إجراء رئيسي واحد */
+  .office-header {
+    padding: 1.5rem 0 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .office-breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--brand-ink-600);
+    font-size: 0.8rem;
+  }
+  .office-breadcrumb-sep { color: oklch(0.82 0.015 85); }
+  .office-breadcrumb > a, .office-breadcrumb > span[role="link"] {
+    color: var(--brand-ink-600);
+    transition: color 150ms var(--ease-out);
+  }
+  .office-breadcrumb > a:hover, .office-breadcrumb > span[role="link"]:hover { color: var(--brand-ink-900); }
+  .office-title {
+    font-size: 1.65rem;
+    line-height: 1.3;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    color: var(--brand-ink-950);
+  }
+  .office-subtitle { color: var(--brand-ink-600); font-size: 0.95rem; line-height: 1.6; }
+  .office-header-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem; }
+  .office-header-actions > button:first-of-type { order: -1; }
+
+  /* خطوة مرقّمة دائرية */
+  .office-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    border: 1.5px solid oklch(0.87 0.015 85);
+    background: oklch(1 0 0);
+    color: var(--brand-ink-600);
+    font-size: 0.8rem;
+    font-weight: 800;
+    flex: none;
+  }
+  .office-step.is-done { background: var(--brand-ink-900); border-color: var(--brand-ink-900); color: oklch(0.97 0.006 342); }
+  .office-step.is-active { background: var(--brand-wax-600); border-color: var(--brand-wax-600); color: var(--brand-ink-950); }
+
+  /* مسار خطوات أفقي */
+  .office-track {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 1rem 0 1.5rem;
+    position: relative;
+  }
+  .office-track::before {
+    content: "";
+    position: absolute;
+    right: 1rem;
+    left: 1rem;
+    top: 50%;
+    height: 1px;
+    background: oklch(0.9 0.012 85);
+    z-index: 0;
+  }
+  .office-track-item { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 0.45rem; flex: 1; }
+  .office-track-item span { font-size: 0.75rem; font-weight: 700; color: var(--brand-ink-500); white-space: nowrap; }
+  .office-track-item.is-active span { color: var(--brand-wax-800); }
+  .office-track-item.is-done span { color: var(--brand-ink-400); }
+
+  /* إجراء رئيسي واحد — ذهبي هادئ */
+  .office-primary {
+    background: var(--brand-wax-700);
+    color: oklch(0.98 0.01 93);
+    font-weight: 700;
+  }
+  .office-primary:hover { background: var(--brand-wax-800); }
+
+  /* بطاقات الحصة: ورقة بيضاء بخط فاصل ذهبي رفيع */
+  .lesson-sheet {
+    background: oklch(1 0 0);
+    border: 1px solid oklch(0.92 0.01 85);
+    border-radius: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .lesson-sheet::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--brand-wax-600);
+  }
+
+  /* وسوم مواد مكتبية */
+  .office-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid oklch(0.9 0.012 85);
+    background: oklch(0.99 0.008 93);
+    color: var(--brand-ink-700);
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  /* نص الصفحة الأساسي أكبر قليلاً */
+  .office-body-text { font-size: 0.98rem; line-height: 1.9; color: var(--brand-ink-800); }
+
+  /* فاصل قسم */
+  .office-section { margin-top: 2.25rem; }
+  .office-section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .office-section-title h2 { font-size: 1.15rem; font-weight: 800; color: var(--brand-ink-950); }
+  .office-section-title .office-rule { flex: 1; height: 1px; background: oklch(0.92 0.01 85); }
+
+  /* شريط جانبي أبسط */
+  .office-sidebar-item { border-radius: 0.5rem; font-weight: 600; }
+  .office-sidebar-item[data-active="true"] {
+    background: oklch(0.96 0.04 90);
+    color: var(--brand-wax-900);
+  }
+  .office-sidebar-item[data-active="true"] > svg { color: var(--brand-wax-700); }
+
+  @media (max-width: 640px) {
+    .office-title { font-size: 1.35rem; }
+    .office-header { padding: 1.1rem 0 0.9rem; }
+    .office-track-item span { font-size: 0.65rem; }
+  }
+}

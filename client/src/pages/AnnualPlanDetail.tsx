@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Save, Pencil, Plus, CheckCircle2, Circle, Trash2, Loader2, FileText, PauseCircle, CalendarClock, XCircle, Landmark, Compass } from "lucide-react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+import { OfficeHeader, OfficeTag, OfficeSection } from "@/components/OfficeChrome";
 import { useMemo, useState } from "react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -167,31 +168,40 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
   const completedSituations = sections?.reduce((acc, s) => acc + (s.situations?.filter(si => si.isCompleted).length || 0), 0) || 0;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/annual-plans")}>
-          <ArrowRight className="w-4 h-4" />
-        </Button>
-        <h1 className="text-2xl font-bold">{plan.title || "خطة سنوية"}</h1>
-      </div>
-      <div className="flex items-center gap-2 flex-wrap">
-        {plan.subject && <Badge variant="secondary">{plan.subject}</Badge>}
-        {plan.gradeLevel && <Badge variant="outline">{plan.gradeLevel}</Badge>}
-        {plan.academicYear && <Badge variant="outline">{plan.academicYear}</Badge>}
-        {isReferencePlan && <Badge className="gap-1 bg-primary/15 text-primary hover:bg-primary/15"><Landmark className="h-3 w-3" />مرجع رسمي</Badge>}
-        <span className="text-sm text-muted-foreground mr-2">
-          {completedSituations}/{totalSituations} وضعية منجزة
-        </span>
-        {!isReferencePlan && <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
-          <Pencil className="w-4 h-4 ml-1" />{isEditing ? "عرض" : "تحرير"}
-        </Button>}
-      </div>
+    <div className="max-w-4xl mx-auto">
+      <OfficeHeader
+        crumbs={[{ label: "المخططات", href: "/annual-plans" }]}
+        title={plan.title || "خطة سنوية"}
+        subtitle={
+          [
+            plan.subject && plan.subject,
+            plan.gradeLevel && plan.gradeLevel,
+            plan.academicYear && plan.academicYear,
+            `${completedSituations}/${totalSituations} وضعية منجزة`,
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        }
+      >
+        {isReferencePlan && (
+          <OfficeTag className="gap-1"><Landmark className="h-3 w-3" />مرجع رسمي</OfficeTag>
+        )}
+        {!isReferencePlan && (
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(!isEditing)}>
+            <Pencil className="w-4 h-4 ml-1" />{isEditing ? "عرض" : "تحرير"}
+          </Button>
+        )}
+      </OfficeHeader>
 
-      {isReferencePlan && <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-sm leading-6 text-muted-foreground">هذا مخطط مرجعي رسمي للقراءة فقط. انسخه إلى أحد أقسامك من قائمة المخططات لتسجيل التقدم أو تعديل محتواه.</p>}
+      {isReferencePlan && (
+        <p className="mb-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm leading-6 text-muted-foreground">
+          هذا مخطط مرجعي رسمي للقراءة فقط. انسخه إلى أحد أقسامك من قائمة المخططات لتسجيل التقدم أو تعديل محتواه.
+        </p>
+      )}
 
       {isEditing ? (
-        <Card>
-          <CardContent className="p-4 space-y-4">
+        <div className="office-card">
+          <div className="space-y-4 p-4 md:p-5">
             <div><Label>العنوان</Label>
               <Input value={editForm.title} onChange={e => setEditForm({ ...editForm, title: e.target.value })} />
             </div>
@@ -209,21 +219,21 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
             <Button onClick={() => updateMutation.mutate({ id: planId, ...editForm } as any)}>
               <Save className="w-4 h-4 ml-2" />حفظ
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : plan.content ? (
-        <Card>
-          <CardContent className="p-4">
-            <div className="prose prose-sm max-w-none text-right" dir="rtl">
-              <MarkdownRenderer source={plan.content} />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="office-card">
+          <div className="prose prose-sm max-w-none p-4 text-right md:p-5" dir="rtl">
+            <MarkdownRenderer source={plan.content} />
+          </div>
+        </div>
       ) : null}
 
       {/* ─── Sections ─────────────────────────────────── */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold">المقاطع والوضعيات التعليمية</h2>
+      <OfficeSection
+        title="المقاطع والوضعيات التعليمية"
+        className="flex flex-wrap items-center justify-between gap-3"
+      >
         <Dialog open={addSectionOpen} onOpenChange={setAddSectionOpen}>
           {!isReferencePlan && <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 ml-1" />مقطع جديد</Button>
@@ -258,15 +268,19 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
-
+        {!isReferencePlan && (
+          <Button size="sm" onClick={() => setAddSectionOpen(true)}>
+            <Plus className="w-4 h-4 ml-1" />مقطع جديد
+          </Button>
+        )}
+      </OfficeSection>
       {sectionsLoading ? (
         <div className="text-center py-8 text-muted-foreground">جاري تحميل المقاطع...</div>
       ) : sections && sections.length > 0 ? (
         <div className="space-y-4">
           {sections.map(section => (
-            <Card key={section.id} className={section.isCompleted ? "border-green-200 bg-green-50/50" : ""}>
-              <CardContent className="p-4">
+            <div key={section.id} className={`office-card ${section.isCompleted ? "border-green-200 bg-green-50/50" : ""}`}>
+              <div className="p-4">
                 <div className="flex items-start justify-between cursor-pointer" onClick={() => setExpandedSection(expandedSection === section.id ? null : section.id)}>
                   <div className="flex items-start gap-3 flex-1">
                     {section.isCompleted ? (
@@ -318,7 +332,7 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                     {/* Situations list */}
                     <div className="space-y-2">
                       {section.situations?.map(sit => (
-                        <div key={sit.id} className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 flex-wrap sm:flex-nowrap">
+                        <div key={sit.id} className="lesson-sheet flex items-center gap-2 rounded-lg p-3 flex-wrap sm:flex-nowrap">
                           {sit.isCompleted ? (
                             <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
                           ) : (
@@ -431,15 +445,18 @@ export default function AnnualPlanDetail({ id }: { id: string }) {
                     </Dialog>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       ) : (
-        <Card><CardContent className="p-8 text-center">
+        <div className="office-card p-8 text-center">
           <p className="text-muted-foreground">لا توجد مقاطع بعد. أضف المقاطع التعليمية والوضعيات.</p>
-        </CardContent></Card>
+        </div>
       )}
+
+
+
 
       <Dialog open={Boolean(sessionDialogSituation)} onOpenChange={(open) => !open && closeSessionDialog()}>
         <DialogContent className="sm:max-w-lg" dir="rtl">

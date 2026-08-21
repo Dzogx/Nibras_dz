@@ -21,6 +21,7 @@ import {
   Brain,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StepTrack } from "@/components/OfficeChrome";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -426,51 +427,64 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Welcome Header — بطاقة hero بهوية نبراس */}
-      <div className="nibras-glow-pattern nibras-orientation-hero rounded-2xl nibras-card-hero p-5 md:p-6 shadow-sm">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <img
-              src="/manus-storage/nibras-bilingual-lockup_8f848dcc.png"
-              alt="نبراس | NIBRAS"
-              className="h-10 w-auto rounded-md bg-white/95 p-1 shrink-0"
-            />
-            <div>
-              <p className="nibras-kicker">مساحة الأستاذ اليومية</p>
-              <h1 className="mt-1 text-xl md:text-2xl font-bold">
-                مرحباً، {user?.name || "أستاذ"}
-              </h1>
-              <p className="text-sm opacity-85 mt-1">
-                {profile?.displayName || "منصّة نبراس — مساعدك التربوي اليومي"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm bg-white/10 border border-white/15 px-3 py-1.5 rounded-lg backdrop-blur">
-              السنة الدراسية {fallbackYear || "—"}
-            </span>
-          </div>
+      {/* ترويسة مكتبية خفيفة — السياق التربوي أولًا */}
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-sm font-semibold text-brand-wax-800">{hasDailySession ? "حصة اليوم جاهزة" : "مساحة الأستاذ اليومية"}</p>
+          <h1 className="office-title !mt-1">مرحباً، {user?.name || "أستاذ"}</h1>
+          {hasDailySession && dailySituation ? (
+            <p className="office-subtitle !mt-1">
+              {activeClass?.name} · {scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}{scheduledSlot ? ` · ${scheduledSlot.startTime}–${scheduledSlot.endTime}` : ""} · المقطع {dailySection?.number}
+            </p>
+          ) : (
+            <p className="office-subtitle !mt-1">{profile?.displayName || "نبراس — مساعدك التربوي اليومي"} · السنة الدراسية {fallbackYear || "—"}</p>
+          )}
         </div>
-        <div className="nibras-session-rail" aria-label="مسار العمل التربوي">
-          <span className="is-current">اليوم</span>
-          <i aria-hidden="true" />
-          <span>المذكرة</span>
-          <i aria-hidden="true" />
-          <span>التنفيذ</span>
-          <i aria-hidden="true" />
-          <span>المتابعة</span>
-        </div>
+        {seasonClasses.length > 1 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="bg-white">
+                <MoreHorizontal className="ml-1 h-4 w-4" />{activeClass?.name || "اختيار القسم"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-56">
+              <DropdownMenuLabel>اختيار قسم آخر</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {seasonClasses.map((classItem) => (
+                <DropdownMenuItem
+                  key={classItem.id}
+                  onSelect={() => {
+                    setFollowSchedule(false);
+                    setSelectedClassId(classItem.id);
+                  }}
+                >
+                  {classItem.name} — {classItem.gradeLevel}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      {/* نقطة العمل الأساسية: يقود نبراس الأستاذ إلى خطوة اليوم الواحدة. */}
-      <Card className="nibras-next-action overflow-hidden border-primary/20 shadow-md">
-        <CardContent className="p-5 md:p-6 bg-gradient-to-bl from-brand-ink-900 via-brand-ink-800 to-brand-ink-700 text-white">
+      {/* مسار خطوات واضح: المذكرة → التنفيذ → النتيجة → التقويم */}
+      <StepTrack
+        steps={[
+          { label: "المذكرة" },
+          { label: "التنفيذ" },
+          { label: "النتيجة" },
+          { label: "التقويم" },
+        ]}
+        activeIndex={hasDailySession ? (readyLessonPlan ? 1 : 0) : 0}
+      />
+
+      {/* نقطة العمل الأساسية: يقود نبراس الأستاذ إلى خطوة اليوم الواحدة — ورقة مكتبية فاتحة */}
+      <Card className="lesson-sheet border-none p-5 md:p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-wax-400 text-brand-ink-950 font-bold">1</span>
+              <span className="office-step is-active">1</span>
               <div>
-                <p className="text-xs text-white/70">قرار واحد واضح</p>
-                <h2 className="font-bold text-lg">مسار حصتك الآن</h2>
+                <p className="text-xs text-brand-ink-500">قرار واحد واضح</p>
+                <h2 className="font-bold text-lg text-foreground">مسار حصتك الآن</h2>
               </div>
             </div>
             {seasonClasses.length > 1 && (
@@ -498,23 +512,29 @@ export default function Dashboard() {
               </DropdownMenu>
             )}
           </div>
+          <CardContent>
 
           {hasDailySession ? (
             <div className="pt-7">
-              <p className="text-sm text-white/70">{activeClass?.name} · {scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}</p>
-              {scheduledSlot && followSchedule && <p className="mt-2 flex items-center gap-2 text-xs text-white/80"><Clock className="h-3.5 w-3.5" />حصة اليوم {scheduledSlot.startTime}–{scheduledSlot.endTime}{scheduledSlot.room ? ` · القاعة ${scheduledSlot.room}` : ""}</p>}
+              <p className="text-sm text-muted-foreground">{activeClass?.name} · {scheduledSlot?.subject || activePlan?.subject || activeClass?.gradeLevel}</p>
+              {scheduledSlot && followSchedule && <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Clock className="h-3.5 w-3.5" />حصة اليوم {scheduledSlot.startTime}–{scheduledSlot.endTime}{scheduledSlot.room ? ` · القاعة ${scheduledSlot.room}` : ""}</p>}
               <h3 className="mt-3 text-xl font-bold leading-relaxed md:text-2xl">{dailySituation?.title}</h3>
-              <p className="mt-2 text-sm text-white/80">المقطع {dailySection?.number}: {dailySection?.title}</p>
+              <p className="mt-2 text-sm text-muted-foreground">المقطع {dailySection?.number}: {dailySection?.title}</p>
               <div className="mt-6 flex flex-wrap items-center gap-2">
                 <Button
-                  className="bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300"
+                  className="office-primary"
                   onClick={() => dailySituation && setLocation(readyLessonPlan ? `/content-library/${readyLessonPlan.id}` : buildQuickLessonPath(dailySituation.id))}
                 >
                   {readyLessonPlan ? <FileText className="ml-2 h-4 w-4" /> : <Sparkles className="ml-2 h-4 w-4" />}
                   {readyLessonPlan ? (dailySituationGuidance ? "استكمل مذكرة الحصة" : "افتح مذكرة الحصة") : "حضّر مذكرة الحصة"}
                 </Button>
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" className="text-white hover:bg-white/10 hover:text-white"><MoreHorizontal className="ml-1 h-4 w-4" />المزيد</Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="bg-background">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span>المزيد</span>
+                    </Button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="min-w-60">
                     <DropdownMenuLabel>إجراءات مرتبطة بهذه الحصة</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -541,7 +561,7 @@ export default function Dashboard() {
               <p className="text-sm text-white/75">التهيئة الأولى</p>
               <h3 className="mt-2 text-xl font-bold">أضف جدول خدمتك الأسبوعي</h3>
               <p className="mt-2 text-sm text-white/75">أدخله مرة واحدة؛ بعدها يقترح نبراس حصة اليوم تلقائياً.</p>
-              <Button className="mt-5 bg-brand-wax-400 text-brand-ink-950 hover:bg-brand-wax-300" onClick={() => setLocation("/season-setup")}><Clock className="ml-2 h-4 w-4" />إعداد جدولي الأسبوعي</Button>
+                <Button className="mt-5 office-primary" onClick={() => setLocation("/season-setup")}><Clock className="ml-2 h-4 w-4" />إعداد جدولي الأسبوعي</Button>
             </div>
           ) : !classesSettled ? (
             // التحميل جارٍ: نُبقي الرسالة قصيرة وواضحة، ونخفيها عمليًا بمجرد وصول classes

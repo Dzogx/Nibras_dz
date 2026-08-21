@@ -3,6 +3,7 @@ import { prepareAssessmentFromCompletedLessons as buildPreparedAssessment } from
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePersistedForm } from "@/hooks/usePersistedForm";
 import { usePreferredClass } from "@/hooks/usePreferredClass";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -513,40 +514,35 @@ export default function Assessment() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">استوديو التقييم</h1>
-        <p className="text-muted-foreground mt-1">توليد الاختبارات والامتحانات بالذكاء الاصطناعي — مرتبط بمحرك القواعد الوطنية وبيانات Teacher OS</p>
-      </div>
+      <OfficeHeader
+        title="استوديو التقييم"
+        subtitle="توليد الاختبارات والامتحانات — مرتبط بمحرك القواعد الوطنية وبيانات Teacher OS"
+      />
 
       {/* National Rules Info Banner */}
       {form.useNationalRules && rule && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardContent className="flex items-center gap-3 py-3">
-            <Scale className="w-5 h-5 text-primary shrink-0" />
-            <div className="text-sm flex-1">
-              <span className="font-semibold">القواعد الوطنية مطبقة تلقائياً:</span>
-              <span className="mr-2">
-                {rule.weights.map((w: WeightInfo) => `${w.label}: ${w.points} نقطة`).join(" | ")} | المدة: {rule.duration} | المجموع: {rule.totalPoints} نقطة
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="office-card office-card--tinted flex items-center gap-3 p-3">
+          <Scale className="w-5 h-5 text-primary shrink-0" />
+          <div className="text-sm flex-1">
+            <span className="font-semibold">القواعد الوطنية مطبقة تلقائياً:</span>
+            <span className="mr-2">
+              {rule.weights.map((w: WeightInfo) => `${w.label}: ${w.points} نقطة`).join(" | ")} | المدة: {rule.duration} | المجموع: {rule.totalPoints} نقطة
+            </span>
+          </div>
+        </div>
       )}
 
       {activeSeasonClassId && (
-        <Card className="border-emerald-200 bg-emerald-50/60">
-          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold text-emerald-950">تقويم من دروس {selectedClass?.name ?? "القسم"} المنجزة</p>
-              <p className="mt-1 text-xs leading-5 text-emerald-900/75">يستورد نبراس الدروس المنجزة تلقائياً، ثم يطبق قواعد النقاط والمدة المناسبة للمستوى والمادة.</p>
-            </div>
-            <Button size="sm" className="shrink-0" onClick={prepareAssessmentFromCompletedLessons} disabled={!teacherOSContext?.completedLessons.length}>
-              <BookOpen className="ml-2 h-4 w-4" />{teacherOSContext?.completedLessons.length ? `تحديث من ${teacherOSContext.completedLessons.length} درساً منجزاً` : "لا توجد دروس منجزة"}
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="office-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div style={{ background: "oklch(0.97 0.02 155)", border: "1px solid oklch(0.9 0.03 155)", borderRadius: "0.5rem", padding: "0.55rem 0.85rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <p className="text-sm font-semibold" style={{ color: "oklch(0.35 0.06 155)" }}>تقويم من دروس {selectedClass?.name ?? "القسم"} المنجزة</p>
+            <p className="text-xs leading-5" style={{ color: "oklch(0.45 0.05 155)" }}>يستورد نبراس الدروس المنجزة تلقائياً، ثم يطبق قواعد النقاط والمدة المناسبة للمستوى والمادة.</p>
+          </div>
+          <Button size="sm" className="shrink-0" onClick={prepareAssessmentFromCompletedLessons} disabled={!teacherOSContext?.completedLessons.length}>
+            <BookOpen className="ml-2 h-4 w-4" />{teacherOSContext?.completedLessons.length ? `تحديث من ${teacherOSContext.completedLessons.length} درساً منجزاً` : "لا توجد دروس منجزة"}
+          </Button>
+                </div>
       )}
-
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Form Card */}
         <Card>

@@ -1,4 +1,5 @@
 import { trpc } from "@/lib/trpc";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -231,10 +232,7 @@ export default function Inspector() {
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold">وضع المفتش</h1>
-        <p className="text-muted-foreground mt-1">مراجعة وتقييم الدروس والتقييمات بالذكاء الاصطناعي</p>
-      </div>
+      <OfficeHeader title="وضع المفتش" subtitle="مراجعة وتقييم الدروس والتقييمات بالذكاء الاصطناعي" />
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>

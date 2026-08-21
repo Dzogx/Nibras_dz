@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 // ملاحظة: useAuth تستورد داخل usePreferredClass عبر @/_core/hooks/useAuth
 import { trpc } from "@/lib/trpc";
+import { OfficeHeader } from "@/components/OfficeChrome";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import {
@@ -225,13 +226,11 @@ export default function Gradebook() {
 
   return (
     <div className="mx-auto max-w-6xl p-4 md:p-8" dir="rtl">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">دفتر التنقيط</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            علامة التقويم المستمر (/20 = انضباط ومواظبة /10 + إنجاز الأنشطة /10)، الفرض الكتابي /20، والتقويم التحصيلي (الاختبار الفصلي) /20 — المعدلات الفصلية والسنوية تُحسب في الرقمنة.
-          </p>
-        </div>
+      <div className="mb-6">
+        <OfficeHeader
+          title="دفتر التنقيط"
+          subtitle="علامة التقويم المستمر (/20 = انضباط ومواظبة /10 + إنجاز الأنشطة /10)، الفرض الكتابي /20، والتقويم التحصيلي (الاختبار الفصلي) /20 — المعدلات الفصلية والسنوية تُحسب في الرقمنة."
+        />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
